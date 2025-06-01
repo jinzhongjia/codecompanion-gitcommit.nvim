@@ -11,6 +11,8 @@
 ---@class CodeCompanion.GitCommit.ExtensionOpts
 ---@field add_slash_command? boolean Add /gitcommit slash command to chat buffer
 ---@field buffer? CodeCompanion.GitCommit.ExtensionOpts.Buffer Enable buffer-specific keymap for git commit
+---@field adapter? string? The adapter to use for generation
+---@field model? string? The model of the adapter to use for generation
 
 ---@class CodeCompanion.GitCommit.Exports
 ---@field generate fun(callback: fun(result: string|nil, error: string|nil)): nil

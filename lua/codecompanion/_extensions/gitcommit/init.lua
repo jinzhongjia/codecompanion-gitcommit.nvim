@@ -74,34 +74,34 @@ return {
         callback = function(chat)
           -- Check git repository status
           if not Git.is_repository() then
-            chat:add_message({ role = "user", content = "Error: Not in a git repository" })
+            chat:add_reference({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
             return
           end
 
           -- Get staged changes
           local diff = Git.get_staged_diff()
           if not diff then
-            chat:add_message({
+            chat:add_reference({
               role = "user",
               content = "Error: No staged changes found. Please stage your changes first.",
-            })
+            }, "git", "<git_error>")
             return
           end
 
           -- Generate commit message
           Generator.generate_commit_message(diff, function(result, error)
             if error then
-              chat:add_message({ role = "user", content = "Error: " .. error })
+              chat:add_reference({ role = "user", content = "Error: " .. error }, "git", "<git_error>")
             else
-              chat:add_message({
+              chat:add_reference({
                 role = "user",
                 content = "Generated commit message:\n```\n" .. result .. "\n```",
-              })
+              }, "git", "<git_commit>")
             end
           end)
         end,
         opts = {
-          contains_code = false,
+          contains_code = true,
         },
       }
     end

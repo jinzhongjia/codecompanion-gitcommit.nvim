@@ -1,30 +1,48 @@
-local client = require("codecompanion.http")
+local codecompanion_client = require("codecompanion.http")
 local codecompanion_config = require("codecompanion.config")
 local codecompanion_adapter = require("codecompanion.adapters")
+local codecompanion_schema = require("codecompanion.schema")
 
 ---@class CodeCompanion.GitCommit.Generator
 local Generator = {}
+
+--- @type string?
+local _adapater = nil
+--- @type string?
+local _model = nil
 
 local CONSTANTS = {
   STATUS_ERROR = "error",
   STATUS_SUCCESS = "success",
 }
 
+--- @param adapter string?  The adapter to use for generation
+--- @param model string? The model of the adapter to use for generation
+function Generator.setup(adapter, model)
+  _adapater = adapter or codecompanion_config.strategies.chat.adapter
+  _model = model or codecompanion_config.strategies.chat.model
+
+  -- Validate adapter
+  if not codecompanion_adapter.resolve(_adapater) then
+    error("Invalid adapter specified: " .. tostring(_adapater))
+  end
+end
+
 ---Generate commit message using LLM
 ---@param diff string The git diff to analyze
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
 function Generator.generate_commit_message(diff, callback)
   -- Setup adapter
-  local adapter = codecompanion_adapter.resolve(codecompanion_config.strategies.chat.adapter)
+  local adapter = codecompanion_adapter.resolve(_adapater)
   if not adapter then
     return callback(nil, "Failed to resolve adapter")
   end
 
   adapter.opts.stream = false
-  adapter = adapter:map_schema_to_params()
+  adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, { model = _model }))
 
   -- Create HTTP client
-  local new_client = client.new({
+  local new_client = codecompanion_client.new({
     adapter = adapter,
   })
 
