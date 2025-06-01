@@ -2,6 +2,7 @@ local Git = require("codecompanion._extensions.gitcommit.git")
 local Generator = require("codecompanion._extensions.gitcommit.generator")
 local UI = require("codecompanion._extensions.gitcommit.ui")
 local Buffer = require("codecompanion._extensions.gitcommit.buffer")
+local Langs = require("codecompanion._extensions.gitcommit.langs")
 
 local M = {}
 
@@ -22,25 +23,28 @@ function M.generate_commit_message()
     return
   end
 
-  -- Generate commit message using LLM
-  Generator.generate_commit_message(diff, function(result, error)
-    if error then
-      vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
-      return
-    end
+  Langs.select_lang(function(lang)
+    -- Generate commit message using LLM
+    Generator.generate_commit_message(diff, lang, function(result, error)
+      if error then
+        vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
+        return
+      end
 
-    if result then
-      -- Show interactive UI with commit options
-      UI.show_commit_message(result, function(message)
-        return Git.commit_changes(message)
-      end)
-    else
-      vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
-    end
+      if result then
+        -- Show interactive UI with commit options
+        UI.show_commit_message(result, function(message)
+          return Git.commit_changes(message)
+        end)
+      else
+        vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
+      end
+    end)
   end)
 end
 
 return {
+  --- @param opts CodeCompanion.GitCommit.ExtensionOpts
   setup = function(opts)
     opts = opts or {}
 
@@ -51,6 +55,8 @@ return {
       -- Enable buffer keymaps by default
       Buffer.setup()
     end
+
+    Langs.setup(opts.languages)
 
     -- Create user commands for git commit generation
     vim.api.nvim_create_user_command("CodeCompanionGitCommit", function()
@@ -88,16 +94,18 @@ return {
             return
           end
 
-          -- Generate commit message
-          Generator.generate_commit_message(diff, function(result, error)
-            if error then
-              chat:add_reference({ role = "user", content = "Error: " .. error }, "git", "<git_error>")
-            else
-              chat:add_reference({
-                role = "user",
-                content = "Generated commit message:\n```\n" .. result .. "\n```",
-              }, "git", "<git_commit>")
-            end
+          Langs.select_lang(function(lang)
+            -- Generate commit message
+            Generator.generate_commit_message(diff, lang, function(result, error)
+              if error then
+                chat:add_reference({ role = "user", content = "Error: " .. error }, "git", "<git_error>")
+              else
+                chat:add_reference({
+                  role = "user",
+                  content = "Generated commit message:\n```\n" .. result .. "\n```",
+                }, "git", "<git_commit>")
+              end
+            end)
           end)
         end,
         opts = {
@@ -109,8 +117,9 @@ return {
 
   exports = {
     ---Generate commit message programmatically (for external use)
+    ---@param lang string|nil Language to generate commit message in (optional)
     ---@param callback fun(result: string|nil, error: string|nil)
-    generate = function(callback)
+    generate = function(lang, callback)
       -- Check git repository status
       if not Git.is_repository() then
         return callback(nil, "Not in a git repository")
@@ -123,7 +132,7 @@ return {
       end
 
       -- Generate commit message
-      Generator.generate_commit_message(diff, callback)
+      Generator.generate_commit_message(diff, lang, callback)
     end,
 
     ---Check if current directory is in a git repository

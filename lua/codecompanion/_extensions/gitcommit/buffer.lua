@@ -1,8 +1,9 @@
----@class CodeCompanion.GitCommit.Buffer
-local Buffer = {}
-
+local Langs = require("codecompanion._extensions.gitcommit.langs")
 local Git = require("codecompanion._extensions.gitcommit.git")
 local Generator = require("codecompanion._extensions.gitcommit.generator")
+
+---@class CodeCompanion.GitCommit.Buffer
+local Buffer = {}
 
 ---@type CodeCompanion.GitCommit.ExtensionOpts.Buffer Default configuration
 local default_config = {
@@ -68,18 +69,20 @@ function Buffer._generate_and_insert_commit_message(bufnr)
     return
   end
 
-  -- Generate commit message using LLM
-  Generator.generate_commit_message(diff, function(result, error)
-    if error then
-      vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
-      return
-    end
+  Langs.select_lang(function(lang)
+    -- Generate commit message using LLM
+    Generator.generate_commit_message(diff, lang, function(result, error)
+      if error then
+        vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
+        return
+      end
 
-    if result then
-      Buffer._insert_commit_message(bufnr, result)
-    else
-      vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
-    end
+      if result then
+        Buffer._insert_commit_message(bufnr, result)
+      else
+        vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
+      end
+    end)
   end)
 end
 

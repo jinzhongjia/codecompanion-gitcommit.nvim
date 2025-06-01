@@ -24,6 +24,9 @@ require("codecompanion").setup({
       callback = "codecompanion._extensions.gitcommit",
       opts = {
         add_slash_command = true, -- Optional: adds /gitcommit slash command
+        adapter = "openai",        -- Optional: specify LLM adapter (defaults to codecompanion chat adapter)
+        model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
+        languages = { "English", "Chinese", "Japanese" }, -- Optional: list of languages for commit messages
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
@@ -154,6 +157,9 @@ The extension accepts the following options:
 ```lua
 opts = {
   add_slash_command = true, -- Add /gitcommit slash command to chat buffer
+  adapter = "openai",      -- LLM adapter to use (default: codecompanion chat adapter)
+  model = "gpt-4",         -- Model to use (default: codecompanion chat model)
+  languages = { "English", "Chinese", "Japanese" }, -- Languages for commit messages
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
@@ -166,6 +172,14 @@ opts = {
 #### `add_slash_command` (boolean, default: `false`)
 When enabled, adds `/gitcommit` slash command to CodeCompanion chat buffers.
 
+#### `adapter` (string, optional)
+The LLM adapter to use for generating commit messages. If not specified, defaults to the adapter configured for CodeCompanion's chat strategy.
+
+#### `model` (string, optional)
+The specific model to use with the adapter. If not specified, defaults to the model configured for CodeCompanion's chat strategy.
+
+#### `languages` (table, optional)
+A list of languages that can be used for generating commit messages. When specified, the extension will prompt you to select a language before generating the commit message. If not provided, commit messages will be generated in English by default.
 #### `buffer.enabled` (boolean, default: `true`)
 Controls whether gitcommit buffer keymap integration is enabled.
 

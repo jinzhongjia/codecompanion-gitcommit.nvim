@@ -29,9 +29,15 @@ function Generator.setup(adapter, model)
 end
 
 ---Generate commit message using LLM
+---
 ---@param diff string The git diff to analyze
+---@param lang? string The language to generate the commit message in (optional)
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
-function Generator.generate_commit_message(diff, callback)
+function Generator.generate_commit_message(
+  diff,
+  lang,
+  callback
+)
   -- Setup adapter
   local adapter = codecompanion_adapter.resolve(_adapater)
   if not adapter then
@@ -47,7 +53,7 @@ function Generator.generate_commit_message(diff, callback)
   })
 
   -- Create prompt for LLM
-  local prompt = Generator._create_prompt(diff)
+  local prompt = Generator._create_prompt(diff, lang)
 
   local payload = {
     messages = adapter:map_roles({
@@ -67,8 +73,9 @@ end
 
 ---Create prompt for commit message generation
 ---@param diff string The git diff to include in prompt
+---@param lang? string The generate language (optional, not used in this implementation)
 ---@return string prompt The formatted prompt
-function Generator._create_prompt(diff)
+function Generator._create_prompt(diff, lang)
   return string.format(
     [[You are an expert at following the Conventional Commit specification.
 
@@ -85,6 +92,8 @@ feat(scope): add new feature
 - update Y module
 - add tests for Z
 
+Note: You need to answer in %s.
+
 Based on the git diff provided below, generate a standardized commit message.
 
 ```diff
@@ -92,6 +101,7 @@ Based on the git diff provided below, generate a standardized commit message.
 ```
 
 ]],
+    lang or "English",
     diff
   )
 end

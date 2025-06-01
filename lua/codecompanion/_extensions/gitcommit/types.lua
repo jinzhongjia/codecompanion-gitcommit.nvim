@@ -13,6 +13,7 @@
 ---@field buffer? CodeCompanion.GitCommit.ExtensionOpts.Buffer Enable buffer-specific keymap for git commit
 ---@field adapter? string? The adapter to use for generation
 ---@field model? string? The model of the adapter to use for generation
+---@field languages? string[] List of languages to use for generation
 
 ---@class CodeCompanion.GitCommit.Exports
 ---@field generate fun(callback: fun(result: string|nil, error: string|nil)): nil
@@ -26,7 +27,7 @@
 ---@field commit_changes fun(message: string): boolean -- Commit changes with the provided message
 
 ---@class CodeCompanion.GitCommit.Generator
----@field generate_commit_message fun(diff: string, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
+---@field generate_commit_message fun(diff: string,lang: string?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
 
 ---@class CodeCompanion.GitCommit.UI
 ---@field show_commit_message fun(message: string, on_commit: fun(message: string): boolean): nil -- Show commit message in a floating window with interactive options
