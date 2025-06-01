@@ -17,11 +17,11 @@ local config = {}
 ---@param opts table Configuration options
 function Buffer.setup(opts)
   config = vim.tbl_deep_extend("force", default_config, opts or {})
-  
+
   if not config.enabled then
     return
   end
-  
+
   -- Create autocommand for gitcommit filetype
   vim.api.nvim_create_autocmd("FileType", {
     pattern = "gitcommit",
@@ -39,12 +39,12 @@ function Buffer._setup_gitcommit_keymap(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
-  
+
   local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
   if ft ~= "gitcommit" then
     return
   end
-  
+
   -- Set buffer-local keymap
   vim.keymap.set("n", config.keymap, function()
     Buffer._generate_and_insert_commit_message(bufnr)
@@ -59,27 +59,27 @@ end
 ---@param bufnr number Buffer number
 function Buffer._generate_and_insert_commit_message(bufnr)
   vim.notify("Generating commit message...", vim.log.levels.INFO)
-  
+
   -- Check if we're in a git repository
   if not Git.is_repository() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
-  
+
   -- Get staged changes
   local diff = Git.get_staged_diff()
   if not diff then
     vim.notify("No staged changes found. Please stage your changes first.", vim.log.levels.ERROR)
     return
   end
-  
+
   -- Generate commit message using LLM
   Generator.generate_commit_message(diff, function(result, error)
     if error then
       vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
       return
     end
-    
+
     if result then
       Buffer._insert_commit_message(bufnr, result)
     else
@@ -96,10 +96,10 @@ function Buffer._insert_commit_message(bufnr, message)
     vim.notify("Buffer is no longer valid", vim.log.levels.ERROR)
     return
   end
-  
+
   -- Get current buffer content
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-  
+
   -- Find the first line that doesn't start with # (comment)
   -- This is where we'll insert the commit message
   local insert_line = 0
@@ -113,10 +113,10 @@ function Buffer._insert_commit_message(bufnr, message)
       break
     end
   end
-  
+
   -- Split message into lines
   local message_lines = vim.split(message, "\n")
-  
+
   -- Remove existing commit message if present (before first comment line)
   local first_comment_line = nil
   for i, line in ipairs(lines) do
@@ -125,7 +125,7 @@ function Buffer._insert_commit_message(bufnr, message)
       break
     end
   end
-  
+
   if first_comment_line then
     -- Remove non-comment lines before the first comment
     local non_comment_lines = {}
@@ -136,22 +136,22 @@ function Buffer._insert_commit_message(bufnr, message)
         table.insert(non_comment_lines, lines[i])
       end
     end
-    
+
     -- Clear the buffer and insert new content
     vim.api.nvim_buf_set_lines(bufnr, 0, first_comment_line, false, {})
   end
-  
+
   -- Insert the new commit message at the beginning
   vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, message_lines)
-  
+
   -- Add an empty line after the commit message if it doesn't end with one
   if #message_lines > 0 and message_lines[#message_lines] ~= "" then
     vim.api.nvim_buf_set_lines(bufnr, #message_lines, #message_lines, false, { "" })
   end
-  
+
   -- Move cursor to the beginning of the commit message
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
-  
+
   vim.notify("✅ Commit message generated and inserted!", vim.log.levels.INFO)
 end
 

@@ -26,4 +26,3 @@
 
 ---@class CodeCompanion.GitCommit
 ---@field generate_commit_message fun(): nil -- Generate and display commit message using AI
-
