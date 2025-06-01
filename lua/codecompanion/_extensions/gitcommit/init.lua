@@ -16,10 +16,13 @@ function M.generate_commit_message()
     return
   end
 
-  -- Get staged changes
-  local diff = Git.get_staged_diff()
+  -- Get relevant changes (staged or amend)
+  local diff, context = Git.get_contextual_diff()
   if not diff then
-    vim.notify("No staged changes found. Please stage your changes first.", vim.log.levels.ERROR)
+    local msg = context == "no_changes"
+        and (Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first.")
+      or "Failed to get git changes"
+    vim.notify(msg, vim.log.levels.ERROR)
     return
   end
 
