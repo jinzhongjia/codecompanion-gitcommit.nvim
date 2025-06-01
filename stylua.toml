@@ -1,0 +1,24 @@
+# StyLua 配置文件
+# 更多配置选项请参考: https://github.com/JohnnyMorganz/StyLua
+
+# 缩进类型和宽度
+indent_type = "Spaces"
+indent_width = 2
+
+# 行尾风格 (Unix, Windows, None)
+line_endings = "Unix"
+
+# 引号风格 (AutoPreferDouble, AutoPreferSingle, ForceDouble, ForceSingle)
+quote_style = "AutoPreferDouble"
+
+# 调用圆括号风格 (Always, NoSingleString, NoSingleTable, None)
+call_parentheses = "Always"
+
+# 折叠简单语句到一行 (Never, ConditionalCollapse, Always)
+collapse_simple_statement = "Never"
+
+# 表格排序
+sort_requires = { enabled = false }
+
+# 列宽度限制
+column_width = 120
