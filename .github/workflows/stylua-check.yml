@@ -14,20 +14,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
-      - name: Install stylua
-        run: |
-          wget -O stylua.zip https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux.zip
-          unzip stylua.zip
-          chmod +x stylua
-          sudo mv stylua /usr/local/bin/
-          
-      - name: Check Lua code formatting
-        run: |
-          stylua --check .
-          
-      - name: Show formatting diff (if check fails)
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:    
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest # NOTE: we recommend pinning to a specific version in case of formatting changes
+          # CLI arguments
+          args: --check .
+                
+      - name: Show formatting diff (if check fails) 
         if: failure()
-        run: |
-          echo "Code formatting issues detected. Run 'stylua .' to fix them."
-          stylua --diff .
+        uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: latest
+          args: --diff .
+
