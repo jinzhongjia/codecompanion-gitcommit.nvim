@@ -4,7 +4,7 @@ local Buffer = {}
 local Git = require("codecompanion._extensions.gitcommit.git")
 local Generator = require("codecompanion._extensions.gitcommit.generator")
 
----@type table Default configuration
+---@type CodeCompanion.GitCommit.ExtensionOpts.Buffer Default configuration
 local default_config = {
   enabled = true,
   keymap = "<leader>gc",
@@ -14,7 +14,7 @@ local default_config = {
 local config = {}
 
 ---Setup buffer keymaps for gitcommit filetype
----@param opts table Configuration options
+---@param opts? CodeCompanion.GitCommit.ExtensionOpts.Buffer Configuration options
 function Buffer.setup(opts)
   config = vim.tbl_deep_extend("force", default_config, opts or {})
 
@@ -37,11 +37,6 @@ end
 function Buffer._setup_gitcommit_keymap(bufnr)
   -- Only set keymap if buffer is modifiable and in gitcommit filetype
   if not vim.api.nvim_buf_is_valid(bufnr) then
-    return
-  end
-
-  local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-  if ft ~= "gitcommit" then
     return
   end
 

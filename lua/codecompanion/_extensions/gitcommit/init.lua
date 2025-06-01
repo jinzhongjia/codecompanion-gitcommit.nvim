@@ -49,7 +49,7 @@ return {
       Buffer.setup(opts.buffer)
     else
       -- Enable buffer keymaps by default
-      Buffer.setup({})
+      Buffer.setup()
     end
 
     -- Create user commands for git commit generation

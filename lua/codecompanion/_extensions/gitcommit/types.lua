@@ -4,8 +4,13 @@
 ---@field setup fun(opts: CodeCompanion.GitCommit.ExtensionOpts): nil
 ---@field exports CodeCompanion.GitCommit.Exports
 
+---@class CodeCompanion.GitCommit.ExtensionOpts.Buffer
+---@field enabled boolean Enable buffer-specific keymap for git commit
+---@field keymap string Keymap for generating commit message in git commit buffer
+
 ---@class CodeCompanion.GitCommit.ExtensionOpts
 ---@field add_slash_command? boolean Add /gitcommit slash command to chat buffer
+---@field buffer? CodeCompanion.GitCommit.ExtensionOpts.Buffer Enable buffer-specific keymap for git commit
 
 ---@class CodeCompanion.GitCommit.Exports
 ---@field generate fun(callback: fun(result: string|nil, error: string|nil)): nil
