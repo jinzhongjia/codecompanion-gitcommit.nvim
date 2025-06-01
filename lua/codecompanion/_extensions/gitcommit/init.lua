@@ -1,9 +1,8 @@
--- Import modules
 local Git = require("codecompanion._extensions.gitcommit.git")
 local Generator = require("codecompanion._extensions.gitcommit.generator")
 local UI = require("codecompanion._extensions.gitcommit.ui")
+local Buffer = require("codecompanion._extensions.gitcommit.buffer")
 
----@class CodeCompanion.GitCommit
 local M = {}
 
 ---Generate and display commit message using AI
@@ -44,6 +43,14 @@ end
 return {
 	setup = function(opts)
 		opts = opts or {}
+		
+		-- Setup buffer keymaps for gitcommit filetype
+		if opts.buffer then
+			Buffer.setup(opts.buffer)
+		else
+			-- Enable buffer keymaps by default
+			Buffer.setup({})
+		end
 
 		-- Create user commands for git commit generation
 		vim.api.nvim_create_user_command("CodeCompanionGitCommit", function()
@@ -127,5 +134,8 @@ return {
 
 		---Commit changes with provided message
 		commit_changes = Git.commit_changes,
+		
+		---Get buffer configuration
+		get_buffer_config = Buffer.get_config,
 	},
 }
