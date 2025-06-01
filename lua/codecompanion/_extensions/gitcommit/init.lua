@@ -211,14 +211,39 @@ end
 ---Show commit message in a floating window with options
 ---@param message string
 local function show_commit_message(message)
-	local lines = vim.split(message, "\n")
-	local width = math.max(
-		60,
-		math.min(100, math.max(unpack(vim.tbl_map(function(line)
-			return #line
-		end, lines))) + 4)
-	)
-	local height = math.min(20, #lines + 6)
+	-- Prepare content with markdown formatting
+	local content = {
+		"# Generated Commit Message",
+		"",
+		"```",
+		-- Add commit message lines
+	}
+
+	-- Add commit message lines
+	local message_lines = vim.split(message, "\n")
+	for _, line in ipairs(message_lines) do
+		table.insert(content, line)
+	end
+
+	table.insert(content, "```")
+	table.insert(content, "")
+	table.insert(content, "---")
+	table.insert(content, "")
+	table.insert(content, "## Actions")
+	table.insert(content, "")
+	table.insert(content, "- **[c]** Copy to clipboard")
+	table.insert(content, "- **[s]** Submit (commit changes)")
+	table.insert(content, "- **[Enter]** Copy and close")
+	table.insert(content, "- **[q/Esc]** Close")
+
+	-- Calculate dimensions based on content
+	local max_line_length = 0
+	for _, line in ipairs(content) do
+		max_line_length = math.max(max_line_length, vim.fn.strdisplaywidth(line))
+	end
+
+	local width = math.max(50, math.min(120, max_line_length + 6))
+	local height = math.min(math.floor(vim.o.lines * 0.8), #content + 4)
 
 	local buf = vim.api.nvim_create_buf(false, true)
 
@@ -227,26 +252,22 @@ local function show_commit_message(message)
 		relative = "editor",
 		width = width,
 		height = height,
-		col = (vim.o.columns - width) / 2,
-		row = (vim.o.lines - height) / 2,
+		col = math.floor((vim.o.columns - width) / 2),
+		row = math.floor((vim.o.lines - height) / 2),
 		style = "minimal",
 		border = "rounded",
-		title = " Generated Commit Message ",
+		title = " 🚀 Git Commit Assistant ",
 		title_pos = "center",
 	})
 
-	-- Set content
+	-- Set content and filetype
 	vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
-	local content = vim.list_extend({ "Generated commit message:", "" }, lines)
-	table.insert(content, "")
-	table.insert(content, "")
-	table.insert(content, "Actions:")
-	table.insert(content, "  [c] Copy to clipboard")
-	table.insert(content, "  [s] Submit (commit changes)")
-	table.insert(content, "  [Enter] Copy and close")
-	table.insert(content, "  [q/Esc] Close")
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
 	vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+	vim.api.nvim_set_option_value("filetype", "markdown", { buf = buf })
+
+	-- Enable syntax highlighting
+	vim.api.nvim_set_option_value("syntax", "on", { buf = buf })
 
 	-- Set up keymaps
 	local opts = { buffer = buf, nowait = true, silent = true }
@@ -259,7 +280,7 @@ local function show_commit_message(message)
 
 	vim.keymap.set("n", "c", function()
 		copy_to_clipboard(message)
-		vim.notify("Commit message copied to clipboard", vim.log.levels.INFO)
+		vim.notify("📋 Commit message copied to clipboard", vim.log.levels.INFO)
 	end, opts)
 
 	vim.keymap.set("n", "s", function()
@@ -271,7 +292,7 @@ local function show_commit_message(message)
 
 	vim.keymap.set("n", "<CR>", function()
 		copy_to_clipboard(message)
-		vim.notify("Commit message copied to clipboard", vim.log.levels.INFO)
+		vim.notify("📋 Commit message copied to clipboard", vim.log.levels.INFO)
 		vim.api.nvim_win_close(win, true)
 	end, opts)
 end
