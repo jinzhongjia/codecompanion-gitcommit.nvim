@@ -1,0 +1,33 @@
+name: Code Formatting Check
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  stylua-check:
+    name: Check Lua formatting with stylua
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install stylua
+        run: |
+          wget -O stylua.zip https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux.zip
+          unzip stylua.zip
+          chmod +x stylua
+          sudo mv stylua /usr/local/bin/
+          
+      - name: Check Lua code formatting
+        run: |
+          stylua --check .
+          
+      - name: Show formatting diff (if check fails)
+        if: failure()
+        run: |
+          echo "Code formatting issues detected. Run 'stylua .' to fix them."
+          stylua --diff .
