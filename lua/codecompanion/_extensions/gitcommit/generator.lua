@@ -33,11 +33,7 @@ end
 ---@param diff string The git diff to analyze
 ---@param lang? string The language to generate the commit message in (optional)
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
-function Generator.generate_commit_message(
-  diff,
-  lang,
-  callback
-)
+function Generator.generate_commit_message(diff, lang, callback)
   -- Setup adapter
   local adapter = codecompanion_adapter.resolve(_adapater)
   if not adapter then
