@@ -10,6 +10,8 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 - 🔍 Automatic git repository detection
 - 📝 Support for both user commands and slash commands
 - ⌨️ Smart keymap integration for gitcommit buffers
+- 🌍 Multi-language support for commit messages
+- 🔄 Support for both regular commits and `git commit --amend`
 
 ## Installation
 
@@ -26,7 +28,7 @@ require("codecompanion").setup({
         add_slash_command = true, -- Optional: adds /gitcommit slash command
         adapter = "openai",        -- Optional: specify LLM adapter (defaults to codecompanion chat adapter)
         model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
-        languages = { "English", "Chinese", "Japanese" }, -- Optional: list of languages for commit messages
+        languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Optional: list of languages for commit messages
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
@@ -60,8 +62,17 @@ In a CodeCompanion chat buffer, use `/gitcommit` to generate a commit message.
 ```lua
 local gitcommit = require("codecompanion").extensions.gitcommit
 
--- Generate commit message
-gitcommit.generate(function(result, error)
+-- Generate commit message with language selection
+gitcommit.generate("English", function(result, error)
+  if error then
+    print("Error:", error)
+  else
+    print("Generated:", result)
+  end
+end)
+
+-- Generate commit message without language (uses default)
+gitcommit.generate(nil, function(result, error)
   if error then
     print("Error:", error)
   else
@@ -86,44 +97,70 @@ local buffer_config = gitcommit.get_buffer_config()
 
 ```
 lua/codecompanion/_extensions/gitcommit/
-├── init.lua        # Main extension entry point
-├── git.lua         # Git operations (repository detection, diff, commit)
+├── init.lua        # Main extension entry point and command registration
+├── git.lua         # Git operations (repository detection, diff, commit, amend support)
 ├── generator.lua   # LLM integration for commit message generation
 ├── ui.lua          # Floating window UI and interactions
-└── buffer.lua      # GitCommit buffer keymap integration
+├── buffer.lua      # GitCommit buffer keymap integration
+├── langs.lua       # Language selection functionality
+└── types.lua       # Type definitions and TypeScript-style annotations
 ```
 
 ## Module Overview
 
 ### `git.lua`
 Handles all git-related operations:
-- Repository detection
-- Staged changes retrieval
-- Commit execution
+
+- Repository detection with filesystem and git command fallback
+- Staged changes retrieval and contextual diff generation
+- Support for both regular commits and `git commit --amend`
+- Commit execution with proper error handling
 
 ### `generator.lua`
 Manages LLM interaction:
-- Prompt creation for commit message generation
+
+- Prompt creation for commit message generation with language support
 - API communication with CodeCompanion adapters
-- Response handling
+- Response handling and error management
+- Adapter and model configuration
 
 ### `ui.lua`
 Provides interactive user interface:
-- Floating window display
-- Keyboard shortcuts
+
+- Floating window display with markdown formatting
+- Interactive keyboard shortcuts (`c`, `s`, `Enter`, `q/Esc`)
 - Copy to clipboard functionality
+- Responsive window sizing
 
 ### `buffer.lua`
 Handles gitcommit buffer integration:
+
 - Automatic keymap setup for gitcommit filetype
-- Smart commit message insertion
-- Buffer content management
+- Smart commit message insertion at correct position
+- Buffer content management and validation
+- Language selection integration
+
+### `langs.lua`
+Manages language selection:
+
+- Multi-language support configuration
+- Interactive language selection UI
+- Language preference handling
+
+### `types.lua`
+Provides type definitions:
+
+- TypeScript-style type annotations for Lua
+- Interface definitions for all modules
+- Configuration option types
 
 ### `init.lua`
 Main extension coordinator:
-- Module integration
-- Command registration
-- Extension exports
+
+- Module integration and dependency management
+- Command registration (`:CodeCompanionGitCommit`, `:CCGitCommit`)
+- Slash command integration
+- Extension exports for programmatic usage
 
 ## Requirements
 
@@ -150,6 +187,14 @@ Main extension coordinator:
 4. The AI-generated message will be inserted into the buffer
 5. Edit if needed and save to complete the commit
 
+### Amend Workflow
+1. Make additional changes to your files
+2. Stage changes with `git add` (optional, for new changes)
+3. Run `git commit --amend` to open the amend buffer
+4. Press `<leader>gc` in normal mode to generate an updated commit message
+5. The extension will analyze the full commit changes and generate an appropriate message
+6. Edit if needed and save to complete the amend
+
 ## Configuration
 
 The extension accepts the following options:
@@ -159,7 +204,7 @@ opts = {
   add_slash_command = true, -- Add /gitcommit slash command to chat buffer
   adapter = "openai",      -- LLM adapter to use (default: codecompanion chat adapter)
   model = "gpt-4",         -- Model to use (default: codecompanion chat model)
-  languages = { "English", "Chinese", "Japanese" }, -- Languages for commit messages
+  languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Languages for commit messages
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
@@ -179,7 +224,13 @@ The LLM adapter to use for generating commit messages. If not specified, default
 The specific model to use with the adapter. If not specified, defaults to the model configured for CodeCompanion's chat strategy.
 
 #### `languages` (table, optional)
-A list of languages that can be used for generating commit messages. When specified, the extension will prompt you to select a language before generating the commit message. If not provided, commit messages will be generated in English by default.
+A list of languages that can be used for generating commit messages. When specified, the extension will prompt you to select a language before generating the commit message. If not provided or empty, commit messages will be generated in English by default.
+
+Example:
+```lua
+languages = { "English", "简体中文", "日本語", "Français", "Español" }
+```
+
 #### `buffer.enabled` (boolean, default: `true`)
 Controls whether gitcommit buffer keymap integration is enabled.
 

@@ -51,6 +51,9 @@ return {
   setup = function(opts)
     opts = opts or {}
 
+    -- Setup generator with adapter and model configuration
+    Generator.setup(opts.adapter, opts.model)
+
     -- Setup buffer keymaps for gitcommit filetype
     if opts.buffer then
       Buffer.setup(opts.buffer)

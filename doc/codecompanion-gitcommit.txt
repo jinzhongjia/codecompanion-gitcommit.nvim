@@ -1,4 +1,4 @@
-*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2024 Dec 19
+*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Jun 02
 
 CODECOMPANION GIT COMMIT EXTENSION			*codecompanion-gitcommit*
 
@@ -36,6 +36,8 @@ analyze your staged changes and create appropriate commit messages.
 • Automatic git repository detection
 • Support for both user commands and slash commands
 • Smart keymap integration for gitcommit buffers
+• Multi-language support for commit messages
+• Support for both regular commits and `git commit --amend`
 
 ==============================================================================
 3. INSTALLATION					*codecompanion-gitcommit-install*
@@ -64,11 +66,12 @@ Add this extension to your CodeCompanion configuration:
 ==============================================================================
 4. CONFIGURATION				*codecompanion-gitcommit-config*
 
-The extension accepts the following configuration options:
-
-						*codecompanion-gitcommit-opts*
+The extension accepts the following configuration options:						*codecompanion-gitcommit-opts*
 opts = {
   add_slash_command = false, -- Add /gitcommit slash command to chat buffer
+  adapter = "openai",        -- LLM adapter to use (optional)
+  model = "gpt-4",          -- Model to use (optional)
+  languages = { "English", "简体中文", "日本語" }, -- Languages for commit messages (optional)
   buffer = {
     enabled = true,          -- Enable gitcommit buffer keymaps
     keymap = "<leader>gc",   -- Keymap for generating commit message
@@ -82,6 +85,29 @@ add_slash_command				*gitcommit-add-slash-command*
 	Default: false
 	When enabled, adds `/gitcommit` slash command to CodeCompanion chat 
 	buffers for generating commit messages within chat sessions.
+
+adapter						*gitcommit-adapter*
+	Type: string
+	Default: codecompanion chat adapter
+	The LLM adapter to use for generating commit messages. If not 
+	specified, defaults to the adapter configured for CodeCompanion's 
+	chat strategy.
+
+model						*gitcommit-model*
+	Type: string
+	Default: codecompanion chat model
+	The specific model to use with the adapter. If not specified, 
+	defaults to the model configured for CodeCompanion's chat strategy.
+
+languages					*gitcommit-languages*
+	Type: table
+	Default: nil (English only)
+	A list of languages that can be used for generating commit messages.
+	When specified, the extension will prompt you to select a language 
+	before generating the commit message. If not provided or empty, 
+	commit messages will be generated in English by default.
+	
+	Example: { "English", "简体中文", "日本語", "Français" }
 
 buffer.enabled					*gitcommit-buffer-enabled*
 	Type: boolean
@@ -139,6 +165,15 @@ GitCommit Buffer Workflow:~
 4. The AI-generated message will be inserted into the buffer
 5. Edit if needed and save to complete the commit
 
+Amend Workflow:~
+1. Make additional changes to your files
+2. Stage changes with `git add` (optional, for new changes)
+3. Run `git commit --amend` to open the amend buffer
+4. Press `<leader>gc` in normal mode to generate an updated commit message
+5. The extension will analyze the full commit changes and generate an 
+   appropriate message
+6. Edit if needed and save to complete the amend
+
 ==============================================================================
 6. COMMANDS					*codecompanion-gitcommit-commands*
 
@@ -155,10 +190,12 @@ GitCommit Buffer Workflow:~
 
 The extension provides a programmatic API for advanced usage:
 
-gitcommit.generate({callback})			*gitcommit.generate()*
-	Generate a commit message asynchronously.
+gitcommit.generate({lang}, {callback})		*gitcommit.generate()*
+	Generate a commit message asynchronously with optional language support.
 	
 	Parameters:~
+		{lang}		string|nil: Language to generate commit message in
+				(optional, uses default if nil)
 		{callback}	function: Callback function that receives
 				(result, error) parameters
 
@@ -166,7 +203,17 @@ gitcommit.generate({callback})			*gitcommit.generate()*
 >lua
 		local gitcommit = require("codecompanion").extensions.gitcommit
 		
-		gitcommit.generate(function(result, error)
+		-- Generate with specific language
+		gitcommit.generate("简体中文", function(result, error)
+		  if error then
+		    print("Error:", error)
+		  else
+		    print("Generated:", result)
+		  end
+		end)
+		
+		-- Generate with default language
+		gitcommit.generate(nil, function(result, error)
 		  if error then
 		    print("Error:", error)
 		  else
@@ -208,37 +255,49 @@ gitcommit.get_buffer_config()			*gitcommit.get_buffer_config()*
 The extension consists of the following modules:
 
 lua/codecompanion/_extensions/gitcommit/
-├── init.lua        # Main extension entry point
-├── git.lua         # Git operations (repository detection, diff, commit)
+├── init.lua        # Main extension entry point and command registration
+├── git.lua         # Git operations (repository detection, diff, commit, amend support)
 ├── generator.lua   # LLM integration for commit message generation
 ├── ui.lua          # Floating window UI and interactions
 ├── buffer.lua      # GitCommit buffer keymap integration
-├── types.lua       # Type definitions and constants
-└── test.lua        # Test utilities and functions
+├── langs.lua       # Language selection functionality
+└── types.lua       # Type definitions and TypeScript-style annotations
 
 Module Overview:~
 
 git.lua~
 	Handles all git-related operations including repository detection,
-	staged changes retrieval, and commit execution.
+	staged changes retrieval, commit execution, and `git commit --amend`
+	support. Includes contextual diff analysis and error handling.
 
 generator.lua~
 	Manages LLM interaction including prompt creation for commit message
-	generation, API communication with CodeCompanion adapters, and
-	response handling.
+	generation with language support, API communication with CodeCompanion 
+	adapters, response handling, and adapter/model configuration.
 
 ui.lua~
-	Provides interactive user interface including floating window display,
-	keyboard shortcuts, and copy to clipboard functionality.
+	Provides interactive user interface including floating window display
+	with markdown formatting, interactive keyboard shortcuts, copy to 
+	clipboard functionality, and responsive window sizing.
 
 buffer.lua~
 	Handles gitcommit buffer integration including automatic keymap setup
-	for gitcommit filetype, smart commit message insertion, and buffer
-	content management.
+	for gitcommit filetype, smart commit message insertion at correct 
+	position, buffer content management, and language selection integration.
+
+langs.lua~
+	Manages language selection functionality including multi-language 
+	support configuration, interactive language selection UI, and 
+	language preference handling.
+
+types.lua~
+	Provides TypeScript-style type annotations for Lua including interface
+	definitions for all modules and configuration option types.
 
 init.lua~
-	Main extension coordinator that handles module integration, command
-	registration, and extension exports.
+	Main extension coordinator that handles module integration, dependency
+	management, command registration, slash command integration, and 
+	extension exports for programmatic usage.
 
 ==============================================================================
 9. REQUIREMENTS					*codecompanion-gitcommit-requirements*
