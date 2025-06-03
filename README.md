@@ -5,7 +5,7 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 ## Features
 
 - 🤖 AI-powered commit message generation using CodeCompanion's LLM adapters
-- 📋 Interactive UI with copy and commit options
+- 📋 Interactive UI with copy to clipboard and yank register options
 - ✅ Conventional Commits specification compliance
 - 🔍 Automatic git repository detection
 - 📝 Support for both user commands and slash commands
@@ -128,8 +128,8 @@ Manages LLM interaction:
 Provides interactive user interface:
 
 - Floating window display with markdown formatting
-- Interactive keyboard shortcuts (`c`, `s`, `Enter`, `q/Esc`)
-- Copy to clipboard functionality
+- Interactive keyboard shortcuts (`c`, `y`, `s`, `Enter`, `q/Esc`)
+- Copy to clipboard and yank register functionality
 - Responsive window sizing
 
 ### `buffer.lua`
@@ -176,9 +176,20 @@ Main extension coordinator:
 3. Review the generated commit message in the floating window
 4. Choose an action:
    - `c` - Copy to clipboard
+   - `y` - Copy to yank register
    - `s` - Submit (commit changes)
    - `Enter` - Copy and close
    - `q/Esc` - Close without action
+
+### Interactive Keymaps
+
+When the floating window is displayed with the generated commit message, the following keymaps are available:
+
+- **`c`** - Copy the commit message to the system clipboard (`+` register)
+- **`y`** - Copy the commit message to Vim's default yank register (`"` register)
+- **`s`** - Submit the commit message immediately (executes `git commit`)
+- **`Enter`** - Copy to clipboard and close the floating window
+- **`q` or `Esc`** - Close the floating window without taking any action
 
 ### GitCommit Buffer Workflow
 1. Stage your changes with `git add`

@@ -31,7 +31,7 @@ analyze your staged changes and create appropriate commit messages.
 2. FEATURES					*codecompanion-gitcommit-features*
 
 • AI-powered commit message generation using CodeCompanion's LLM adapters
-• Interactive UI with copy and commit options
+• Interactive UI with copy to clipboard and yank register options
 • Conventional Commits specification compliance
 • Automatic git repository detection
 • Support for both user commands and slash commands
@@ -154,6 +154,7 @@ Traditional Workflow:~
 3. Review the generated commit message in the floating window
 4. Choose an action:
    • `c` - Copy to clipboard
+   • `y` - Copy to yank register
    • `s` - Submit (commit changes)
    • `Enter` - Copy and close
    • `q/Esc` - Close without action
@@ -173,6 +174,31 @@ Amend Workflow:~
 5. The extension will analyze the full commit changes and generate an 
    appropriate message
 6. Edit if needed and save to complete the amend
+
+5.5 Interactive Keymaps				*codecompanion-gitcommit-keymaps*
+
+When the floating window is displayed with the generated commit message,
+the following keymaps are available:
+
+`c`						*gitcommit-keymap-c*
+	Copy the commit message to the system clipboard. This uses the `+` 
+	register and also copies to `*` register if clipboard support is 
+	available.
+
+`y`						*gitcommit-keymap-y*
+	Copy the commit message to Vim's default yank register (`"`). This
+	allows you to paste the message using `p` or `P` commands within Vim.
+
+`s`						*gitcommit-keymap-s*
+	Submit the commit message immediately. This will execute `git commit`
+	with the generated message and close the floating window if successful.
+
+`<Enter>`					*gitcommit-keymap-enter*
+	Copy the commit message to clipboard (same as `c`) and close the 
+	floating window.
+
+`q` or `<Esc>`					*gitcommit-keymap-q*
+	Close the floating window without taking any action.
 
 ==============================================================================
 6. COMMANDS					*codecompanion-gitcommit-commands*
@@ -278,7 +304,7 @@ generator.lua~
 ui.lua~
 	Provides interactive user interface including floating window display
 	with markdown formatting, interactive keyboard shortcuts, copy to 
-	clipboard functionality, and responsive window sizing.
+	clipboard and yank register functionality, and responsive window sizing.
 
 buffer.lua~
 	Handles gitcommit buffer integration including automatic keymap setup
