@@ -54,6 +54,7 @@ function UI._prepare_content(message)
   table.insert(content, "## Actions")
   table.insert(content, "")
   table.insert(content, "- **[c]** Copy to clipboard")
+  table.insert(content, "- **[y]** Copy to yank register")
   table.insert(content, "- **[s]** Submit (commit changes)")
   table.insert(content, "- **[Enter]** Copy and close")
   table.insert(content, "- **[q/Esc]** Close")
@@ -126,10 +127,15 @@ function UI._setup_keymaps(buf, win, message, on_commit)
     vim.api.nvim_win_close(win, true)
   end, opts)
 
-  -- Copy to clipboard
   vim.keymap.set("n", "c", function()
     copy_to_clipboard(message)
     vim.notify("📋 Commit message copied to clipboard", vim.log.levels.INFO)
+  end, opts)
+
+  -- Copy to yank register
+  vim.keymap.set("n", "y", function()
+    vim.fn.setreg('"', message)
+    vim.notify("📝 Commit message copied to yank register", vim.log.levels.INFO)
   end, opts)
 
   -- Submit commit

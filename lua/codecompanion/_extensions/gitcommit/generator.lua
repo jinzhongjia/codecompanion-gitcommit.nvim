@@ -83,10 +83,20 @@ Please only return a commit message that strictly follows the Conventional Commi
 4. Body (optional): use bullet points (-) to list specific changes
 
 Example format:
+
 feat(scope): add new feature
+
 - implement X functionality
 - update Y module
 - add tests for Z
+
+The message need follow this :
+
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
 
 Note: You need to answer in %s.
 
