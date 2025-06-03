@@ -90,14 +90,6 @@ feat(scope): add new feature
 - update Y module
 - add tests for Z
 
-The message need follow this :
-
-<type>(<scope>): <subject>
-<BLANK LINE>
-<body>
-<BLANK LINE>
-<footer>
-
 Note: You need to answer in %s.
 
 Based on the git diff provided below, generate a standardized commit message.
