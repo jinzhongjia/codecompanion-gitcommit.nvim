@@ -38,6 +38,7 @@ analyze your staged changes and create appropriate commit messages.
 • Smart keymap integration for gitcommit buffers
 • Multi-language support for commit messages
 • Support for both regular commits and `git commit --amend`
+• File filtering support with glob patterns to exclude files from analysis
 
 ==============================================================================
 3. INSTALLATION					*codecompanion-gitcommit-install*
@@ -53,6 +54,7 @@ Add this extension to your CodeCompanion configuration:
 	        adapter = "openai",        -- Optional: specify LLM adapter (defaults to codecompanion chat adapter)
 	        model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
 	        languages = { "English", "Chinese", "Japanese" }, -- Optional: list of languages for commit messages
+	        exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
 	        buffer = {
 	          enabled = true,        -- Enable gitcommit buffer keymaps
 	          keymap = "<leader>gc", -- Keymap for generating commit message
@@ -72,6 +74,7 @@ opts = {
   adapter = "openai",        -- LLM adapter to use (optional)
   model = "gpt-4",          -- Model to use (optional)
   languages = { "English", "简体中文", "日本語" }, -- Languages for commit messages (optional)
+  exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis (optional)
   buffer = {
     enabled = true,          -- Enable gitcommit buffer keymaps
     keymap = "<leader>gc",   -- Keymap for generating commit message
@@ -108,6 +111,18 @@ languages					*gitcommit-languages*
 	commit messages will be generated in English by default.
 	
 	Example: { "English", "简体中文", "日本語", "Français" }
+
+exclude_files					*gitcommit-exclude-files*
+	Type: table
+	Default: {} (no files excluded)
+	A list of file patterns to exclude from git diff analysis when
+	generating commit messages. Supports glob patterns using `*` and `?`
+	wildcards. This is useful for excluding generated files, minified
+	files, or large files that don't need AI analysis.
+	
+	Examples:
+	{ "*.pb.go", "*.min.js", "package-lock.json", "yarn.lock" }
+	{ "dist/*", "build/*", "*.generated.ts" }
 
 buffer.enabled					*gitcommit-buffer-enabled*
 	Type: boolean
@@ -199,6 +214,39 @@ the following keymaps are available:
 
 `q` or `<Esc>`					*gitcommit-keymap-q*
 	Close the floating window without taking any action.
+
+5.6 File Filtering				*codecompanion-gitcommit-filtering*
+
+The extension supports filtering files from diff analysis using glob
+patterns. This is useful to exclude files that don't contribute meaningful
+information to commit message generation:
+
+Common Use Cases:~
+• Generated files (protobuf, generated code)
+• Minified files (*.min.js, *.min.css)
+• Lock files (package-lock.json, yarn.lock)
+• Build artifacts (dist/, build/)
+• Binary files or large data files
+
+Example configuration:~
+>
+	exclude_files = {
+	  "*.pb.go",           -- Protocol buffer files
+	  "*.min.js",          -- Minified JavaScript
+	  "*.min.css",         -- Minified CSS
+	  "package-lock.json", -- NPM lock file
+	  "yarn.lock",         -- Yarn lock file
+	  "dist/*",            -- Distribution directory
+	  "build/*",           -- Build directory
+	  "*.generated.*",     -- Any generated files
+	}
+<
+
+Glob Pattern Support:~
+• `*` - Matches any sequence of characters
+• `?` - Matches any single character
+• `dir/*` - Matches all files in directory
+• `*.ext` - Matches all files with extension
 
 ==============================================================================
 6. COMMANDS					*codecompanion-gitcommit-commands*
@@ -293,8 +341,9 @@ Module Overview:~
 
 git.lua~
 	Handles all git-related operations including repository detection,
-	staged changes retrieval, commit execution, and `git commit --amend`
-	support. Includes contextual diff analysis and error handling.
+	staged changes retrieval, file filtering with glob patterns,
+	commit execution, and `git commit --amend` support. Includes 
+	contextual diff analysis and error handling.
 
 generator.lua~
 	Manages LLM interaction including prompt creation for commit message

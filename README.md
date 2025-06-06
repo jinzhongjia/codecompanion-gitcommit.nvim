@@ -12,6 +12,7 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 - ⌨️ Smart keymap integration for gitcommit buffers
 - 🌍 Multi-language support for commit messages
 - 🔄 Support for both regular commits and `git commit --amend`
+- 📁 File filtering support with glob patterns to exclude files from diff analysis
 
 ## Installation
 
@@ -29,6 +30,7 @@ require("codecompanion").setup({
         adapter = "openai",        -- Optional: specify LLM adapter (defaults to codecompanion chat adapter)
         model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
         languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Optional: list of languages for commit messages
+        exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
@@ -113,6 +115,7 @@ Handles all git-related operations:
 
 - Repository detection with filesystem and git command fallback
 - Staged changes retrieval and contextual diff generation
+- File filtering support with glob patterns to exclude files from analysis
 - Support for both regular commits and `git commit --amend`
 - Commit execution with proper error handling
 
@@ -216,6 +219,7 @@ opts = {
   adapter = "openai",      -- LLM adapter to use (default: codecompanion chat adapter)
   model = "gpt-4",         -- Model to use (default: codecompanion chat model)
   languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Languages for commit messages
+  exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
@@ -238,8 +242,26 @@ The specific model to use with the adapter. If not specified, defaults to the mo
 A list of languages that can be used for generating commit messages. When specified, the extension will prompt you to select a language before generating the commit message. If not provided or empty, commit messages will be generated in English by default.
 
 Example:
+
 ```lua
 languages = { "English", "简体中文", "日本語", "Français", "Español" }
+```
+
+#### `exclude_files` (table, optional)
+A list of file patterns to exclude from git diff analysis when generating commit messages. Supports glob patterns using `*` and `?` wildcards. This is useful for excluding generated files, minified files, or large files that don't need AI analysis.
+
+Examples:
+
+```lua
+exclude_files = { 
+  "*.pb.go",           -- Protocol buffer generated files
+  "*.min.js",          -- Minified JavaScript files
+  "package-lock.json", -- NPM lock file
+  "yarn.lock",         -- Yarn lock file
+  "*.generated.ts",    -- Generated TypeScript files
+  "dist/*",            -- Distribution directory
+  "build/*"            -- Build directory
+}
 ```
 
 #### `buffer.enabled` (boolean, default: `true`)
