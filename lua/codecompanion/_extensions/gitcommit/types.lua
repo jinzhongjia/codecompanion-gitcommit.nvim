@@ -14,6 +14,7 @@
 ---@field adapter? string? The adapter to use for generation
 ---@field model? string? The model of the adapter to use for generation
 ---@field languages? string[] List of languages to use for generation
+---@field exclude_files? string[] List of file patterns to exclude from diff (supports glob patterns like "*.pb.go")
 
 ---@class CodeCompanion.GitCommit.Exports
 ---@field generate fun(callback: fun(result: string|nil, error: string|nil)): nil

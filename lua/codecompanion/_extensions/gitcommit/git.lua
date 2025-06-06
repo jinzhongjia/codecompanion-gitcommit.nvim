@@ -1,6 +1,77 @@
 ---@class CodeCompanion.GitCommit.Git
 local Git = {}
 
+-- 存储配置
+local config = {}
+
+---Setup Git module with configuration
+---@param opts? table Configuration options
+function Git.setup(opts)
+  config = vim.tbl_deep_extend("force", {
+    exclude_files = {},
+  }, opts or {})
+end
+
+---Filter diff content to exclude specified file patterns
+---@param diff_content string The original diff content
+---@return string filtered_diff The filtered diff content
+function Git._filter_diff(diff_content)
+  if not config.exclude_files or #config.exclude_files == 0 then
+    return diff_content
+  end
+
+  local lines = vim.split(diff_content, "\n")
+  local filtered_lines = {}
+  local current_file = nil
+  local skip_current_file = false
+
+  for _, line in ipairs(lines) do
+    -- Check for file header (diff --git a/file b/file)
+    local file_match = line:match("^diff %-%-git a/(.*) b/")
+    if file_match then
+      current_file = file_match
+      skip_current_file = Git._should_exclude_file(current_file)
+    end
+
+    -- Check for traditional diff format (+++ b/file, --- a/file)
+    local plus_file = line:match("^%+%+%+ b/(.*)")
+    local minus_file = line:match("^%-%-%-a/(.*)")
+    if plus_file then
+      current_file = plus_file
+      skip_current_file = Git._should_exclude_file(current_file)
+    elseif minus_file then
+      current_file = minus_file
+      skip_current_file = Git._should_exclude_file(current_file)
+    end
+
+    -- Only include line if we're not skipping current file
+    if not skip_current_file then
+      table.insert(filtered_lines, line)
+    end
+  end
+
+  return table.concat(filtered_lines, "\n")
+end
+
+---Check if file should be excluded based on patterns
+---@param filepath string The file path to check
+---@return boolean should_exclude True if file should be excluded
+function Git._should_exclude_file(filepath)
+  if not config.exclude_files then
+    return false
+  end
+
+  for _, pattern in ipairs(config.exclude_files) do
+    -- Convert glob pattern to Lua pattern
+    local lua_pattern = pattern:gsub("%*", ".*"):gsub("?", ".")
+    if filepath:match(lua_pattern) then
+      return true
+    end
+  end
+
+  return false
+end
+
 ---Check if current directory is inside a git repository
 ---@return boolean
 function Git.is_repository()
@@ -68,20 +139,20 @@ function Git.get_staged_diff()
   -- First try to get staged changes
   local staged_diff = vim.fn.system("git diff --no-ext-diff --staged")
   if vim.v.shell_error == 0 and vim.trim(staged_diff) ~= "" then
-    return staged_diff
+    return Git._filter_diff(staged_diff)
   end
 
   -- If no staged changes and we're in amend mode, get the last commit's changes
   if Git.is_amending() then
     local last_commit_diff = vim.fn.system("git diff --no-ext-diff HEAD~1")
     if vim.v.shell_error == 0 and vim.trim(last_commit_diff) ~= "" then
-      return last_commit_diff
+      return Git._filter_diff(last_commit_diff)
     end
 
     -- Fallback: if HEAD~1 doesn't exist (initial commit), show all files
     local show_diff = vim.fn.system("git show --no-ext-diff --format= HEAD")
     if vim.v.shell_error == 0 and vim.trim(show_diff) ~= "" then
-      return show_diff
+      return Git._filter_diff(show_diff)
     end
   end
 
@@ -99,7 +170,12 @@ function Git.get_contextual_diff()
   -- Check for staged changes first
   local staged_diff = vim.fn.system("git diff --no-ext-diff --staged")
   if vim.v.shell_error == 0 and vim.trim(staged_diff) ~= "" then
-    return staged_diff, "staged"
+    local filtered_diff = Git._filter_diff(staged_diff)
+    if vim.trim(filtered_diff) ~= "" then
+      return filtered_diff, "staged"
+    else
+      return nil, "no_changes_after_filter"
+    end
   end
 
   -- Check if we're amending
@@ -107,13 +183,19 @@ function Git.get_contextual_diff()
     -- Try to get the last commit's diff
     local last_commit_diff = vim.fn.system("git diff --no-ext-diff HEAD~1")
     if vim.v.shell_error == 0 and vim.trim(last_commit_diff) ~= "" then
-      return last_commit_diff, "amend_with_parent"
+      local filtered_diff = Git._filter_diff(last_commit_diff)
+      if vim.trim(filtered_diff) ~= "" then
+        return filtered_diff, "amend_with_parent"
+      end
     end
 
     -- Fallback for initial commit amend
     local show_diff = vim.fn.system("git show --no-ext-diff --format= HEAD")
     if vim.v.shell_error == 0 and vim.trim(show_diff) ~= "" then
-      return show_diff, "amend_initial"
+      local filtered_diff = Git._filter_diff(show_diff)
+      if vim.trim(filtered_diff) ~= "" then
+        return filtered_diff, "amend_initial"
+      end
     end
   end
 

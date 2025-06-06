@@ -51,6 +51,11 @@ return {
   setup = function(opts)
     opts = opts or {}
 
+    -- Setup Git module with file exclusion configuration
+    Git.setup({
+      exclude_files = opts.exclude_files,
+    })
+
     -- Setup generator with adapter and model configuration
     Generator.setup(opts.adapter, opts.model)
 
