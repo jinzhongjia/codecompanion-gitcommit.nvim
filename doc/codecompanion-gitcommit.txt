@@ -57,8 +57,10 @@ Add this extension to your CodeCompanion configuration:
 	        exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
 	        buffer = {
 	          enabled = true,        -- Enable gitcommit buffer keymaps
-	          keymap = "<leader>gc", -- Keymap for generating commit message
-	        }
+ 	          keymap = "<leader>gc", -- Keymap for generating commit message
+ 	          auto_generate = true,  -- Automatically generate message on entering gitcommit buffer
+ 	          auto_generate_delay = 100, -- Delay in ms before auto-generating
+ 	        }
 	      }
 	    }
 	  }
@@ -78,7 +80,9 @@ opts = {
   buffer = {
     enabled = true,          -- Enable gitcommit buffer keymaps
     keymap = "<leader>gc",   -- Keymap for generating commit message
-  }
+     auto_generate = false, -- Automatically generate message on entering gitcommit buffer
+     auto_generate_delay = 100, -- Delay in ms before auto-generating
+   }
 }
 
 Configuration Details:
@@ -137,6 +141,21 @@ buffer.keymap					*gitcommit-buffer-keymap*
 	generation. This keymap is only active in buffers with 'gitcommit' 
 	filetype.
 
+buffer.auto_generate				*gitcommit-buffer-auto-generate*
+	Type: boolean
+	Default: false
+	When `true`, automatically generates a commit message upon entering a
+	`gitcommit` buffer, but only if the buffer does not already contain a
+	message (to avoid overwriting during an amend).
+
+buffer.auto_generate_delay			*gitcommit-buffer-auto-generate-delay*
+	Type: number
+	Default: 100
+	The delay in milliseconds before the automatic generation is triggered.
+	This helps prevent race conditions with other plugins (like `neogit`)
+	that manage UI elements. You can increase this value if you experience
+	issues.
+
 ==============================================================================
 5. USAGE					*codecompanion-gitcommit-usage*
 
@@ -151,10 +170,11 @@ Use the provided commands to generate commit messages:
 5.2 GitCommit Buffer Integration		*codecompanion-gitcommit-buffer*
 
 When you run `git commit` or open a gitcommit buffer:
-1. Press `<leader>gc` (or your configured keymap) in normal mode
-2. The extension will automatically generate a commit message based on 
-   staged changes
-3. The generated message will be inserted directly into the commit buffer
+ 1. If `buffer.auto_generate` is `true`, the commit message will be
+    generated and inserted automatically.
+ 2. If `buffer.auto_generate` is `false` (default), press `<leader>gc` (or
+    your configured keymap) in normal mode to trigger generation.
+ 3. The generated message will be inserted directly into the commit buffer.
 
 5.3 Slash Command				*codecompanion-gitcommit-slash*
 
@@ -177,7 +197,8 @@ Traditional Workflow:~
 GitCommit Buffer Workflow:~
 1. Stage your changes with `git add`
 2. Run `git commit` to open the commit buffer
-3. Press `<leader>gc` in normal mode to generate commit message
+ 3. If `auto_generate` is enabled, the message appears automatically.
+    Otherwise, press `<leader>gc` in normal mode to generate it.
 4. The AI-generated message will be inserted into the buffer
 5. Edit if needed and save to complete the commit
 
