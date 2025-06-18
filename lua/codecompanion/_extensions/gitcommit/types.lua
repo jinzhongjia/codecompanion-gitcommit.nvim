@@ -7,6 +7,8 @@
 ---@class CodeCompanion.GitCommit.ExtensionOpts.Buffer
 ---@field enabled boolean Enable buffer-specific keymap for git commit
 ---@field keymap string Keymap for generating commit message in git commit buffer
+---@field auto_generate? boolean Automatically generate commit message on entering gitcommit buffer
+---@field auto_generate_delay? number Delay in ms before auto-generating to avoid race conditions
 
 ---@class CodeCompanion.GitCommit.ExtensionOpts
 ---@field add_slash_command? boolean Add /gitcommit slash command to chat buffer

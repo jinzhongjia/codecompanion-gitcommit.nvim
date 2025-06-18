@@ -9,6 +9,8 @@ local Buffer = {}
 local default_config = {
   enabled = true,
   keymap = "<leader>gc",
+  auto_generate = false,
+  auto_generate_delay = 100, -- Default delay in ms
 }
 
 ---@type table Current configuration
@@ -28,8 +30,40 @@ function Buffer.setup(opts)
     pattern = "gitcommit",
     callback = function(event)
       Buffer._setup_gitcommit_keymap(event.buf)
+
+      if config.auto_generate then
+        -- This autocommand will trigger once when the user enters the gitcommit window.
+        -- This avoids race conditions with plugins like neogit that manage multiple windows.
+        vim.api.nvim_create_autocmd("WinEnter", {
+          buffer = event.buf,
+          once = true,
+          callback = function(args)
+            -- Defer the execution to ensure other plugins (like neogit) have finished their UI setup.
+            vim.defer_fn(function()
+              if not vim.api.nvim_buf_is_valid(args.buf) then
+                return
+              end
+
+              -- Check if buffer already has a commit message (e.g., during amend)
+              local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
+              local has_message = false
+              for _, line in ipairs(lines) do
+                if not line:match("^%s*#") and vim.trim(line) ~= "" then
+                  has_message = true
+                  break
+                end
+              end
+
+              if not has_message then
+                Buffer._generate_and_insert_commit_message(args.buf)
+              end
+            end, config.auto_generate_delay)
+          end,
+          desc = "Auto-generate GitCommit message",
+        })
+      end
     end,
-    desc = "Setup GitCommit AI assistant keymap",
+    desc = "Setup GitCommit AI assistant",
   })
 end
 

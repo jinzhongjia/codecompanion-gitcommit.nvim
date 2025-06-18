@@ -34,6 +34,8 @@ require("codecompanion").setup({
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
+          auto_generate = true,  -- Automatically generate message on entering gitcommit buffer
+          auto_generate_delay = 100, -- Delay in ms before auto-generating
         }
       }
     }
@@ -51,9 +53,10 @@ require("codecompanion").setup({
 ### GitCommit Buffer Integration
 
 When you run `git commit` or open a gitcommit buffer:
-1. Press `<leader>gc` (or your configured keymap) in normal mode
-2. The extension will automatically generate a commit message based on staged changes
-3. The generated message will be inserted directly into the commit buffer
+
+1.  If `buffer.auto_generate` is `true`, the commit message will be generated and inserted automatically.
+2.  If `buffer.auto_generate` is `false` (default), press `<leader>gc` (or your configured keymap) in normal mode to trigger generation.
+3.  The generated message will be inserted directly into the commit buffer.
 
 ### Slash Command (if enabled)
 
@@ -111,6 +114,7 @@ lua/codecompanion/_extensions/gitcommit/
 ## Module Overview
 
 ### `git.lua`
+
 Handles all git-related operations:
 
 - Repository detection with filesystem and git command fallback
@@ -120,6 +124,7 @@ Handles all git-related operations:
 - Commit execution with proper error handling
 
 ### `generator.lua`
+
 Manages LLM interaction:
 
 - Prompt creation for commit message generation with language support
@@ -128,6 +133,7 @@ Manages LLM interaction:
 - Adapter and model configuration
 
 ### `ui.lua`
+
 Provides interactive user interface:
 
 - Floating window display with markdown formatting
@@ -136,6 +142,7 @@ Provides interactive user interface:
 - Responsive window sizing
 
 ### `buffer.lua`
+
 Handles gitcommit buffer integration:
 
 - Automatic keymap setup for gitcommit filetype
@@ -144,6 +151,7 @@ Handles gitcommit buffer integration:
 - Language selection integration
 
 ### `langs.lua`
+
 Manages language selection:
 
 - Multi-language support configuration
@@ -151,6 +159,7 @@ Manages language selection:
 - Language preference handling
 
 ### `types.lua`
+
 Provides type definitions:
 
 - TypeScript-style type annotations for Lua
@@ -158,6 +167,7 @@ Provides type definitions:
 - Configuration option types
 
 ### `init.lua`
+
 Main extension coordinator:
 
 - Module integration and dependency management
@@ -174,6 +184,7 @@ Main extension coordinator:
 ## Workflow
 
 ### Traditional Workflow
+
 1. Stage your changes with `git add`
 2. Run `:CodeCompanionGitCommit`
 3. Review the generated commit message in the floating window
@@ -195,13 +206,15 @@ When the floating window is displayed with the generated commit message, the fol
 - **`q` or `Esc`** - Close the floating window without taking any action
 
 ### GitCommit Buffer Workflow
+
 1. Stage your changes with `git add`
 2. Run `git commit` to open the commit buffer
-3. Press `<leader>gc` in normal mode to generate commit message
-4. The AI-generated message will be inserted into the buffer
-5. Edit if needed and save to complete the commit
+3. If `auto_generate` is enabled, the message appears automatically. Otherwise, press `<leader>gc` in normal mode to generate it.
+4. The AI-generated message will be inserted into the buffer.
+5. Edit if needed and save to complete the commit.
 
 ### Amend Workflow
+
 1. Make additional changes to your files
 2. Stage changes with `git add` (optional, for new changes)
 3. Run `git commit --amend` to open the amend buffer
@@ -223,6 +236,8 @@ opts = {
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
+    auto_generate = false, -- Automatically generate message on entering gitcommit buffer (default: false)
+    auto_generate_delay = 100, -- Delay in ms before auto-generating (default: 100)
   }
 }
 ```
@@ -230,15 +245,19 @@ opts = {
 ### Configuration Options
 
 #### `add_slash_command` (boolean, default: `false`)
+
 When enabled, adds `/gitcommit` slash command to CodeCompanion chat buffers.
 
 #### `adapter` (string, optional)
+
 The LLM adapter to use for generating commit messages. If not specified, defaults to the adapter configured for CodeCompanion's chat strategy.
 
 #### `model` (string, optional)
+
 The specific model to use with the adapter. If not specified, defaults to the model configured for CodeCompanion's chat strategy.
 
 #### `languages` (table, optional)
+
 A list of languages that can be used for generating commit messages. When specified, the extension will prompt you to select a language before generating the commit message. If not provided or empty, commit messages will be generated in English by default.
 
 Example:
@@ -248,12 +267,13 @@ languages = { "English", "简体中文", "日本語", "Français", "Español" }
 ```
 
 #### `exclude_files` (table, optional)
+
 A list of file patterns to exclude from git diff analysis when generating commit messages. Supports glob patterns using `*` and `?` wildcards. This is useful for excluding generated files, minified files, or large files that don't need AI analysis.
 
 Examples:
 
 ```lua
-exclude_files = { 
+exclude_files = {
   "*.pb.go",           -- Protocol buffer generated files
   "*.min.js",          -- Minified JavaScript files
   "package-lock.json", -- NPM lock file
@@ -265,10 +285,20 @@ exclude_files = {
 ```
 
 #### `buffer.enabled` (boolean, default: `true`)
+
 Controls whether gitcommit buffer keymap integration is enabled.
 
 #### `buffer.keymap` (string, default: `"<leader>gc"`)
+
 The keymap used in gitcommit buffers to trigger commit message generation.
+
+#### `buffer.auto_generate` (boolean, default: `false`)
+
+When `true`, automatically generates a commit message upon entering a `gitcommit` buffer, but only if the buffer does not already contain a message (to avoid overwriting during an amend).
+
+#### `buffer.auto_generate_delay` (number, default: `100`)
+
+The delay in milliseconds before the automatic generation is triggered. This helps prevent race conditions with other plugins (like `neogit`) that manage UI elements. You can increase this value if you still experience issues.
 
 ## Contributing
 
