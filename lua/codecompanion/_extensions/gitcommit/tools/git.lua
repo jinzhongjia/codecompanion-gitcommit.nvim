@@ -15,10 +15,10 @@ local function is_git_repo()
   if not handle then
     return false
   end
-  
+
   local result = handle:read("*a")
   handle:close()
-  
+
   return result:match("true") ~= nil
 end
 
@@ -29,15 +29,15 @@ local function execute_git_command(cmd)
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-  
+
   local handle = io.popen(cmd .. " 2>&1")
   if not handle then
     return false, "Failed to execute command"
   end
-  
+
   local output = handle:read("*a")
   local success = handle:close()
-  
+
   return success, output or ""
 end
 
@@ -54,7 +54,7 @@ end
 function GitTool.get_log(count, format)
   count = count or 10
   format = format or "oneline"
-  
+
   local cmd = string.format("git log -%d --%s", count, format)
   return execute_git_command(cmd)
 end
@@ -65,15 +65,15 @@ end
 ---@return boolean success, string output
 function GitTool.get_diff(staged, file)
   local cmd = "git diff"
-  
+
   if staged then
     cmd = cmd .. " --cached"
   end
-  
+
   if file then
     cmd = cmd .. " " .. vim.fn.shellescape(file)
   end
-  
+
   return execute_git_command(cmd)
 end
 
@@ -98,12 +98,12 @@ function GitTool.stage_files(files)
   if type(files) == "string" then
     files = { files }
   end
-  
+
   local escaped_files = {}
   for _, file in ipairs(files) do
     table.insert(escaped_files, vim.fn.shellescape(file))
   end
-  
+
   local cmd = "git add " .. table.concat(escaped_files, " ")
   return execute_git_command(cmd)
 end
@@ -115,12 +115,12 @@ function GitTool.unstage_files(files)
   if type(files) == "string" then
     files = { files }
   end
-  
+
   local escaped_files = {}
   for _, file in ipairs(files) do
     table.insert(escaped_files, vim.fn.shellescape(file))
   end
-  
+
   local cmd = "git reset HEAD " .. table.concat(escaped_files, " ")
   return execute_git_command(cmd)
 end
@@ -131,10 +131,10 @@ end
 ---@return boolean success, string output
 function GitTool.create_branch(branch_name, checkout)
   checkout = checkout ~= false -- default to true
-  
+
   local cmd = checkout and "git checkout -b " or "git branch "
   cmd = cmd .. vim.fn.shellescape(branch_name)
-  
+
   return execute_git_command(cmd)
 end
 
@@ -168,13 +168,13 @@ end
 ---@return boolean success, string output
 function GitTool.get_blame(file_path, line_start, line_end)
   local cmd = "git blame " .. vim.fn.shellescape(file_path)
-  
+
   if line_start and line_end then
     cmd = cmd .. " -L " .. line_start .. "," .. line_end
   elseif line_start then
     cmd = cmd .. " -L " .. line_start .. ",+10"
   end
-  
+
   return execute_git_command(cmd)
 end
 
@@ -184,15 +184,15 @@ end
 ---@return boolean success, string output
 function GitTool.stash(message, include_untracked)
   local cmd = "git stash"
-  
+
   if include_untracked then
     cmd = cmd .. " -u"
   end
-  
+
   if message then
     cmd = cmd .. " -m " .. vim.fn.shellescape(message)
   end
-  
+
   return execute_git_command(cmd)
 end
 
@@ -228,15 +228,13 @@ end
 ---@return boolean success, string output
 function GitTool.diff_commits(commit1, commit2, file_path)
   commit2 = commit2 or "HEAD"
-  
-  local cmd = string.format("git diff %s %s", 
-    vim.fn.shellescape(commit1), 
-    vim.fn.shellescape(commit2))
-  
+
+  local cmd = string.format("git diff %s %s", vim.fn.shellescape(commit1), vim.fn.shellescape(commit2))
+
   if file_path then
     cmd = cmd .. " -- " .. vim.fn.shellescape(file_path)
   end
-  
+
   return execute_git_command(cmd)
 end
 
@@ -255,8 +253,7 @@ end
 ---@return boolean success, string output
 function GitTool.search_commits(pattern, count)
   count = count or 20
-  local cmd = string.format("git log --grep=%s --oneline -%d", 
-    vim.fn.shellescape(pattern), count)
+  local cmd = string.format("git log --grep=%s --oneline -%d", vim.fn.shellescape(pattern), count)
   return execute_git_command(cmd)
 end
 

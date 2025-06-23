@@ -19,10 +19,25 @@ GitBot.schema = {
         operation = {
           type = "string",
           enum = {
-            "status", "log", "diff", "branch", "stage", "unstage", 
-            "create_branch", "checkout", "remotes", "show", "blame", 
-            "stash", "stash_list", "apply_stash", "reset", "diff_commits",
-            "contributors", "search_commits", "help"
+            "status",
+            "log",
+            "diff",
+            "branch",
+            "stage",
+            "unstage",
+            "create_branch",
+            "checkout",
+            "remotes",
+            "show",
+            "blame",
+            "stash",
+            "stash_list",
+            "apply_stash",
+            "reset",
+            "diff_commits",
+            "contributors",
+            "search_commits",
+            "help",
           },
           description = "The Git operation to perform",
         },
@@ -106,10 +121,10 @@ GitBot.schema = {
             stash_ref = {
               type = "string",
               description = "Stash reference (e.g., stash@{0})",
-            }
+            },
           },
           additionalProperties = false,
-        }
+        },
       },
       required = { "operation" },
       additionalProperties = false,
@@ -165,7 +180,7 @@ GitBot.cmds = {
   function(self, args, input)
     local operation = args.operation
     local op_args = args.args or {}
-    
+
     -- Handle help operation
     if operation == "help" then
       local help_text = [[
@@ -188,98 +203,80 @@ Available Git operations:
       ]]
       return { status = "success", data = help_text }
     end
-    
+
     local success, output
-    
+
     -- Execute the requested Git operation
     if operation == "status" then
       success, output = GitTool.get_status()
-      
     elseif operation == "log" then
       success, output = GitTool.get_log(op_args.count, op_args.format)
-      
     elseif operation == "diff" then
       success, output = GitTool.get_diff(op_args.staged, op_args.file_path)
-      
     elseif operation == "branch" then
       success, output = GitTool.get_branches(op_args.remote_only)
-      
     elseif operation == "stage" then
       if not op_args.files or #op_args.files == 0 then
         return { status = "error", data = "No files specified for staging" }
       end
       success, output = GitTool.stage_files(op_args.files)
-      
     elseif operation == "unstage" then
       if not op_args.files or #op_args.files == 0 then
         return { status = "error", data = "No files specified for unstaging" }
       end
       success, output = GitTool.unstage_files(op_args.files)
-      
     elseif operation == "create_branch" then
       if not op_args.branch_name then
         return { status = "error", data = "Branch name is required" }
       end
       success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
-      
     elseif operation == "checkout" then
       if not op_args.target then
         return { status = "error", data = "Target branch or commit is required" }
       end
       success, output = GitTool.checkout(op_args.target)
-      
     elseif operation == "remotes" then
       success, output = GitTool.get_remotes()
-      
     elseif operation == "show" then
       success, output = GitTool.show_commit(op_args.commit_hash)
-      
     elseif operation == "blame" then
       if not op_args.file_path then
         return { status = "error", data = "File path is required for blame" }
       end
       success, output = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
-      
     elseif operation == "stash" then
       success, output = GitTool.stash(op_args.message, op_args.include_untracked)
-      
     elseif operation == "stash_list" then
       success, output = GitTool.list_stashes()
-      
     elseif operation == "apply_stash" then
       success, output = GitTool.apply_stash(op_args.stash_ref)
-      
     elseif operation == "reset" then
       if not op_args.commit_hash then
         return { status = "error", data = "Commit hash is required for reset" }
       end
       success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
-      
     elseif operation == "diff_commits" then
       if not op_args.commit1 then
         return { status = "error", data = "First commit is required for comparison" }
       end
       success, output = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
-      
     elseif operation == "contributors" then
       success, output = GitTool.get_contributors(op_args.count)
-      
     elseif operation == "search_commits" then
       if not op_args.pattern then
         return { status = "error", data = "Search pattern is required" }
       end
       success, output = GitTool.search_commits(op_args.pattern, op_args.count)
-      
     else
       return { status = "error", data = "Unknown Git operation: " .. operation }
     end
-    
+
     if success then
       return { status = "success", data = output }
     else
       return { status = "error", data = output }
     end
-  end
+  end,
 }
 
 -- Handlers for setup and cleanup
@@ -288,7 +285,7 @@ GitBot.handlers = {
     -- Optional setup logic
     return true
   end,
-  
+
   on_exit = function(self, agent)
     -- Optional cleanup logic
   end,
@@ -300,7 +297,7 @@ GitBot.output = {
     local chat = agent.chat
     local operation = self.args.operation
     local result = stdout[1]
-    
+
     -- Format the output based on operation type
     local formatted_output
     if operation == "status" then
@@ -316,15 +313,15 @@ GitBot.output = {
     else
       formatted_output = "✅ **Git " .. operation .. ":**\n```\n" .. result .. "\n```"
     end
-    
+
     return chat:add_tool_output(self, result, formatted_output)
   end,
-  
+
   error = function(self, agent, cmd, stderr, stdout)
     local chat = agent.chat
     local error_msg = stderr[1] or "Unknown Git error occurred"
     local formatted_error = "❌ **Git Error:**\n```\n" .. error_msg .. "\n```"
-    
+
     return chat:add_tool_output(self, error_msg, formatted_error)
   end,
 }
@@ -333,13 +330,22 @@ GitBot.output = {
 GitBot.opts = {
   requires_approval = function(self, agent)
     local safe_operations = {
-      "status", "log", "diff", "branch", "remotes", "show", 
-      "blame", "stash_list", "contributors", "search_commits", "help"
+      "status",
+      "log",
+      "diff",
+      "branch",
+      "remotes",
+      "show",
+      "blame",
+      "stash_list",
+      "contributors",
+      "search_commits",
+      "help",
     }
-    
+
     local operation = self.args.operation
     return not vim.tbl_contains(safe_operations, operation)
-  end
+  end,
 }
 
 return GitBot
