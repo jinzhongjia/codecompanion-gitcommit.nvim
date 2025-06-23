@@ -214,7 +214,7 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_status()
       end,
-      
+
       ---Get git log
       ---@param count? number Number of commits
       ---@param format? string Log format
@@ -222,7 +222,7 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_log(count, format)
       end,
-      
+
       ---Get git diff
       ---@param staged? boolean Show staged changes
       ---@param file? string Specific file
@@ -230,34 +230,34 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_diff(staged, file)
       end,
-      
+
       ---Get current branch
       current_branch = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_current_branch()
       end,
-      
+
       ---Get all branches
       ---@param remote_only? boolean Show only remote branches
       branches = function(remote_only)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_branches(remote_only)
       end,
-      
+
       ---Stage files
       ---@param files string|table Files to stage
       stage = function(files)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.stage_files(files)
       end,
-      
+
       ---Unstage files
       ---@param files string|table Files to unstage
       unstage = function(files)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.unstage_files(files)
       end,
-      
+
       ---Create new branch
       ---@param branch_name string Name of new branch
       ---@param checkout? boolean Whether to checkout
@@ -265,36 +265,36 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.create_branch(branch_name, checkout)
       end,
-      
+
       ---Checkout branch or commit
       ---@param target string Branch or commit to checkout
       checkout = function(target)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.checkout(target)
       end,
-      
+
       ---Get remotes
       remotes = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_remotes()
       end,
-      
+
       ---Show commit details
       ---@param commit_hash? string Commit hash
       show = function(commit_hash)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.show_commit(commit_hash)
       end,
-      
+
       ---Get blame for file
       ---@param file_path string File path
       ---@param line_start? number Start line
-      ---@param line_end? number End line  
+      ---@param line_end? number End line
       blame = function(file_path, line_start, line_end)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_blame(file_path, line_start, line_end)
       end,
-      
+
       ---Stash changes
       ---@param message? string Stash message
       ---@param include_untracked? boolean Include untracked files
@@ -302,20 +302,20 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.stash(message, include_untracked)
       end,
-      
+
       ---List stashes
       stash_list = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.list_stashes()
       end,
-      
+
       ---Apply stash
       ---@param stash_ref? string Stash reference
       apply_stash = function(stash_ref)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.apply_stash(stash_ref)
       end,
-      
+
       ---Reset to commit
       ---@param commit_hash string Commit hash
       ---@param mode? string Reset mode (soft, mixed, hard)
@@ -323,7 +323,7 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.reset(commit_hash, mode)
       end,
-      
+
       ---Compare commits
       ---@param commit1 string First commit
       ---@param commit2? string Second commit
@@ -332,14 +332,14 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.diff_commits(commit1, commit2, file_path)
       end,
-      
+
       ---Get top contributors
       ---@param count? number Number of contributors
       contributors = function(count)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_contributors(count)
       end,
-      
+
       ---Search commits by message
       ---@param pattern string Search pattern
       ---@param count? number Max results
