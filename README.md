@@ -1,9 +1,34 @@
 # CodeCompanion Git Commit Extension
 
+### `tools/git.lua` (🆕)
+
+Core git operations engine:
+
+- Safe git command execution with error handling
+- Repository validation and detection
+- Git status, log, diff, and branch operations
+- File staging/unstaging and blame information
+- Stash management and commit operations
+- Branch creation, checkout, and management
+- Repository insights (contributors, remotes, commit search)
+- Reset operations with safety checks
+
+### `tools/git_bot.lua` (🆕)
+
+CodeCompanion chat tool integration:
+
+- OpenAI-compatible function calling schema
+- Natural language interface for git operations
+- Comprehensive parameter validation and handling
+- Formatted output for chat buffer display
+- Approval system for destructive operations
+- Error handling and user feedback
+- Integration with CodeCompanion's agent system
 A CodeCompanion extension that generates AI-powered git commit messages following the Conventional Commits specification.
 
 ## Features
 
+### Core Features
 - 🤖 AI-powered commit message generation using CodeCompanion's LLM adapters
 - 📋 Interactive UI with copy to clipboard and yank register options
 - ✅ Conventional Commits specification compliance
@@ -13,6 +38,15 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 - 🌍 Multi-language support for commit messages
 - 🔄 Support for both regular commits and `git commit --amend`
 - 📁 File filtering support with glob patterns to exclude files from diff analysis
+
+### Git Tool Features (🆕 v2.0)
+- 🛠️ **@git_bot tool** - Advanced Git operations through CodeCompanion chat
+- 📊 **Git status and branch management** - Check status, create/switch branches
+- 🔍 **Advanced Git operations** - Diff, log, blame, stash operations  
+- 👥 **Repository insights** - Contributors, commit search, remote info
+- 🔒 **Safe operations** - Automatic approval requirements for destructive operations
+- 💬 **Natural language interface** - Control Git through conversation
+- 📝 **Comprehensive Git workflow** - From status check to commit in one chat
 
 ## Installation
 
@@ -31,6 +65,8 @@ require("codecompanion").setup({
         model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
         languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Optional: list of languages for commit messages
         exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
+      add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
+      add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
@@ -49,6 +85,93 @@ require("codecompanion").setup({
 
 - `:CodeCompanionGitCommit` - Generate git commit message
 - `:CCGitCommit` - Short alias for the above command
+- `:CodeCompanionGit` - Open CodeCompanion chat with git assistant (🆕)
+- `:CCGit` - Short alias for git assistant (🆕)
+### Git Tool Operations (🆕 v2.0)
+
+#### Interactive Git Assistant
+
+Use `:CodeCompanionGit` or `:CCGit` to open a CodeCompanion chat buffer with the `@git_bot` tool pre-loaded. This gives you a natural language interface to Git operations.
+
+#### Chat Integration
+
+In any CodeCompanion chat buffer, use the `@git_bot` tool to perform Git operations:
+
+```
+@git_bot help                    # Show available operations
+@git_bot status                  # Show git status
+@git_bot log --count 5           # Show last 5 commits
+@git_bot diff --staged           # Show staged changes
+@git_bot branch                  # List all branches
+@git_bot create_branch --branch_name feature/new-ui
+@git_bot stage --files ["src/main.lua", "README.md"]
+@git_bot stash --message "Work in progress"
+```
+
+#### Git Tool Commands Reference
+
+**Repository Status & Info**
+- `@git_bot status` - Show repository status
+- `@git_bot log [--count N] [--format FORMAT]` - Show commit history
+- `@git_bot branch [--remote_only]` - List branches
+- `@git_bot remotes` - Show remote repositories
+- `@git_bot contributors [--count N]` - Show top contributors
+
+**File Operations**
+- `@git_bot diff [--staged] [--file_path PATH]` - Show differences
+- `@git_bot stage --files ["file1", "file2"]` - Stage files
+- `@git_bot unstage --files ["file1", "file2"]` - Unstage files
+- `@git_bot blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
+
+**Branch Management**
+- `@git_bot create_branch --branch_name NAME [--checkout BOOL]` - Create new branch
+- `@git_bot checkout --target BRANCH_OR_COMMIT` - Switch branch/commit
+
+**Commit Operations**
+- `@git_bot show [--commit_hash HASH]` - Show commit details
+- `@git_bot diff_commits --commit1 HASH1 [--commit2 HASH2] [--file_path PATH]` - Compare commits
+- `@git_bot search_commits --pattern "PATTERN" [--count N]` - Search commits
+
+**Stash Operations**
+- `@git_bot stash [--message "MSG"] [--include_untracked]` - Stash changes
+- `@git_bot stash_list` - List all stashes
+- `@git_bot apply_stash [--stash_ref "stash@{0}"]` - Apply stash
+
+**Advanced Operations** (require approval)
+- `@git_bot reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
+
+#### Safety Features
+
+The git tool includes automatic safety features:
+- **Read-only operations** (status, log, diff, show, blame) don't require approval
+- **Modifying operations** (stage, unstage, create_branch, checkout, reset) require user confirmation
+- **Repository validation** ensures you're in a valid Git repository
+- **Comprehensive error handling** with helpful error messages
+
+#### Example Workflows
+
+**Code Review Workflow:**
+```
+@git_bot status
+@git_bot diff --staged
+/gitcommit  # Generate commit message
+```
+
+**Branch Management:**
+```
+@git_bot branch
+@git_bot create_branch --branch_name feature/new-ui
+# ... make changes ...
+@git_bot stage --files ["src/ui.lua"]
+@git_bot status
+```
+
+**Investigation Workflow:**
+```
+@git_bot log --count 10
+@git_bot show --commit_hash abc123
+@git_bot blame --file_path src/main.lua --line_start 50 --line_end 60
+```
 
 ### GitCommit Buffer Integration
 
@@ -96,6 +219,41 @@ local success = gitcommit.commit_changes("feat: add new feature")
 
 -- Get buffer configuration
 local buffer_config = gitcommit.get_buffer_config()
+
+-- Git Tool API (🆕)
+-- Basic operations
+local success, output = gitcommit.git_tool.status()
+local success, branches = gitcommit.git_tool.branches()
+local success, log = gitcommit.git_tool.log(5, "oneline")
+
+-- File operations
+local success, diff = gitcommit.git_tool.diff(true) -- staged diff
+local success, diff_file = gitcommit.git_tool.diff(false, "src/main.lua") -- specific file
+gitcommit.git_tool.stage({"src/main.lua", "README.md"})
+gitcommit.git_tool.unstage({"src/main.lua"})
+
+-- Branch operations
+local success, current = gitcommit.git_tool.current_branch()
+gitcommit.git_tool.create_branch("feature/new-feature", true) -- create and checkout
+gitcommit.git_tool.checkout("main")
+
+-- Repository info
+local success, remotes = gitcommit.git_tool.remotes()
+local success, contributors = gitcommit.git_tool.contributors(10)
+local success, commit_info = gitcommit.git_tool.show("HEAD")
+
+-- Blame and history
+local success, blame = gitcommit.git_tool.blame("src/main.lua", 10, 20)
+local success, commits = gitcommit.git_tool.search_commits("fix bug", 5)
+local success, comparison = gitcommit.git_tool.diff_commits("HEAD~1", "HEAD", "src/main.lua")
+
+-- Stash operations
+gitcommit.git_tool.stash("Work in progress", true) -- include untracked
+local success, stashes = gitcommit.git_tool.stash_list()
+gitcommit.git_tool.apply_stash("stash@{0}")
+
+-- Advanced operations (use with caution)
+gitcommit.git_tool.reset("HEAD~1", "soft")
 ```
 
 ## File Structure
@@ -108,7 +266,10 @@ lua/codecompanion/_extensions/gitcommit/
 ├── ui.lua          # Floating window UI and interactions
 ├── buffer.lua      # GitCommit buffer keymap integration
 ├── langs.lua       # Language selection functionality
-└── types.lua       # Type definitions and TypeScript-style annotations
+├── types.lua       # Type definitions and TypeScript-style annotations
+└── tools/          # Git tool implementations (🆕)
+    ├── git.lua     # Core git operations and command execution
+    └── git_bot.lua # CodeCompanion chat tool integration
 ```
 
 ## Module Overview
@@ -174,6 +335,7 @@ Main extension coordinator:
 - Command registration (`:CodeCompanionGitCommit`, `:CCGitCommit`)
 - Slash command integration
 - Extension exports for programmatic usage
+- Git tool integration and command setup (🆕)
 
 ## Requirements
 
@@ -233,6 +395,10 @@ opts = {
   model = "gpt-4",         -- Model to use (default: codecompanion chat model)
   languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Languages for commit messages
   exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis
+  add_git_tool = true,     -- Add @git_bot tool to CodeCompanion (default: true)
+  add_git_commands = true, -- Add :CodeCompanionGit commands (default: true)
+  git_tool_auto_submit_errors = false,  -- Auto-submit git tool errors to LLM (default: false)
+  git_tool_auto_submit_success = false, -- Auto-submit git tool success to LLM (default: false)
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
@@ -248,6 +414,21 @@ opts = {
 
 When enabled, adds `/gitcommit` slash command to CodeCompanion chat buffers.
 
+#### `add_git_tool` (boolean, default: `true`)
+
+When enabled, adds the `@git_bot` tool to CodeCompanion chat buffers. This allows you to perform Git operations through natural language in chat.
+
+#### `add_git_commands` (boolean, default: `true`)
+
+When enabled, adds `:CodeCompanionGit` and `:CCGit` commands that open a chat buffer with the git tool pre-loaded.
+
+#### `git_tool_auto_submit_errors` (boolean, default: `false`)
+
+When enabled, automatically submits git tool error messages back to the LLM for analysis and suggestions.
+
+#### `git_tool_auto_submit_success` (boolean, default: `false`)
+
+When enabled, automatically submits git tool success messages back to the LLM to continue the workflow.
 #### `adapter` (string, optional)
 
 The LLM adapter to use for generating commit messages. If not specified, defaults to the adapter configured for CodeCompanion's chat strategy.
