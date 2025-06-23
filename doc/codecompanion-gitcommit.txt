@@ -2,8 +2,9 @@
 
 CODECOMPANION GIT COMMIT EXTENSION			*codecompanion-gitcommit*
 
-A CodeCompanion extension that generates AI-powered git commit messages 
-following the Conventional Commits specification.
+A CodeCompanion extension that generates AI-powered git commit messages
+following the Conventional Commits specification, with advanced Git operations
+through the integrated @git_bot tool.
 
 ==============================================================================
 CONTENTS						*codecompanion-gitcommit-contents*
@@ -14,10 +15,11 @@ CONTENTS						*codecompanion-gitcommit-contents*
 4. Configuration				|codecompanion-gitcommit-config|
 5. Usage					|codecompanion-gitcommit-usage|
 6. Commands					|codecompanion-gitcommit-commands|
-7. API						|codecompanion-gitcommit-api|
-8. File Structure				|codecompanion-gitcommit-structure|
-9. Requirements					|codecompanion-gitcommit-requirements|
-10. License					|codecompanion-gitcommit-license|
+7. Git Tool Operations				|codecompanion-gitcommit-git-tool|
+8. API						|codecompanion-gitcommit-api|
+9. File Structure				|codecompanion-gitcommit-structure|
+10. Requirements				|codecompanion-gitcommit-requirements|
+11. License					|codecompanion-gitcommit-license|
 
 ==============================================================================
 1. INTRODUCTION					*codecompanion-gitcommit-intro*
@@ -27,9 +29,14 @@ to generate meaningful git commit messages following the Conventional Commits
 specification. It integrates seamlessly with CodeCompanion's LLM adapters to
 analyze your staged changes and create appropriate commit messages.
 
+Version 2.0 introduces comprehensive Git operations through the @git_bot tool,
+providing a natural language interface for Git workflow management within
+CodeCompanion chat buffers.
+
 ==============================================================================
 2. FEATURES					*codecompanion-gitcommit-features*
 
+### Core Commit Features
 • AI-powered commit message generation using CodeCompanion's LLM adapters
 • Interactive UI with copy to clipboard and yank register options
 • Conventional Commits specification compliance
@@ -39,6 +46,15 @@ analyze your staged changes and create appropriate commit messages.
 • Multi-language support for commit messages
 • Support for both regular commits and `git commit --amend`
 • File filtering support with glob patterns to exclude files from analysis
+
+### Git Tool Features (🆕 v2.0)
+• @git_bot tool - Advanced Git operations through CodeCompanion chat
+• Git status and branch management - Check status, create/switch branches
+• Advanced Git operations - Diff, log, blame, stash operations
+• Repository insights - Contributors, commit search, remote info
+• Safe operations - Automatic approval requirements for destructive operations
+• Natural language interface - Control Git through conversation
+• Comprehensive Git workflow - From status check to commit in one chat
 
 ==============================================================================
 3. INSTALLATION					*codecompanion-gitcommit-install*
@@ -55,12 +71,14 @@ Add this extension to your CodeCompanion configuration:
 	        model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
 	        languages = { "English", "Chinese", "Japanese" }, -- Optional: list of languages for commit messages
 	        exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
+	        add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
+	        add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
 	        buffer = {
 	          enabled = true,        -- Enable gitcommit buffer keymaps
- 	          keymap = "<leader>gc", -- Keymap for generating commit message
- 	          auto_generate = true,  -- Automatically generate message on entering gitcommit buffer
- 	          auto_generate_delay = 100, -- Delay in ms before auto-generating
- 	        }
+	          keymap = "<leader>gc", -- Keymap for generating commit message
+	          auto_generate = true,  -- Automatically generate message on entering gitcommit buffer
+	          auto_generate_delay = 100, -- Delay in ms before auto-generating
+	        }
 	      }
 	    }
 	  }
@@ -70,19 +88,24 @@ Add this extension to your CodeCompanion configuration:
 ==============================================================================
 4. CONFIGURATION				*codecompanion-gitcommit-config*
 
-The extension accepts the following configuration options:						*codecompanion-gitcommit-opts*
+The extension accepts the following configuration options:
+							*codecompanion-gitcommit-opts*
 opts = {
   add_slash_command = false, -- Add /gitcommit slash command to chat buffer
   adapter = "openai",        -- LLM adapter to use (optional)
   model = "gpt-4",          -- Model to use (optional)
   languages = { "English", "简体中文", "日本語" }, -- Languages for commit messages (optional)
   exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis (optional)
+  add_git_tool = true,     -- Add @git_bot tool to CodeCompanion (default: true)
+  add_git_commands = true, -- Add :CodeCompanionGit commands (default: true)
+  git_tool_auto_submit_errors = false,  -- Auto-submit git tool errors to LLM (default: false)
+  git_tool_auto_submit_success = false, -- Auto-submit git tool success to LLM (default: false)
   buffer = {
     enabled = true,          -- Enable gitcommit buffer keymaps
     keymap = "<leader>gc",   -- Keymap for generating commit message
-     auto_generate = false, -- Automatically generate message on entering gitcommit buffer
-     auto_generate_delay = 100, -- Delay in ms before auto-generating
-   }
+    auto_generate = false, -- Automatically generate message on entering gitcommit buffer
+    auto_generate_delay = 100, -- Delay in ms before auto-generating
+  }
 }
 
 Configuration Details:
@@ -90,28 +113,28 @@ Configuration Details:
 add_slash_command				*gitcommit-add-slash-command*
 	Type: boolean
 	Default: false
-	When enabled, adds `/gitcommit` slash command to CodeCompanion chat 
+	When enabled, adds `/gitcommit` slash command to CodeCompanion chat
 	buffers for generating commit messages within chat sessions.
 
 adapter						*gitcommit-adapter*
 	Type: string
 	Default: codecompanion chat adapter
-	The LLM adapter to use for generating commit messages. If not 
-	specified, defaults to the adapter configured for CodeCompanion's 
+	The LLM adapter to use for generating commit messages. If not
+	specified, defaults to the adapter configured for CodeCompanion's
 	chat strategy.
 
 model						*gitcommit-model*
 	Type: string
 	Default: codecompanion chat model
-	The specific model to use with the adapter. If not specified, 
+	The specific model to use with the adapter. If not specified,
 	defaults to the model configured for CodeCompanion's chat strategy.
 
 languages					*gitcommit-languages*
 	Type: table
 	Default: nil (English only)
 	A list of languages that can be used for generating commit messages.
-	When specified, the extension will prompt you to select a language 
-	before generating the commit message. If not provided or empty, 
+	When specified, the extension will prompt you to select a language
+	before generating the commit message. If not provided or empty,
 	commit messages will be generated in English by default.
 	
 	Example: { "English", "简体中文", "日本語", "Français" }
@@ -128,6 +151,31 @@ exclude_files					*gitcommit-exclude-files*
 	{ "*.pb.go", "*.min.js", "package-lock.json", "yarn.lock" }
 	{ "dist/*", "build/*", "*.generated.ts" }
 
+add_git_tool					*gitcommit-add-git-tool*
+	Type: boolean
+	Default: true
+	When enabled, adds the `@git_bot` tool to CodeCompanion chat buffers.
+	This allows you to perform Git operations through natural language
+	in chat sessions.
+
+add_git_commands				*gitcommit-add-git-commands*
+	Type: boolean
+	Default: true
+	When enabled, adds `:CodeCompanionGit` and `:CCGit` commands that
+	open a chat buffer with the git tool pre-loaded.
+
+git_tool_auto_submit_errors			*gitcommit-git-tool-auto-submit-errors*
+	Type: boolean
+	Default: false
+	When enabled, automatically submits git tool error messages back to
+	the LLM for analysis and suggestions.
+
+git_tool_auto_submit_success			*gitcommit-git-tool-auto-submit-success*
+	Type: boolean
+	Default: false
+	When enabled, automatically submits git tool success messages back to
+	the LLM to continue the workflow.
+
 buffer.enabled					*gitcommit-buffer-enabled*
 	Type: boolean
 	Default: true
@@ -137,8 +185,8 @@ buffer.enabled					*gitcommit-buffer-enabled*
 buffer.keymap					*gitcommit-buffer-keymap*
 	Type: string
 	Default: "<leader>gc"
-	The keymap used in gitcommit buffers to trigger commit message 
-	generation. This keymap is only active in buffers with 'gitcommit' 
+	The keymap used in gitcommit buffers to trigger commit message
+	generation. This keymap is only active in buffers with 'gitcommit'
 	filetype.
 
 buffer.auto_generate				*gitcommit-buffer-auto-generate*
@@ -167,14 +215,18 @@ Use the provided commands to generate commit messages:
 • |:CodeCompanionGitCommit| - Generate git commit message
 • |:CCGitCommit| - Short alias for the above command
 
+Use the provided commands for git operations:
+• |:CodeCompanionGit| - Open CodeCompanion chat with git assistant (🆕)
+• |:CCGit| - Short alias for git assistant (🆕)
+
 5.2 GitCommit Buffer Integration		*codecompanion-gitcommit-buffer*
 
 When you run `git commit` or open a gitcommit buffer:
- 1. If `buffer.auto_generate` is `true`, the commit message will be
-    generated and inserted automatically.
- 2. If `buffer.auto_generate` is `false` (default), press `<leader>gc` (or
-    your configured keymap) in normal mode to trigger generation.
- 3. The generated message will be inserted directly into the commit buffer.
+1. If `buffer.auto_generate` is `true`, the commit message will be
+   generated and inserted automatically.
+2. If `buffer.auto_generate` is `false` (default), press `<leader>gc` (or
+   your configured keymap) in normal mode to trigger generation.
+3. The generated message will be inserted directly into the commit buffer.
 
 5.3 Slash Command				*codecompanion-gitcommit-slash*
 
@@ -197,8 +249,8 @@ Traditional Workflow:~
 GitCommit Buffer Workflow:~
 1. Stage your changes with `git add`
 2. Run `git commit` to open the commit buffer
- 3. If `auto_generate` is enabled, the message appears automatically.
-    Otherwise, press `<leader>gc` in normal mode to generate it.
+3. If `auto_generate` is enabled, the message appears automatically.
+   Otherwise, press `<leader>gc` in normal mode to generate it.
 4. The AI-generated message will be inserted into the buffer
 5. Edit if needed and save to complete the commit
 
@@ -207,7 +259,7 @@ Amend Workflow:~
 2. Stage changes with `git add` (optional, for new changes)
 3. Run `git commit --amend` to open the amend buffer
 4. Press `<leader>gc` in normal mode to generate an updated commit message
-5. The extension will analyze the full commit changes and generate an 
+5. The extension will analyze the full commit changes and generate an
    appropriate message
 6. Edit if needed and save to complete the amend
 
@@ -217,8 +269,8 @@ When the floating window is displayed with the generated commit message,
 the following keymaps are available:
 
 `c`						*gitcommit-keymap-c*
-	Copy the commit message to the system clipboard. This uses the `+` 
-	register and also copies to `*` register if clipboard support is 
+	Copy the commit message to the system clipboard. This uses the `+`
+	register and also copies to `*` register if clipboard support is
 	available.
 
 `y`						*gitcommit-keymap-y*
@@ -230,7 +282,7 @@ the following keymaps are available:
 	with the generated message and close the floating window if successful.
 
 `<Enter>`					*gitcommit-keymap-enter*
-	Copy the commit message to clipboard (same as `c`) and close the 
+	Copy the commit message to clipboard (same as `c`) and close the
 	floating window.
 
 `q` or `<Esc>`					*gitcommit-keymap-q*
@@ -280,8 +332,108 @@ Glob Pattern Support:~
 :CCGitCommit					*:CCGitCommit*
 	Short alias for |:CodeCompanionGitCommit|.
 
+:CodeCompanionGit				*:CodeCompanionGit*
+	Open CodeCompanion chat buffer with the @git_bot tool pre-loaded.
+	This provides a natural language interface for Git operations within
+	a chat session.
+
+:CCGit						*:CCGit*
+	Short alias for |:CodeCompanionGit|.
+
 ==============================================================================
-7. API						*codecompanion-gitcommit-api*
+7. GIT TOOL OPERATIONS				*codecompanion-gitcommit-git-tool*
+
+The @git_bot tool provides comprehensive Git operations through natural
+language commands within CodeCompanion chat buffers.
+
+7.1 Interactive Git Assistant			*codecompanion-gitcommit-git-assistant*
+
+Use |:CodeCompanionGit| or |:CCGit| to open a CodeCompanion chat buffer with
+the `@git_bot` tool pre-loaded. This gives you a natural language interface
+to Git operations.
+
+7.2 Chat Integration				*codecompanion-gitcommit-chat-integration*
+
+In any CodeCompanion chat buffer, use the `@git_bot` tool to perform Git
+operations:
+>
+	@git_bot help                    # Show available operations
+	@git_bot status                  # Show git status
+	@git_bot log --count 5           # Show last 5 commits
+	@git_bot diff --staged           # Show staged changes
+	@git_bot branch                  # List all branches
+	@git_bot create_branch --branch_name feature/new-ui
+	@git_bot stage --files ["src/main.lua", "README.md"]
+	@git_bot stash --message "Work in progress"
+<
+
+7.3 Git Tool Commands Reference		*codecompanion-gitcommit-git-commands*
+
+Repository Status & Info~
+• `@git_bot status` - Show repository status
+• `@git_bot log [--count N] [--format FORMAT]` - Show commit history
+• `@git_bot branch [--remote_only]` - List branches
+• `@git_bot remotes` - Show remote repositories
+• `@git_bot contributors [--count N]` - Show top contributors
+
+File Operations~
+• `@git_bot diff [--staged] [--file_path PATH]` - Show differences
+• `@git_bot stage --files ["file1", "file2"]` - Stage files
+• `@git_bot unstage --files ["file1", "file2"]` - Unstage files
+• `@git_bot blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
+
+Branch Management~
+• `@git_bot create_branch --branch_name NAME [--checkout BOOL]` - Create new branch
+• `@git_bot checkout --target BRANCH_OR_COMMIT` - Switch branch/commit
+
+Commit Operations~
+• `@git_bot show [--commit_hash HASH]` - Show commit details
+• `@git_bot diff_commits --commit1 HASH1 [--commit2 HASH2] [--file_path PATH]` - Compare commits
+• `@git_bot search_commits --pattern "PATTERN" [--count N]` - Search commits
+
+Stash Operations~
+• `@git_bot stash [--message "MSG"] [--include_untracked]` - Stash changes
+• `@git_bot stash_list` - List all stashes
+• `@git_bot apply_stash [--stash_ref "stash@{0}"]` - Apply stash
+
+Advanced Operations~ (require approval)
+• `@git_bot reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
+
+7.4 Safety Features				*codecompanion-gitcommit-safety*
+
+The git tool includes automatic safety features:
+• Read-only operations (status, log, diff, show, blame) don't require approval
+• Modifying operations (stage, unstage, create_branch, checkout, reset) require user confirmation
+• Repository validation ensures you're in a valid Git repository
+• Comprehensive error handling with helpful error messages
+
+7.5 Example Workflows				*codecompanion-gitcommit-git-workflows*
+
+Code Review Workflow:~
+>
+	@git_bot status
+	@git_bot diff --staged
+	/gitcommit  # Generate commit message
+<
+
+Branch Management:~
+>
+	@git_bot branch
+	@git_bot create_branch --branch_name feature/new-ui
+	# ... make changes ...
+	@git_bot stage --files ["src/ui.lua"]
+	@git_bot status
+<
+
+Investigation Workflow:~
+>
+	@git_bot log --count 10
+	@git_bot show --commit_hash abc123
+	@git_bot blame --file_path src/main.lua --line_start 50 --line_end 60
+<
+
+==============================================================================
+8. API						*codecompanion-gitcommit-api*
 
 The extension provides a programmatic API for advanced usage:
 
@@ -344,8 +496,83 @@ gitcommit.get_buffer_config()			*gitcommit.get_buffer_config()*
 	Returns:~
 		table: Configuration table with buffer settings
 
+Git Tool API (🆕)				*gitcommit.git_tool_api()*
+	Access to git tool functions for programmatic usage.
+
+gitcommit.git_tool.status()			*gitcommit.git_tool.status()*
+	Get git status.
+	
+	Returns:~
+		boolean, string: success, output
+
+gitcommit.git_tool.log({count}, {format})	*gitcommit.git_tool.log()*
+	Get git log with specified format and count.
+	
+	Parameters:~
+		{count}		number: Number of commits (optional)
+		{format}	string: Log format (optional)
+	
+	Returns:~
+		boolean, string: success, output
+
+gitcommit.git_tool.diff({staged}, {file})	*gitcommit.git_tool.diff()*
+	Get git diff for staged or unstaged changes.
+	
+	Parameters:~
+		{staged}	boolean: Show staged changes (optional)
+		{file}		string: Specific file (optional)
+	
+	Returns:~
+		boolean, string: success, output
+
+gitcommit.git_tool.branches({remote_only})	*gitcommit.git_tool.branches()*
+	Get all branches.
+	
+	Parameters:~
+		{remote_only}	boolean: Show only remote branches (optional)
+	
+	Returns:~
+		boolean, string: success, output
+
+gitcommit.git_tool.stage({files})		*gitcommit.git_tool.stage()*
+	Stage files.
+	
+	Parameters:~
+		{files}		string|table: Files to stage
+	
+	Returns:~
+		boolean, string: success, output
+
+gitcommit.git_tool.create_branch({name}, {checkout}) *gitcommit.git_tool.create_branch()*
+	Create new branch.
+	
+	Parameters:~
+		{name}		string: Branch name
+		{checkout}	boolean: Whether to checkout (optional)
+	
+	Returns:~
+		boolean, string: success, output
+
+	Example:~
+>lua
+		local gitcommit = require("codecompanion").extensions.gitcommit
+		
+		-- Basic operations
+		local success, output = gitcommit.git_tool.status()
+		local success, branches = gitcommit.git_tool.branches()
+		local success, log = gitcommit.git_tool.log(5, "oneline")
+		
+		-- File operations
+		local success, diff = gitcommit.git_tool.diff(true) -- staged diff
+		gitcommit.git_tool.stage({"src/main.lua", "README.md"})
+		
+		-- Branch operations
+		gitcommit.git_tool.create_branch("feature/new-feature", true)
+		gitcommit.git_tool.checkout("main")
+<
+
 ==============================================================================
-8. FILE STRUCTURE				*codecompanion-gitcommit-structure*
+9. FILE STRUCTURE				*codecompanion-gitcommit-structure*
 
 The extension consists of the following modules:
 
@@ -356,34 +583,37 @@ lua/codecompanion/_extensions/gitcommit/
 ├── ui.lua          # Floating window UI and interactions
 ├── buffer.lua      # GitCommit buffer keymap integration
 ├── langs.lua       # Language selection functionality
-└── types.lua       # Type definitions and TypeScript-style annotations
+├── types.lua       # Type definitions and TypeScript-style annotations
+└── tools/          # Git tool implementations (🆕)
+    ├── git.lua     # Core git operations and command execution
+    └── git_bot.lua # CodeCompanion chat tool integration
 
 Module Overview:~
 
 git.lua~
 	Handles all git-related operations including repository detection,
 	staged changes retrieval, file filtering with glob patterns,
-	commit execution, and `git commit --amend` support. Includes 
+	commit execution, and `git commit --amend` support. Includes
 	contextual diff analysis and error handling.
 
 generator.lua~
 	Manages LLM interaction including prompt creation for commit message
-	generation with language support, API communication with CodeCompanion 
+	generation with language support, API communication with CodeCompanion
 	adapters, response handling, and adapter/model configuration.
 
 ui.lua~
 	Provides interactive user interface including floating window display
-	with markdown formatting, interactive keyboard shortcuts, copy to 
+	with markdown formatting, interactive keyboard shortcuts, copy to
 	clipboard and yank register functionality, and responsive window sizing.
 
 buffer.lua~
 	Handles gitcommit buffer integration including automatic keymap setup
-	for gitcommit filetype, smart commit message insertion at correct 
+	for gitcommit filetype, smart commit message insertion at correct
 	position, buffer content management, and language selection integration.
 
 langs.lua~
-	Manages language selection functionality including multi-language 
-	support configuration, interactive language selection UI, and 
+	Manages language selection functionality including multi-language
+	support configuration, interactive language selection UI, and
 	language preference handling.
 
 types.lua~
@@ -392,11 +622,27 @@ types.lua~
 
 init.lua~
 	Main extension coordinator that handles module integration, dependency
-	management, command registration, slash command integration, and 
-	extension exports for programmatic usage.
+	management, command registration, slash command integration, and
+	extension exports for programmatic usage. Also manages git tool
+	integration and command setup.
+
+tools/git.lua~ (🆕)
+	Core git operations engine providing safe git command execution with
+	error handling, repository validation and detection, git status, log,
+	diff, and branch operations, file staging/unstaging and blame information,
+	stash management and commit operations, branch creation, checkout, and
+	management, repository insights (contributors, remotes, commit search),
+	and reset operations with safety checks.
+
+tools/git_bot.lua~ (🆕)
+	CodeCompanion chat tool integration providing OpenAI-compatible function
+	calling schema, natural language interface for git operations, comprehensive
+	parameter validation and handling, formatted output for chat buffer display,
+	approval system for destructive operations, error handling and user feedback,
+	and integration with CodeCompanion's agent system.
 
 ==============================================================================
-9. REQUIREMENTS					*codecompanion-gitcommit-requirements*
+10. REQUIREMENTS				*codecompanion-gitcommit-requirements*
 
 • Neovim >= 0.8.0
 • CodeCompanion plugin installed and configured
@@ -404,7 +650,7 @@ init.lua~
 • Configured LLM adapter in CodeCompanion
 
 ==============================================================================
-10. LICENSE					*codecompanion-gitcommit-license*
+11. LICENSE					*codecompanion-gitcommit-license*
 
 This extension follows the same license as the CodeCompanion plugin.
 
