@@ -77,7 +77,8 @@ end
 function Git.is_repository()
   -- First check for .git directory in current and parent directories
   local function check_git_dir(path)
-    local git_path = path .. "/.git"
+    local sep = package.config:sub(1, 1)
+    local git_path = path .. sep .. ".git"
     local stat = vim.uv.fs_stat(git_path)
     return stat ~= nil
   end
@@ -99,7 +100,8 @@ function Git.is_repository()
   end
 
   -- Fallback to git command if filesystem check fails
-  local cmd = "git rev-parse --is-inside-work-tree"
+  local redirect = (vim.loop.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
+  local cmd = "git rev-parse --is-inside-work-tree" .. redirect
   local result = vim.fn.system(cmd)
   return vim.v.shell_error == 0 and vim.trim(result) == "true"
 end
@@ -224,30 +226,16 @@ function Git.commit_changes(message)
     return false
   end
 
-  -- Create temporary file for commit message
-  local temp_file = vim.fn.tempname()
-  local file = io.open(temp_file, "w")
-  if not file then
-    vim.notify("Failed to create temporary file for commit message", vim.log.levels.ERROR)
-    return false
-  end
-
-  file:write(message)
-  file:close()
-
-  -- Execute appropriate git commit command
+  -- 直接通过 stdin 传递 commit message，无需临时文件
   local cmd
   if Git.is_amending() then
-    cmd = string.format("git commit --amend -F %s", vim.fn.shellescape(temp_file))
+    cmd = "git commit --amend -F -"
   else
-    cmd = string.format("git commit -F %s", vim.fn.shellescape(temp_file))
+    cmd = "git commit -F -"
   end
 
-  local result = vim.fn.system(cmd)
+  local result = vim.fn.system(cmd, message)
   local exit_code = vim.v.shell_error
-
-  -- Clean up temporary file
-  os.remove(temp_file)
 
   if exit_code == 0 then
     local action = Git.is_amending() and "amended" or "committed"

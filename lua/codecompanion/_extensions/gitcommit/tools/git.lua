@@ -11,15 +11,10 @@ local GitTool = {
 ---Check if we're in a git repository
 ---@return boolean
 local function is_git_repo()
-  local handle = io.popen("git rev-parse --is-inside-work-tree 2>nul")
-  if not handle then
-    return false
-  end
-
-  local result = handle:read("*a")
-  handle:close()
-
-  return result:match("true") ~= nil
+  -- 使用 Neovim 内置 vim.fn.system 代替 io.popen
+  local cmd = "git rev-parse --is-inside-work-tree"
+  local result = vim.fn.system(cmd)
+  return vim.v.shell_error == 0 and result:match("true") ~= nil
 end
 
 ---Execute git command safely
@@ -30,15 +25,13 @@ local function execute_git_command(cmd)
     return false, "Not in a git repository"
   end
 
-  local handle = io.popen(cmd .. " 2>&1")
-  if not handle then
-    return false, "Failed to execute command"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code ~= 0 or (output and output:match("fatal: ")) then
+    return false, output
   end
-
-  local output = handle:read("*a")
-  local success = handle:close()
-
-  return success, output or ""
+  return true, output or ""
 end
 
 ---Get git status
@@ -243,8 +236,14 @@ end
 ---@return boolean success, string output
 function GitTool.get_contributors(count)
   count = count or 10
-  local cmd = string.format("git shortlog -sn | head -%d", count)
-  return execute_git_command(cmd)
+  local head_cmd
+  if vim.loop.os_uname().sysname == "Windows_NT" then
+    -- Use PowerShell for head equivalent
+    head_cmd = string.format("git shortlog -sn | Select-Object -First %d", count)
+  else
+    head_cmd = string.format("git shortlog -sn | head -%d", count)
+  end
+  return execute_git_command(head_cmd)
 end
 
 ---Search commits by message
