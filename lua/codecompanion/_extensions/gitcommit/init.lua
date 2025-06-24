@@ -135,7 +135,7 @@ return {
     -- Add to CodeCompanion slash commands if requested
     if opts.add_slash_command then
       local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
-      local gitcommit_select_count = (opts.gitcommit_select_count or 50)
+      local gitcommit_select_count = (opts.gitcommit_select_count or 100)
       slash_commands["gitcommit"] = {
         description = "Select a commit and insert its full content (message + diff)",
         callback = function(chat)
