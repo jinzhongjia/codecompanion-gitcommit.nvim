@@ -135,38 +135,80 @@ return {
     -- Add to CodeCompanion slash commands if requested
     if opts.add_slash_command then
       local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
+      local gitcommit_select_count = (opts.gitcommit_select_count or 50)
       slash_commands["gitcommit"] = {
-        description = "Generate git commit message from staged changes",
+        description = "Select a commit and insert its full content (message + diff)",
         callback = function(chat)
-          -- Check git repository status
           if not Git.is_repository() then
             chat:add_reference({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
             return
           end
 
-          -- Get staged changes
-          local diff = Git.get_staged_diff()
-          if not diff then
-            chat:add_reference({
-              role = "user",
-              content = "Error: No staged changes found. Please stage your changes first.",
-            }, "git", "<git_error>")
-            return
-          end
-
-          Langs.select_lang(function(lang)
-            -- Generate commit message
-            Generator.generate_commit_message(diff, lang, function(result, error)
-              if error then
-                chat:add_reference({ role = "user", content = "Error: " .. error }, "git", "<git_error>")
-              else
-                chat:add_reference({
-                  role = "user",
-                  content = "Generated commit message:\n```\n" .. result .. "\n```",
-                }, "git", "<git_commit>")
+          -- 获取最近N条commit，数量可配置
+          local Job = require("plenary.job")
+          Job:new({
+            command = "git",
+            args = { "log", "--oneline", "-n", tostring(gitcommit_select_count) },
+            on_exit = function(j, return_val)
+              if return_val ~= 0 then
+                vim.schedule(function()
+                  chat:add_reference({ role = "user", content = "Error: Failed to get git log" }, "git", "<git_error>")
+                end)
+                return
               end
-            end)
-          end)
+              local output = j:result()
+              if not output or #output == 0 then
+                vim.schedule(function()
+                  chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+                end)
+                return
+              end
+              -- 解析commit hash和message
+              local items = {}
+              for _, line in ipairs(output) do
+                local hash, msg = line:match("^(%w+)%s(.+)$")
+                if hash and msg then
+                  table.insert(items, { label = hash .. " " .. msg, hash = hash })
+                end
+              end
+              if #items == 0 then
+                vim.schedule(function()
+                  chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+                end)
+                return
+              end
+              vim.schedule(function()
+                vim.ui.select(items, {
+                  prompt = "Select a commit to insert:",
+                  format_item = function(item) return item.label end,
+                }, function(choice)
+                  if not choice then
+                    return
+                  end
+                  -- 获取完整commit内容
+                  Job:new({
+                    command = "git",
+                    args = { "show", choice.hash },
+                    on_exit = function(j2, rv2)
+                      local commit_content = table.concat(j2:result(), "\n")
+                      if rv2 ~= 0 or not commit_content or commit_content == "" then
+                        vim.schedule(function()
+                          chat:add_reference({ role = "user", content = "Error: Failed to get commit content." }, "git", "<git_error>")
+                        end)
+                        return
+                      end
+                      vim.schedule(function()
+                        chat:add_reference({
+                          role = "user",
+                          content = "Selected commit (" .. choice.hash .. ") full content:\n```\n" .. commit_content .. "\n```",
+                        }, "git", "<git_commit>")
+                      end)
+                    end,
+                  }):start()
+                end)
+              end)
+            end,
+          }):start()
         end,
         opts = {
           contains_code = true,
