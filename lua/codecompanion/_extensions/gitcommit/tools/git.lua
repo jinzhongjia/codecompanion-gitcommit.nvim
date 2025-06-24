@@ -8,6 +8,135 @@ local GitTool = {
   description = "Execute git operations and commands",
 }
 
+--- Get the path to the .gitignore file in the current git repo root
+local function get_gitignore_path()
+  local git_dir = vim.fn.system("git rev-parse --show-toplevel"):gsub("\n", "")
+  if vim.v.shell_error ~= 0 or not git_dir or git_dir == "" then
+    return nil
+  end
+  local sep = package.config:sub(1, 1)
+  return git_dir .. sep .. ".gitignore"
+end
+
+--- Read .gitignore content
+function GitTool.get_gitignore()
+  local path = get_gitignore_path()
+  if not path then
+    return false, ".gitignore not found (not in a git repo)"
+  end
+  local stat = vim.uv.fs_stat(path)
+  if not stat then
+    return true, "" -- treat as empty if not exists
+  end
+  local fd = vim.uv.fs_open(path, "r", 438)
+  if not fd then
+    return false, "Failed to open .gitignore for reading"
+  end
+  local data = vim.uv.fs_read(fd, stat.size, 0)
+  vim.uv.fs_close(fd)
+  return true, data or ""
+end
+
+--- Add rule(s) to .gitignore (no duplicates)
+function GitTool.add_gitignore_rule(rule)
+  local path = get_gitignore_path()
+  if not path then
+    return false, ".gitignore not found (not in a git repo)"
+  end
+  local rules = type(rule) == "table" and rule or { rule }
+  local stat = vim.uv.fs_stat(path)
+  local lines = {}
+  if stat then
+    local fd = vim.uv.fs_open(path, "r", 438)
+    if fd then
+      local data = vim.uv.fs_read(fd, stat.size, 0)
+      vim.uv.fs_close(fd)
+      if data then
+        for line in data:gmatch("([^\r\n]+)") do
+          table.insert(lines, line)
+        end
+      end
+    end
+  end
+  local set = {}
+  for _, l in ipairs(lines) do set[l] = true end
+  local added = {}
+  for _, r in ipairs(rules) do
+    if not set[r] then
+      table.insert(lines, r)
+      set[r] = true
+      table.insert(added, r)
+    end
+  end
+  local fdw = vim.uv.fs_open(path, "w", 420)
+  if not fdw then
+    return false, "Failed to open .gitignore for writing"
+  end
+  vim.uv.fs_write(fdw, table.concat(lines, "\n") .. "\n", 0)
+  vim.uv.fs_close(fdw)
+  if #added == 0 then
+    return true, "No new rule added (already present)"
+  end
+  return true, "Added rule(s): " .. table.concat(added, ", ")
+end
+
+--- Remove rule(s) from .gitignore
+function GitTool.remove_gitignore_rule(rule)
+  local path = get_gitignore_path()
+  if not path then
+    return false, ".gitignore not found (not in a git repo)"
+  end
+  local rules = type(rule) == "table" and rule or { rule }
+  local stat = vim.uv.fs_stat(path)
+  if not stat then
+    return false, ".gitignore does not exist"
+  end
+  local fd = vim.uv.fs_open(path, "r", 438)
+  if not fd then
+    return false, "Failed to open .gitignore for reading"
+  end
+  local data = vim.uv.fs_read(fd, stat.size, 0)
+  vim.uv.fs_close(fd)
+  if not data then
+    return false, "Failed to read .gitignore"
+  end
+  local lines = {}
+  local removed = {}
+  local rule_set = {}
+  for _, r in ipairs(rules) do rule_set[r] = true end
+  for line in data:gmatch("([^\r\n]+)") do
+    if rule_set[line] then
+      table.insert(removed, line)
+    else
+      table.insert(lines, line)
+    end
+  end
+  local fdw = vim.uv.fs_open(path, "w", 420)
+  if not fdw then
+    return false, "Failed to open .gitignore for writing"
+  end
+  vim.uv.fs_write(fdw, table.concat(lines, "\n") .. "\n", 0)
+  vim.uv.fs_close(fdw)
+  if #removed == 0 then
+    return true, "No rule removed (not present)"
+  end
+  return true, "Removed rule(s): " .. table.concat(removed, ", ")
+end
+
+--- Check if a file is ignored by .gitignore
+function GitTool.is_ignored(file)
+  if not file or file == "" then
+    return false, "No file specified"
+  end
+  local ok, result = pcall(function()
+    return vim.fn.system({"git", "check-ignore", file})
+  end)
+  if not ok or vim.v.shell_error ~= 0 then
+    return false, "File is not ignored or not in a git repo"
+  end
+  return true, vim.trim(result)
+end
+
 ---Check if we're in a git repository
 ---@return boolean
 local function is_git_repo()

@@ -38,6 +38,10 @@ GitBot.schema = {
             "contributors",
             "search_commits",
             "help",
+            "gitignore_get",
+            "gitignore_add",
+            "gitignore_remove",
+            "gitignore_check",
           },
           description = "The Git operation to perform",
         },
@@ -121,6 +125,19 @@ GitBot.schema = {
             stash_ref = {
               type = "string",
               description = "Stash reference (e.g., stash@{0})",
+            },
+            gitignore_rule = {
+              type = "string",
+              description = "Rule to add or remove from .gitignore",
+            },
+            gitignore_rules = {
+              type = "array",
+              items = { type = "string" },
+              description = "Multiple rules to add or remove from .gitignore",
+            },
+            gitignore_file = {
+              type = "string",
+              description = "File to check if ignored",
             },
           },
           additionalProperties = false,
@@ -267,6 +284,26 @@ Available Git operations:
         return { status = "error", data = "Search pattern is required" }
       end
       success, output = GitTool.search_commits(op_args.pattern, op_args.count)
+    elseif operation == "gitignore_get" then
+      success, output = GitTool.get_gitignore()
+    elseif operation == "gitignore_add" then
+      local rules = op_args.gitignore_rules or op_args.gitignore_rule
+      if not rules then
+        return { status = "error", data = "No rule(s) specified for .gitignore add" }
+      end
+      success, output = GitTool.add_gitignore_rule(rules)
+    elseif operation == "gitignore_remove" then
+      local rules = op_args.gitignore_rules or op_args.gitignore_rule
+      if not rules then
+        return { status = "error", data = "No rule(s) specified for .gitignore remove" }
+      end
+      success, output = GitTool.remove_gitignore_rule(rules)
+    elseif operation == "gitignore_check" then
+      local file = op_args.gitignore_file
+      if not file then
+        return { status = "error", data = "No file specified for .gitignore check" }
+      end
+      success, output = GitTool.is_ignored(file)
     else
       return { status = "error", data = "Unknown Git operation: " .. operation }
     end
@@ -293,37 +330,20 @@ GitBot.handlers = {
 
 -- Output handlers
 GitBot.output = {
-  success = function(self, agent, cmd, stdout)
-    local chat = agent.chat
-    local operation = self.args.operation
-    local result = stdout[1]
+   success = function(self, agent, cmd, stdout)
+     local chat = agent.chat
+     local operation = self.args.operation
+     -- Show a simple English message for user, highlight can be added later
+     local user_msg = string.format("Git operation [%s] completed", operation)
+     return chat:add_tool_output(self, stdout[1], user_msg)
+   end,
 
-    -- Format the output based on operation type
-    local formatted_output
-    if operation == "status" then
-      formatted_output = "📊 **Git Status:**\n```\n" .. result .. "\n```"
-    elseif operation == "log" then
-      formatted_output = "📜 **Git Log:**\n```\n" .. result .. "\n```"
-    elseif operation == "diff" then
-      formatted_output = "🔍 **Git Diff:**\n```diff\n" .. result .. "\n```"
-    elseif operation == "branch" then
-      formatted_output = "🌿 **Git Branches:**\n```\n" .. result .. "\n```"
-    elseif operation == "blame" then
-      formatted_output = "👤 **Git Blame:**\n```\n" .. result .. "\n```"
-    else
-      formatted_output = "✅ **Git " .. operation .. ":**\n```\n" .. result .. "\n```"
-    end
-
-    return chat:add_tool_output(self, result, formatted_output)
-  end,
-
-  error = function(self, agent, cmd, stderr, stdout)
-    local chat = agent.chat
-    local error_msg = stderr[1] or "Unknown Git error occurred"
-    local formatted_error = "❌ **Git Error:**\n```\n" .. error_msg .. "\n```"
-
-    return chat:add_tool_output(self, error_msg, formatted_error)
-  end,
+   error = function(self, agent, cmd, stderr, stdout)
+     local chat = agent.chat
+     local error_msg = stderr[1] or "Git operation failed"
+     local user_msg = "Git operation failed"
+     return chat:add_tool_output(self, error_msg, user_msg)
+   end,
 }
 
 -- Optional: No approval required for read-only operations
