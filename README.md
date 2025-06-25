@@ -1,6 +1,6 @@
 # CodeCompanion Git Commit Extension
 
-### `tools/git.lua` (🆕)
+### `tools/git.lua`
 
 Core git operations engine:
 
@@ -13,7 +13,7 @@ Core git operations engine:
 - Repository insights (contributors, remotes, commit search)
 - Reset operations with safety checks
 
-### `tools/git_bot.lua` (🆕)
+### `tools/git_bot.lua`
 
 CodeCompanion chat tool integration:
 
@@ -39,7 +39,7 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 - 🔄 Support for both regular commits and `git commit --amend`
 - 📁 File filtering support with glob patterns to exclude files from diff analysis
 
-### Git Tool Features (🆕 v2.0)
+### Git Tool Features
 - 🛠️ **@git_bot tool** - Advanced Git operations through CodeCompanion chat
 - 📊 **Git status and branch management** - Check status, create/switch branches
 - 🔍 **Advanced Git operations** - Diff, log, blame, stash operations  
@@ -63,10 +63,11 @@ require("codecompanion").setup({
         add_slash_command = true, -- Optional: adds /gitcommit slash command
         adapter = "openai",        -- Optional: specify LLM adapter (defaults to codecompanion chat adapter)
         model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
-        languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Optional: list of languages for commit messages
+        languages = { "English", "Chinese", "Japanese", "French", "Spanish" }, -- Optional: list of languages for commit messages
         exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
-      add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
-      add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
+        add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
+        add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
+        gitcommit_select_count = 100, -- Optional: number of recent commits for /gitcommit slash command (default: 100)
         buffer = {
           enabled = true,        -- Enable gitcommit buffer keymaps
           keymap = "<leader>gc", -- Keymap for generating commit message in gitcommit buffer
@@ -85,9 +86,9 @@ require("codecompanion").setup({
 
 - `:CodeCompanionGitCommit` - Generate git commit message
 - `:CCGitCommit` - Short alias for the above command
-- `:CodeCompanionGit` - Open CodeCompanion chat with git assistant (🆕)
-- `:CCGit` - Short alias for git assistant (🆕)
-### Git Tool Operations (🆕 v2.0)
+- `:CodeCompanionGit` - Open CodeCompanion chat with git assistant
+- `:CCGit` - Short alias for git assistant
+### Git Tool Operations
 
 #### Interactive Git Assistant
 
@@ -140,6 +141,13 @@ In any CodeCompanion chat buffer, use the `@git_bot` tool to perform Git operati
 **Advanced Operations** (require approval)
 - `@git_bot reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
 
+**GitIgnore Management**
+- `@git_bot gitignore_get` - View current .gitignore content
+- `@git_bot gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
+- `@git_bot gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
+- `@git_bot gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
+- `@git_bot gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+
 #### Safety Features
 
 The git tool includes automatic safety features:
@@ -171,6 +179,15 @@ The git tool includes automatic safety features:
 @git_bot log --count 10
 @git_bot show --commit_hash abc123
 @git_bot blame --file_path src/main.lua --line_start 50 --line_end 60
+```
+
+**GitIgnore Management Workflow:**
+```
+@git_bot gitignore_get                              # View current .gitignore
+@git_bot gitignore_add --gitignore_rule "*.log"     # Add single rule
+@git_bot gitignore_add --gitignore_rules ["dist/", "build/", "*.tmp"] # Add multiple rules
+@git_bot gitignore_check --gitignore_file "temp.log" # Check if file is ignored
+@git_bot gitignore_remove --gitignore_rule "*.log"  # Remove rule
 ```
 
 ### GitCommit Buffer Integration
@@ -220,7 +237,7 @@ local success = gitcommit.commit_changes("feat: add new feature")
 -- Get buffer configuration
 local buffer_config = gitcommit.get_buffer_config()
 
--- Git Tool API (🆕)
+-- Git Tool API
 -- Basic operations
 local success, output = gitcommit.git_tool.status()
 local success, branches = gitcommit.git_tool.branches()
@@ -267,7 +284,7 @@ lua/codecompanion/_extensions/gitcommit/
 ├── buffer.lua      # GitCommit buffer keymap integration
 ├── langs.lua       # Language selection functionality
 ├── types.lua       # Type definitions and TypeScript-style annotations
-└── tools/          # Git tool implementations (🆕)
+└── tools/          # Git tool implementations
     ├── git.lua     # Core git operations and command execution
     └── git_bot.lua # CodeCompanion chat tool integration
 ```
@@ -335,7 +352,7 @@ Main extension coordinator:
 - Command registration (`:CodeCompanionGitCommit`, `:CCGitCommit`)
 - Slash command integration
 - Extension exports for programmatic usage
-- Git tool integration and command setup (🆕)
+- Git tool integration and command setup
 
 ## Requirements
 
@@ -393,12 +410,13 @@ opts = {
   add_slash_command = true, -- Add /gitcommit slash command to chat buffer
   adapter = "openai",      -- LLM adapter to use (default: codecompanion chat adapter)
   model = "gpt-4",         -- Model to use (default: codecompanion chat model)
-  languages = { "English", "简体中文", "日本語", "Français", "Español" }, -- Languages for commit messages
+  languages = { "English", "Chinese", "Japanese", "French", "Spanish" }, -- Languages for commit messages
   exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis
   add_git_tool = true,     -- Add @git_bot tool to CodeCompanion (default: true)
   add_git_commands = true, -- Add :CodeCompanionGit commands (default: true)
   git_tool_auto_submit_errors = false,  -- Auto-submit git tool errors to LLM (default: false)
   git_tool_auto_submit_success = false, -- Auto-submit git tool success to LLM (default: false)
+  gitcommit_select_count = 100, -- Number of recent commits for /gitcommit slash command (default: 100)
   buffer = {
     enabled = true,        -- Enable gitcommit buffer keymaps (default: true)
     keymap = "<leader>gc", -- Keymap for generating commit message (default: "<leader>gc")
@@ -429,6 +447,10 @@ When enabled, automatically submits git tool error messages back to the LLM for 
 #### `git_tool_auto_submit_success` (boolean, default: `false`)
 
 When enabled, automatically submits git tool success messages back to the LLM to continue the workflow.
+
+#### `gitcommit_select_count` (number, default: `100`)
+
+Number of recent commits to show when using the `/gitcommit` slash command. This controls how many commits are available for selection in the interactive commit selector.
 #### `adapter` (string, optional)
 
 The LLM adapter to use for generating commit messages. If not specified, defaults to the adapter configured for CodeCompanion's chat strategy.
@@ -444,7 +466,7 @@ A list of languages that can be used for generating commit messages. When specif
 Example:
 
 ```lua
-languages = { "English", "简体中文", "日本語", "Français", "Español" }
+languages = { "English", "Chinese", "Japanese", "French", "Spanish" }
 ```
 
 #### `exclude_files` (table, optional)

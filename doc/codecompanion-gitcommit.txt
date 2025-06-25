@@ -29,8 +29,8 @@ to generate meaningful git commit messages following the Conventional Commits
 specification. It integrates seamlessly with CodeCompanion's LLM adapters to
 analyze your staged changes and create appropriate commit messages.
 
-Version 2.0 introduces comprehensive Git operations through the @git_bot tool,
-providing a natural language interface for Git workflow management within
+The extension provides comprehensive Git operations through the @git_bot tool,
+offering a natural language interface for Git workflow management within
 CodeCompanion chat buffers.
 
 ==============================================================================
@@ -47,7 +47,7 @@ CodeCompanion chat buffers.
 • Support for both regular commits and `git commit --amend`
 • File filtering support with glob patterns to exclude files from analysis
 
-### Git Tool Features (🆕 v2.0)
+### Git Tool Features
 • @git_bot tool - Advanced Git operations through CodeCompanion chat
 • Git status and branch management - Check status, create/switch branches
 • Advanced Git operations - Diff, log, blame, stash operations
@@ -73,6 +73,7 @@ Add this extension to your CodeCompanion configuration:
 	        exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
 	        add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
 	        add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
+	        gitcommit_select_count = 100, -- Optional: number of recent commits for /gitcommit slash command (default: 100)
 	        buffer = {
 	          enabled = true,        -- Enable gitcommit buffer keymaps
 	          keymap = "<leader>gc", -- Keymap for generating commit message
@@ -94,12 +95,13 @@ opts = {
   add_slash_command = false, -- Add /gitcommit slash command to chat buffer
   adapter = "openai",        -- LLM adapter to use (optional)
   model = "gpt-4",          -- Model to use (optional)
-  languages = { "English", "简体中文", "日本語" }, -- Languages for commit messages (optional)
+  languages = { "English", "Chinese", "Japanese" }, -- Languages for commit messages (optional)
   exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- File patterns to exclude from diff analysis (optional)
   add_git_tool = true,     -- Add @git_bot tool to CodeCompanion (default: true)
   add_git_commands = true, -- Add :CodeCompanionGit commands (default: true)
   git_tool_auto_submit_errors = false,  -- Auto-submit git tool errors to LLM (default: false)
   git_tool_auto_submit_success = false, -- Auto-submit git tool success to LLM (default: false)
+  gitcommit_select_count = 100, -- Number of recent commits to show in /gitcommit slash command (default: 100)
   buffer = {
     enabled = true,          -- Enable gitcommit buffer keymaps
     keymap = "<leader>gc",   -- Keymap for generating commit message
@@ -137,7 +139,7 @@ languages					*gitcommit-languages*
 	before generating the commit message. If not provided or empty,
 	commit messages will be generated in English by default.
 	
-	Example: { "English", "简体中文", "日本語", "Français" }
+	Example: { "English", "Chinese", "Japanese", "French" }
 
 exclude_files					*gitcommit-exclude-files*
 	Type: table
@@ -175,6 +177,13 @@ git_tool_auto_submit_success			*gitcommit-git-tool-auto-submit-success*
 	Default: false
 	When enabled, automatically submits git tool success messages back to
 	the LLM to continue the workflow.
+
+gitcommit_select_count				*gitcommit-gitcommit-select-count*
+	Type: number
+	Default: 100
+	Number of recent commits to show when using the /gitcommit slash command.
+	This controls how many commits are available for selection in the
+	interactive commit selector.
 
 buffer.enabled					*gitcommit-buffer-enabled*
 	Type: boolean
@@ -216,8 +225,8 @@ Use the provided commands to generate commit messages:
 • |:CCGitCommit| - Short alias for the above command
 
 Use the provided commands for git operations:
-• |:CodeCompanionGit| - Open CodeCompanion chat with git assistant (🆕)
-• |:CCGit| - Short alias for git assistant (🆕)
+• |:CodeCompanionGit| - Open CodeCompanion chat with git assistant
+• |:CCGit| - Short alias for git assistant
 
 5.2 GitCommit Buffer Integration		*codecompanion-gitcommit-buffer*
 
@@ -349,7 +358,7 @@ language commands within CodeCompanion chat buffers.
 7.1 Interactive Git Assistant			*codecompanion-gitcommit-git-assistant*
 
 Use |:CodeCompanionGit| or |:CCGit| to open a CodeCompanion chat buffer with
-the `@git_bot` tool pre-loaded. This gives you a natural language interface
+the `@git_bot` tool pre-loaded. This provides a natural language interface
 to Git operations.
 
 7.2 Chat Integration				*codecompanion-gitcommit-chat-integration*
@@ -399,6 +408,13 @@ Stash Operations~
 Advanced Operations~ (require approval)
 • `@git_bot reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
 
+GitIgnore Management~
+• `@git_bot gitignore_get` - View current .gitignore content
+• `@git_bot gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
+• `@git_bot gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
+• `@git_bot gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
+• `@git_bot gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+
 7.4 Safety Features				*codecompanion-gitcommit-safety*
 
 The git tool includes automatic safety features:
@@ -432,6 +448,15 @@ Investigation Workflow:~
 	@git_bot blame --file_path src/main.lua --line_start 50 --line_end 60
 <
 
+GitIgnore Management Workflow:~
+>
+	@git_bot gitignore_get                              # View current .gitignore
+	@git_bot gitignore_add --gitignore_rule "*.log"     # Add single rule
+	@git_bot gitignore_add --gitignore_rules ["dist/", "build/", "*.tmp"] # Add multiple rules
+	@git_bot gitignore_check --gitignore_file "temp.log" # Check if file is ignored
+	@git_bot gitignore_remove --gitignore_rule "*.log"  # Remove rule
+<
+
 ==============================================================================
 8. API						*codecompanion-gitcommit-api*
 
@@ -451,7 +476,7 @@ gitcommit.generate({lang}, {callback})		*gitcommit.generate()*
 		local gitcommit = require("codecompanion").extensions.gitcommit
 		
 		-- Generate with specific language
-		gitcommit.generate("简体中文", function(result, error)
+		gitcommit.generate("Chinese", function(result, error)
 		  if error then
 		    print("Error:", error)
 		  else
@@ -496,7 +521,7 @@ gitcommit.get_buffer_config()			*gitcommit.get_buffer_config()*
 	Returns:~
 		table: Configuration table with buffer settings
 
-Git Tool API (🆕)				*gitcommit.git_tool_api()*
+Git Tool API					*gitcommit.git_tool_api()*
 	Access to git tool functions for programmatic usage.
 
 gitcommit.git_tool.status()			*gitcommit.git_tool.status()*
@@ -584,7 +609,7 @@ lua/codecompanion/_extensions/gitcommit/
 ├── buffer.lua      # GitCommit buffer keymap integration
 ├── langs.lua       # Language selection functionality
 ├── types.lua       # Type definitions and TypeScript-style annotations
-└── tools/          # Git tool implementations (🆕)
+└── tools/          # Git tool implementations
     ├── git.lua     # Core git operations and command execution
     └── git_bot.lua # CodeCompanion chat tool integration
 
@@ -626,7 +651,7 @@ init.lua~
 	extension exports for programmatic usage. Also manages git tool
 	integration and command setup.
 
-tools/git.lua~ (🆕)
+tools/git.lua~
 	Core git operations engine providing safe git command execution with
 	error handling, repository validation and detection, git status, log,
 	diff, and branch operations, file staging/unstaging and blame information,
@@ -634,7 +659,7 @@ tools/git.lua~ (🆕)
 	management, repository insights (contributors, remotes, commit search),
 	and reset operations with safety checks.
 
-tools/git_bot.lua~ (🆕)
+tools/git_bot.lua~
 	CodeCompanion chat tool integration providing OpenAI-compatible function
 	calling schema, natural language interface for git operations, comprehensive
 	parameter validation and handling, formatted output for chat buffer display,
