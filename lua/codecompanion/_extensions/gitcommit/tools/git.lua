@@ -59,7 +59,9 @@ function GitTool.add_gitignore_rule(rule)
     end
   end
   local set = {}
-  for _, l in ipairs(lines) do set[l] = true end
+  for _, l in ipairs(lines) do
+    set[l] = true
+  end
   local added = {}
   for _, r in ipairs(rules) do
     if not set[r] then
@@ -103,7 +105,9 @@ function GitTool.remove_gitignore_rule(rule)
   local lines = {}
   local removed = {}
   local rule_set = {}
-  for _, r in ipairs(rules) do rule_set[r] = true end
+  for _, r in ipairs(rules) do
+    rule_set[r] = true
+  end
   for line in data:gmatch("([^\r\n]+)") do
     if rule_set[line] then
       table.insert(removed, line)
@@ -129,7 +133,7 @@ function GitTool.is_ignored(file)
     return false, "No file specified"
   end
   local ok, result = pcall(function()
-    return vim.fn.system({"git", "check-ignore", file})
+    return vim.fn.system({ "git", "check-ignore", file })
   end)
   if not ok or vim.v.shell_error ~= 0 then
     return false, "File is not ignored or not in a git repo"
