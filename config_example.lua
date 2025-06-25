@@ -1,5 +1,5 @@
 -- CodeCompanion GitCommit Extension Configuration Example
--- This file demonstrates how to configure the enhanced GitCommit extension with git tools
+-- This file demonstrates how to configure the GitCommit extension with git tools
 
 return {
   -- Basic configuration
@@ -7,7 +7,7 @@ return {
   model = "claude-3-5-sonnet-20241022",
 
   -- Languages for commit message generation
-  languages = { "English", "中文", "日本語", "Français" },
+  languages = { "English", "Chinese", "Japanese", "French" },
 
   -- Files to exclude from git diff (supports glob patterns)
   exclude_files = {
@@ -35,9 +35,10 @@ return {
   -- Enable slash command in chat buffer
   add_slash_command = true,
 
-  -- Git tool configuration (NEW)
+  -- Git tool configuration
   add_git_tool = true, -- Add @git_bot tool to CodeCompanion
   add_git_commands = true, -- Add :CodeCompanionGit commands
   git_tool_auto_submit_errors = false, -- Don't auto-submit errors to LLM
   git_tool_auto_submit_success = false, -- Don't auto-submit success to LLM
+  gitcommit_select_count = 100, -- Number of recent commits for /gitcommit slash command
 }
