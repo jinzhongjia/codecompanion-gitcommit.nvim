@@ -330,20 +330,20 @@ GitBot.handlers = {
 
 -- Output handlers
 GitBot.output = {
-   success = function(self, agent, cmd, stdout)
-     local chat = agent.chat
-     local operation = self.args.operation
-     -- Show a simple English message for user, highlight can be added later
-     local user_msg = string.format("Git operation [%s] completed", operation)
-     return chat:add_tool_output(self, stdout[1], user_msg)
-   end,
+  success = function(self, agent, cmd, stdout)
+    local chat = agent.chat
+    local operation = self.args.operation
+    -- Show a simple English message for user, highlight can be added later
+    local user_msg = string.format("Git operation [%s] completed", operation)
+    return chat:add_tool_output(self, stdout[1], user_msg)
+  end,
 
-   error = function(self, agent, cmd, stderr, stdout)
-     local chat = agent.chat
-     local error_msg = stderr[1] or "Git operation failed"
-     local user_msg = "Git operation failed"
-     return chat:add_tool_output(self, error_msg, user_msg)
-   end,
+  error = function(self, agent, cmd, stderr, stdout)
+    local chat = agent.chat
+    local error_msg = stderr[1] or "Git operation failed"
+    local user_msg = "Git operation failed"
+    return chat:add_tool_output(self, error_msg, user_msg)
+  end,
 }
 
 -- Optional: No approval required for read-only operations
