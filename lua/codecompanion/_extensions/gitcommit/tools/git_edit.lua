@@ -26,6 +26,7 @@ GitEdit.schema = {
             "reset",
             "gitignore_add",
             "gitignore_remove",
+            "push",
             "help"
           },
           description = "The write-access Git operation to perform."
@@ -79,6 +80,18 @@ GitEdit.schema = {
               type = "array",
               items = { type = "string" },
               description = "Multiple rules to add or remove from .gitignore"
+            },
+            remote = {
+              type = "string",
+              description = "The name of the remote to push to (e.g., origin)"
+            },
+            branch = {
+              type = "string",
+              description = "The name of the branch to push (defaults to current branch)"
+            },
+            force = {
+              type = "boolean",
+              description = "Force push (DANGEROUS: overwrites remote history)"
             }
           },
           additionalProperties = false
@@ -107,6 +120,8 @@ GitEdit.system_prompt = [[## Git Edit Tool (`git_edit`)
 - `reset`: Reset to commit (args: commit_hash, mode)
 - `gitignore_add`: Add a rule to .gitignore
 - `gitignore_remove`: Remove a rule from .gitignore
+- `push`: Push changes to a remote repository (args: remote, branch, force)
+  WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
 - `help`: Show available edit operations
 ]]
 
@@ -116,7 +131,7 @@ GitEdit.cmds = {
     local op_args = args.args or {}
 
     if operation == "help" then
-      local help_text = [[\
+      local help_text = [[
 Available write-access Git operations:
 • stage/unstage: Stage/unstage files
 • create_branch: Create new branch
@@ -125,6 +140,7 @@ Available write-access Git operations:
 • reset: Reset to specific commit
 • gitignore_add: Add rule to .gitignore
 • gitignore_remove: Remove rule from .gitignore
+• push: Push changes to a remote repository (WARNING: force push is dangerous)
       ]]
       return { status = "success", data = help_text }
     end
@@ -172,6 +188,8 @@ Available write-access Git operations:
         return { status = "error", data = "No rule(s) specified for .gitignore remove" }
       end
       success, output = GitTool.remove_gitignore_rule(rules)
+    elseif operation == "push" then
+      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force)
     else
       return { status = "error", data = "Unknown Git edit operation: " .. operation }
     end
