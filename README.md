@@ -40,7 +40,8 @@ A CodeCompanion extension that generates AI-powered git commit messages followin
 - 📁 File filtering support with glob patterns to exclude files from diff analysis
 
 ### Git Tool Features
-- 🛠️ **@git_bot tool** - Advanced Git operations through CodeCompanion chat
+- 🛠️ **@git_read tool** - Read-only Git operations through CodeCompanion chat (status, log, diff, etc.)
+- ✍️ **@git_edit tool** - Write-access Git operations through CodeCompanion chat (stage, unstage, branch creation, etc.)
 - 📊 **Git status and branch management** - Check status, create/switch branches
 - 🔍 **Advanced Git operations** - Diff, log, blame, stash operations  
 - 👥 **Repository insights** - Contributors, commit search, remote info
@@ -65,7 +66,7 @@ require("codecompanion").setup({
         model = "gpt-4",          -- Optional: specify model (defaults to codecompanion chat model)
         languages = { "English", "Chinese", "Japanese", "French", "Spanish" }, -- Optional: list of languages for commit messages
         exclude_files = { "*.pb.go", "*.min.js", "package-lock.json" }, -- Optional: exclude files from diff analysis
-        add_git_tool = true,       -- Optional: add @git_bot tool to CodeCompanion (default: true)
+        add_git_tool = true,       -- Optional: add @git_read and @git_edit tools to CodeCompanion (default: true)
         add_git_commands = true,   -- Optional: add :CodeCompanionGit commands (default: true)
         gitcommit_select_count = 100, -- Optional: number of recent commits for /gitcommit slash command (default: 100)
         buffer = {
@@ -92,102 +93,105 @@ require("codecompanion").setup({
 
 #### Interactive Git Assistant
 
-Use `:CodeCompanionGit` or `:CCGit` to open a CodeCompanion chat buffer with the `@git_bot` tool pre-loaded. This gives you a natural language interface to Git operations.
+Use `:CodeCompanionGit` or `:CCGit` to open a CodeCompanion chat buffer. You can then use `@git_read` for read-only operations or `@git_edit` for operations that modify the repository.
 
 #### Chat Integration
 
-In any CodeCompanion chat buffer, use the `@git_bot` tool to perform Git operations:
+In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git operations:
 
 ```
-@git_bot help                    # Show available operations
-@git_bot status                  # Show git status
-@git_bot log --count 5           # Show last 5 commits
-@git_bot diff --staged           # Show staged changes
-@git_bot branch                  # List all branches
-@git_bot create_branch --branch_name feature/new-ui
-@git_bot stage --files ["src/main.lua", "README.md"]
-@git_bot stash --message "Work in progress"
+@git_read help                    # Show available read-only operations
+@git_read status                  # Show git status
+@git_read log --count 5           # Show last 5 commits
+@git_read diff --staged           # Show staged changes
+@git_read branch                  # List all branches
+
+@git_edit help                    # Show available write-access operations
+@git_edit create_branch --branch_name feature/new-ui
+@git_edit stage --files ["src/main.lua", "README.md"]
+@git_edit stash --message "Work in progress"
 ```
 
 #### Git Tool Commands Reference
 
+**@git_read: Read-only Git Operations**
+
 **Repository Status & Info**
-- `@git_bot status` - Show repository status
-- `@git_bot log [--count N] [--format FORMAT]` - Show commit history
-- `@git_bot branch [--remote_only]` - List branches
-- `@git_bot remotes` - Show remote repositories
-- `@git_bot contributors [--count N]` - Show top contributors
+- `@git_read status` - Show repository status
+- `@git_read log [--count N] [--format FORMAT]` - Show commit history
+- `@git_read branch [--remote_only]` - List branches
+- `@git_read remotes` - Show remote repositories
+- `@git_read contributors [--count N]` - Show top contributors
+- `@git_read show [--commit_hash HASH]` - Show commit details
+- `@git_read diff_commits --commit1 HASH1 [--commit2 HASH2] [--file_path PATH]` - Compare commits
+- `@git_read search_commits --pattern "PATTERN" [--count N]` - Search commits
+- `@git_read stash_list` - List all stashes
+- `@git_read blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
+- `@git_read gitignore_get` - View current .gitignore content
+- `@git_read gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+
+**@git_edit: Write-access Git Operations**
 
 **File Operations**
-- `@git_bot diff [--staged] [--file_path PATH]` - Show differences
-- `@git_bot stage --files ["file1", "file2"]` - Stage files
-- `@git_bot unstage --files ["file1", "file2"]` - Unstage files
-- `@git_bot blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
+- `@git_edit stage --files ["file1", "file2"]` - Stage files
+- `@git_edit unstage --files ["file1", "file2"]` - Unstage files
 
 **Branch Management**
-- `@git_bot create_branch --branch_name NAME [--checkout BOOL]` - Create new branch
-- `@git_bot checkout --target BRANCH_OR_COMMIT` - Switch branch/commit
-
-**Commit Operations**
-- `@git_bot show [--commit_hash HASH]` - Show commit details
-- `@git_bot diff_commits --commit1 HASH1 [--commit2 HASH2] [--file_path PATH]` - Compare commits
-- `@git_bot search_commits --pattern "PATTERN" [--count N]` - Search commits
+- `@git_edit create_branch --branch_name NAME [--checkout BOOL]` - Create new branch
+- `@git_edit checkout --target BRANCH_OR_COMMIT` - Switch branch/commit
 
 **Stash Operations**
-- `@git_bot stash [--message "MSG"] [--include_untracked]` - Stash changes
-- `@git_bot stash_list` - List all stashes
-- `@git_bot apply_stash [--stash_ref "stash@{0}"]` - Apply stash
+- `@git_edit stash [--message "MSG"] [--include_untracked]` - Stash changes
+- `@git_edit apply_stash [--stash_ref "stash@{0}"]` - Apply stash
 
 **Advanced Operations** (require approval)
-- `@git_bot reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
+- `@git_edit reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
 
 **GitIgnore Management**
-- `@git_bot gitignore_get` - View current .gitignore content
-- `@git_bot gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
-- `@git_bot gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
-- `@git_bot gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
-- `@git_bot gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+- `@git_edit gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
+- `@git_edit gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
+- `@git_edit gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
 
 #### Safety Features
 
-The git tool includes automatic safety features:
-- **Read-only operations** (status, log, diff, show, blame) don't require approval
-- **Modifying operations** (stage, unstage, create_branch, checkout, reset) require user confirmation
-- **Repository validation** ensures you're in a valid Git repository
-- **Comprehensive error handling** with helpful error messages
+The git tools include automatic safety features:
+- **Read-only operations** (via `@git_read`) do not require approval.
+- **Modifying operations** (via `@git_edit`) require user confirmation.
+- **Repository validation** ensures you're in a valid Git repository.
+- **Comprehensive error handling** with helpful error messages.
 
 #### Example Workflows
 
 **Code Review Workflow:**
 ```
-@git_bot status
-@git_bot diff --staged
+@git_read status
+@git_read diff --staged
 /gitcommit  # Generate commit message
 ```
 
 **Branch Management:**
 ```
-@git_bot branch
-@git_bot create_branch --branch_name feature/new-ui
+@git_read branch
+@git_edit create_branch --branch_name feature/new-ui
 # ... make changes ...
-@git_bot stage --files ["src/ui.lua"]
-@git_bot status
+@git_edit stage --files ["src/ui.lua"]
+@git_read status
 ```
 
 **Investigation Workflow:**
 ```
-@git_bot log --count 10
-@git_bot show --commit_hash abc123
-@git_bot blame --file_path src/main.lua --line_start 50 --line_end 60
+@git_read log --count 10
+@git_read show --commit_hash abc123
+@git_read blame --file_path src/main.lua --line_start 50 --line_end 60
 ```
 
 **GitIgnore Management Workflow:**
 ```
-@git_bot gitignore_get                              # View current .gitignore
-@git_bot gitignore_add --gitignore_rule "*.log"     # Add single rule
-@git_bot gitignore_add --gitignore_rules ["dist/", "build/", "*.tmp"] # Add multiple rules
-@git_bot gitignore_check --gitignore_file "temp.log" # Check if file is ignored
-@git_bot gitignore_remove --gitignore_rule "*.log"  # Remove rule
+@git_read gitignore_get                              # View current .gitignore
+@git_edit gitignore_add --gitignore_rule "*.log"     # Add single rule
+@git_edit gitignore_add --gitignore_rules ["dist/", "build/", "*.tmp"] # Add multiple rules
+@git_read gitignore_check --gitignore_file "temp.log" # Check if file is ignored
+@git_edit gitignore_remove --gitignore_rule "*.log"  # Remove rule
 ```
 
 ### GitCommit Buffer Integration
@@ -286,7 +290,8 @@ lua/codecompanion/_extensions/gitcommit/
 ├── types.lua       # Type definitions and TypeScript-style annotations
 └── tools/          # Git tool implementations
     ├── git.lua     # Core git operations and command execution
-    └── git_bot.lua # CodeCompanion chat tool integration
+    ├── git_read.lua # CodeCompanion chat tool for read-only Git operations
+    └── git_edit.lua # CodeCompanion chat tool for write-access Git operations
 ```
 
 ## Module Overview
@@ -434,11 +439,11 @@ When enabled, adds `/gitcommit` slash command to CodeCompanion chat buffers.
 
 #### `add_git_tool` (boolean, default: `true`)
 
-When enabled, adds the `@git_bot` tool to CodeCompanion chat buffers. This allows you to perform Git operations through natural language in chat.
+When enabled, adds the `@git_read` and `@git_edit` tools to CodeCompanion chat buffers. This allows you to perform Git operations through natural language in chat.
 
 #### `add_git_commands` (boolean, default: `true`)
 
-When enabled, adds `:CodeCompanionGit` and `:CCGit` commands that open a chat buffer with the git tool pre-loaded.
+When enabled, adds `:CodeCompanionGit` and `:CCGit` commands that open a chat buffer for Git assistance.
 
 #### `git_tool_auto_submit_errors` (boolean, default: `false`)
 

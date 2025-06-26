@@ -3,7 +3,8 @@ local Generator = require("codecompanion._extensions.gitcommit.generator")
 local UI = require("codecompanion._extensions.gitcommit.ui")
 local Buffer = require("codecompanion._extensions.gitcommit.buffer")
 local Langs = require("codecompanion._extensions.gitcommit.langs")
-local GitBot = require("codecompanion._extensions.gitcommit.tools.git_bot")
+local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
+local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
 
 local M = {}
 
@@ -70,15 +71,24 @@ return {
 
     Langs.setup(opts.languages)
 
-    -- Add git_bot tool to CodeCompanion tools if enabled
+    -- Add git_read and git_edit tools to CodeCompanion tools if enabled
     if opts.add_git_tool ~= false then
       local codecompanion_config = require("codecompanion.config")
       if codecompanion_config.strategies and codecompanion_config.strategies.chat then
-        -- Add git_bot tool to chat tools
+        -- Add git_read tool to chat tools
         codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
-        codecompanion_config.strategies.chat.tools["git_bot"] = {
-          description = "Advanced Git operations and assistance",
-          callback = GitBot,
+        codecompanion_config.strategies.chat.tools["git_read"] = {
+          description = "Read-only Git operations (status, log, diff, etc.)",
+          callback = GitRead,
+          opts = {
+            auto_submit_errors = opts.git_tool_auto_submit_errors or false,
+            auto_submit_success = opts.git_tool_auto_submit_success or false,
+          },
+        }
+        -- Add git_edit tool to chat tools
+        codecompanion_config.strategies.chat.tools["git_edit"] = {
+          description = "Write-access Git operations (stage, unstage, branch, etc.)",
+          callback = GitEdit,
           opts = {
             auto_submit_errors = opts.git_tool_auto_submit_errors or false,
             auto_submit_success = opts.git_tool_auto_submit_success or false,
@@ -103,33 +113,23 @@ return {
     -- Add command for interactive git operations
     if opts.add_git_commands ~= false then
       vim.api.nvim_create_user_command("CodeCompanionGit", function()
-        -- Open chat buffer with git_bot tool pre-loaded
+        -- Open chat buffer without pre-loading any specific tool
         local chat = require("codecompanion").chat()
         if chat then
-          -- Add git_bot tool to the chat
           vim.schedule(function()
-            local chat_buffer = vim.api.nvim_get_current_buf()
-            if vim.api.nvim_buf_is_valid(chat_buffer) then
-              -- Insert @git_bot at the cursor position
-              local cursor = vim.api.nvim_win_get_cursor(0)
-              local line = cursor[1] - 1
-              local col = cursor[2]
-              local current_line = vim.api.nvim_buf_get_lines(chat_buffer, line, line + 1, false)[1] or ""
-              local new_line = current_line:sub(1, col) .. "@git_bot " .. current_line:sub(col + 1)
-              vim.api.nvim_buf_set_lines(chat_buffer, line, line + 1, false, { new_line })
-              vim.api.nvim_win_set_cursor(0, { line + 1, col + 9 })
-            end
+            -- Optionally, you can add a message to guide the user to use @git_read or @git_edit
+            -- chat:add_message("Please use @git_read or @git_edit for Git operations.")
           end)
         end
       end, {
-        desc = "Open CodeCompanion chat with Git assistance",
+        desc = "Open CodeCompanion chat for Git assistance",
       })
 
       -- Add shorter alias
       vim.api.nvim_create_user_command("CCGit", function()
         vim.cmd("CodeCompanionGit")
       end, {
-        desc = "Open CodeCompanion chat with Git assistance (short alias)",
+        desc = "Open CodeCompanion chat for Git assistance (short alias)",
       })
     end
     -- Add to CodeCompanion slash commands if requested
