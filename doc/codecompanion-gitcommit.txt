@@ -418,6 +418,7 @@ GitIgnore Management~
 • `@git_edit gitignore_remove: Remove rule from .gitignore
 • `@git_edit push: Push changes to a remote repository (WARNING: force push is dangerous)
 • `@git_edit rebase: Rebase current branch (WARNING: interactive rebase is dangerous)
+• `@git_edit cherry_pick: Apply changes from existing commits
 • `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL]` - Push changes to a remote repository.
   WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
 
