@@ -31,7 +31,7 @@ GitEdit.schema = {
             "cherry_pick",
             "help",
           },
-          description = "The write-access Git operation to perform."
+          description = "The write-access Git operation to perform.",
         },
         args = {
           type = "object",

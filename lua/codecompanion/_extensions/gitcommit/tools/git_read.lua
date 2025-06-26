@@ -96,7 +96,8 @@ GitRead.schema = {
   },
 }
 
-GitRead.system_prompt = "## Git Read Tool (`git_read`)\n- You have access to a read-only Git tool.\n- You can perform operations like status, diff, log, and branch listing.\n- Always check if you're in a Git repository before performing operations.\n- Use this tool to gather information about the repository state.\n\n## AVAILABLE OPERATIONS\n- `status`: Show repository status\n- `log`: Show commit history (args: count, format)\n- `diff`: Show differences (args: staged, file_path)\n- `branch`: List branches (args: remote_only)\n- `remotes`: Show remote repositories\n- `show`: Show commit details (args: commit_hash)\n- `blame`: Show file blame information (args: file_path, line_start, line_end)\n- `stash_list`: List stashes\n- `diff_commits`: Compare commits (args: commit1, commit2, file_path)\n- `contributors`: Show top contributors (args: count)\n- `search_commits`: Search commits by message (args: pattern, count)\n- `gitignore_get`: Get the content of the .gitignore file\n- `gitignore_check`: Check if a file is ignored by .gitignore\n- `help`: Show available read operations\n"
+GitRead.system_prompt =
+  "## Git Read Tool (`git_read`)\n- You have access to a read-only Git tool.\n- You can perform operations like status, diff, log, and branch listing.\n- Always check if you're in a Git repository before performing operations.\n- Use this tool to gather information about the repository state.\n\n## AVAILABLE OPERATIONS\n- `status`: Show repository status\n- `log`: Show commit history (args: count, format)\n- `diff`: Show differences (args: staged, file_path)\n- `branch`: List branches (args: remote_only)\n- `remotes`: Show remote repositories\n- `show`: Show commit details (args: commit_hash)\n- `blame`: Show file blame information (args: file_path, line_start, line_end)\n- `stash_list`: List stashes\n- `diff_commits`: Compare commits (args: commit1, commit2, file_path)\n- `contributors`: Show top contributors (args: count)\n- `search_commits`: Search commits by message (args: pattern, count)\n- `gitignore_get`: Get the content of the .gitignore file\n- `gitignore_check`: Check if a file is ignored by .gitignore\n- `help`: Show available read operations\n"
 
 GitRead.cmds = {
   function(self, args, input)
@@ -104,7 +105,8 @@ GitRead.cmds = {
     local op_args = args.args or {}
 
     if operation == "help" then
-      local help_text = "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
+      local help_text =
+        "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
       return { status = "success", data = help_text }
     end
 
