@@ -427,5 +427,16 @@ function GitTool.rebase(onto, base, interactive)
   return execute_git_command(cmd)
 end
 
+---Apply the changes introduced by some existing commits
+---@param commit_hash string The commit hash to cherry-pick
+---@return boolean success, string output
+function GitTool.cherry_pick(commit_hash)
+  if not commit_hash then
+    return false, "Commit hash is required for cherry-pick"
+  end
+  local cmd = "git cherry-pick " .. vim.fn.shellescape(commit_hash)
+  return execute_git_command(cmd)
+end
+
 M.GitTool = GitTool
 return M
