@@ -389,5 +389,24 @@ function GitTool.search_commits(pattern, count)
   return execute_git_command(cmd)
 end
 
+---Push changes to a remote repository
+---@param remote? string The name of the remote to push to (e.g., origin)
+---@param branch? string The name of the branch to push (defaults to current branch)
+---@param force? boolean Force push (DANGEROUS: overwrites remote history)
+---@return boolean success, string output
+function GitTool.push(remote, branch, force)
+  local cmd = "git push"
+  if force then
+    cmd = cmd .. " --force"
+  end
+  if remote then
+    cmd = cmd .. " " .. vim.fn.shellescape(remote)
+  end
+  if branch then
+    cmd = cmd .. " " .. vim.fn.shellescape(branch)
+  end
+  return execute_git_command(cmd)
+end
+
 M.GitTool = GitTool
 return M

@@ -150,7 +150,9 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 **GitIgnore Management**
 - `@git_edit gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
 - `@git_edit gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
-- `@git_edit gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
+• `@git_edit gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
+• `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL]` - Push changes to a remote repository.
+  WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
 
 #### Safety Features
 
