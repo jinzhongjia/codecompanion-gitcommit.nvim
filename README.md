@@ -153,6 +153,8 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 • `@git_edit gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
 • `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL]` - Push changes to a remote repository.
   WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
+• `@git_edit rebase [--onto ONTO] [--base BASE] [--interactive BOOL]` - Rebase current branch onto another.
+  WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.
 
 #### Safety Features
 

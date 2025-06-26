@@ -408,5 +408,24 @@ function GitTool.push(remote, branch, force)
   return execute_git_command(cmd)
 end
 
+---Perform a git rebase operation
+---@param onto? string The branch to rebase onto
+---@param base? string The upstream branch to rebase from
+---@param interactive? boolean Whether to perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)
+---@return boolean success, string output
+function GitTool.rebase(onto, base, interactive)
+  local cmd = "git rebase"
+  if interactive then
+    cmd = cmd .. " --interactive"
+  end
+  if onto then
+    cmd = cmd .. " --onto " .. vim.fn.shellescape(onto)
+  end
+  if base then
+    cmd = cmd .. " " .. vim.fn.shellescape(base)
+  end
+  return execute_git_command(cmd)
+end
+
 M.GitTool = GitTool
 return M
