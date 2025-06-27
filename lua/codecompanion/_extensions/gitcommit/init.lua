@@ -218,7 +218,6 @@ return {
     setup_slash_commands(opts)
   end,
 
-
   exports = {
     ---Generate commit message programmatically (for external use)
     ---@param lang string|nil Language to generate commit message in (optional)

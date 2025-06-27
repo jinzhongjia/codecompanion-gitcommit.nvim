@@ -231,7 +231,10 @@ function Git.commit_changes(message)
       if Git.is_amending() then
         vim.notify("No changes to amend. The commit already exists.", vim.log.levels.WARN)
       else
-        vim.notify("No changes found to commit. Please stage your changes or ensure there are unstaged changes in your working directory.", vim.log.levels.ERROR)
+        vim.notify(
+          "No changes found to commit. Please stage your changes or ensure there are unstaged changes in your working directory.",
+          vim.log.levels.ERROR
+        )
       end
     end
     return false
