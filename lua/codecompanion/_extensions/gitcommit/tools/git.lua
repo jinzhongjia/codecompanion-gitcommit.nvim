@@ -438,5 +438,16 @@ function GitTool.cherry_pick(commit_hash)
   return execute_git_command(cmd)
 end
 
+---Revert a commit
+---@param commit_hash string The commit hash to revert
+---@return boolean success, string output
+function GitTool.revert(commit_hash)
+  if not commit_hash then
+    return false, "Commit hash is required for revert"
+  end
+  local cmd = "git revert --no-edit " .. vim.fn.shellescape(commit_hash)
+  return execute_git_command(cmd)
+end
+
 M.GitTool = GitTool
 return M
