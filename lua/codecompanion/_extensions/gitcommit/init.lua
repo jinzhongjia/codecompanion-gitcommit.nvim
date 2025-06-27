@@ -5,6 +5,7 @@ local Buffer = require("codecompanion._extensions.gitcommit.buffer")
 local Langs = require("codecompanion._extensions.gitcommit.langs")
 local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
 local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
+local Config = require("codecompanion._extensions.gitcommit.config")
 
 local M = {}
 
@@ -48,192 +49,149 @@ function M.generate_commit_message()
   end)
 end
 
+local function setup_tools(opts)
+  if not opts.add_git_tool then
+    return
+  end
+
+  local codecompanion_config = require("codecompanion.config")
+  if not (codecompanion_config.strategies and codecompanion_config.strategies.chat) then
+    return
+  end
+
+  codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
+  codecompanion_config.strategies.chat.tools["git_read"] = {
+    description = "Read-only Git operations (status, log, diff, etc.)",
+    callback = GitRead,
+    opts = {
+      auto_submit_errors = opts.git_tool_auto_submit_errors,
+      auto_submit_success = opts.git_tool_auto_submit_success,
+    },
+  }
+  codecompanion_config.strategies.chat.tools["git_edit"] = {
+    description = "Write-access Git operations (stage, unstage, branch, etc.)",
+    callback = GitEdit,
+    opts = {
+      auto_submit_errors = opts.git_tool_auto_submit_errors,
+      auto_submit_success = opts.git_tool_auto_submit_success,
+    },
+  }
+end
+
+local function create_command(name, callback, desc)
+  vim.api.nvim_create_user_command(name, callback, { desc = desc })
+end
+
+local function setup_commands(opts)
+  create_command("CodeCompanionGitCommit", M.generate_commit_message, "Generate Git commit message using AI")
+  create_command("CCGitCommit", M.generate_commit_message, "Generate Git commit message using AI (short alias)")
+
+  if opts.add_git_commands then
+    local chat_command = function()
+      require("codecompanion").chat()
+    end
+    create_command("CodeCompanionGit", chat_command, "Open CodeCompanion chat for Git assistance")
+    create_command("CCGit", chat_command, "Open CodeCompanion chat for Git assistance (short alias)")
+  end
+end
+
+local function setup_slash_commands(opts)
+  if not opts.add_slash_command then
+    return
+  end
+
+  local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
+  local Job = require("plenary.job")
+
+  local function get_commit_content(chat, choice)
+    Job:new({
+      command = "git",
+      args = { "show", choice.hash },
+      on_exit = function(j, rv)
+        local content = table.concat(j:result(), "\n")
+        if rv ~= 0 or not content or content == "" then
+          chat:add_reference({ role = "user", content = "Error: Failed to get commit content." }, "git", "<git_error>")
+        else
+          chat:add_reference({
+            role = "user",
+            content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, content),
+          }, "git", "<git_commit>")
+        end
+      end,
+    }):start()
+  end
+
+  local function select_commit(chat, items)
+    vim.ui.select(items, {
+      prompt = "Select a commit to insert:",
+      format_item = function(item)
+        return item.label
+      end,
+    }, function(choice)
+      if choice then
+        get_commit_content(chat, choice)
+      end
+    end)
+  end
+
+  local function get_commit_list(chat, opts)
+    Job:new({
+      command = "git",
+      args = { "log", "--oneline", "-n", tostring(opts.gitcommit_select_count) },
+      on_exit = function(j, rv)
+        if rv ~= 0 then
+          return chat:add_reference({ role = "user", content = "Error: Failed to get git log" }, "git", "<git_error>")
+        end
+        local output = j:result()
+        if not output or #output == 0 then
+          return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+        end
+        local items = {}
+        for _, line in ipairs(output) do
+          local hash, msg = line:match("^(%w+)%s(.+)$")
+          if hash and msg then
+            table.insert(items, { label = hash .. " " .. msg, hash = hash })
+          end
+        end
+        if #items == 0 then
+          return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+        end
+        vim.schedule(function()
+          select_commit(chat, items)
+        end)
+      end,
+    }):start()
+  end
+
+  slash_commands["gitcommit"] = {
+    description = "Select a commit and insert its full content (message + diff)",
+    callback = function(chat)
+      if not Git.is_repository() then
+        return chat:add_reference({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
+      end
+      get_commit_list(chat, opts)
+    end,
+    opts = {
+      contains_code = true,
+    },
+  }
+end
+
 return {
   --- @param opts CodeCompanion.GitCommit.ExtensionOpts
   setup = function(opts)
-    opts = opts or {}
+    opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
 
-    -- Setup Git module with file exclusion configuration
-    Git.setup({
-      exclude_files = opts.exclude_files,
-    })
-
-    -- Setup generator with adapter and model configuration
+    Git.setup({ exclude_files = opts.exclude_files })
     Generator.setup(opts.adapter, opts.model)
-
-    -- Setup buffer keymaps for gitcommit filetype
-    if opts.buffer then
-      Buffer.setup(opts.buffer)
-    else
-      -- Enable buffer keymaps by default
-      Buffer.setup()
-    end
-
+    Buffer.setup(opts.buffer)
     Langs.setup(opts.languages)
 
-    -- Add git_read and git_edit tools to CodeCompanion tools if enabled
-    if opts.add_git_tool ~= false then
-      local codecompanion_config = require("codecompanion.config")
-      if codecompanion_config.strategies and codecompanion_config.strategies.chat then
-        -- Add git_read tool to chat tools
-        codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
-        codecompanion_config.strategies.chat.tools["git_read"] = {
-          description = "Read-only Git operations (status, log, diff, etc.)",
-          callback = GitRead,
-          opts = {
-            auto_submit_errors = opts.git_tool_auto_submit_errors or false,
-            auto_submit_success = opts.git_tool_auto_submit_success or false,
-          },
-        }
-        -- Add git_edit tool to chat tools
-        codecompanion_config.strategies.chat.tools["git_edit"] = {
-          description = "Write-access Git operations (stage, unstage, branch, etc.)",
-          callback = GitEdit,
-          opts = {
-            auto_submit_errors = opts.git_tool_auto_submit_errors or false,
-            auto_submit_success = opts.git_tool_auto_submit_success or false,
-          },
-        }
-      end
-    end
-    -- Create user commands for git commit generation
-    vim.api.nvim_create_user_command("CodeCompanionGitCommit", function()
-      M.generate_commit_message()
-    end, {
-      desc = "Generate Git commit message using AI",
-    })
-
-    -- Create shorter alias command
-    vim.api.nvim_create_user_command("CCGitCommit", function()
-      M.generate_commit_message()
-    end, {
-      desc = "Generate Git commit message using AI (short alias)",
-    })
-
-    -- Add command for interactive git operations
-    if opts.add_git_commands ~= false then
-      vim.api.nvim_create_user_command("CodeCompanionGit", function()
-        -- Open chat buffer without pre-loading any specific tool
-        local chat = require("codecompanion").chat()
-        if chat then
-          vim.schedule(function()
-            -- Optionally, you can add a message to guide the user to use @git_read or @git_edit
-            -- chat:add_message("Please use @git_read or @git_edit for Git operations.")
-          end)
-        end
-      end, {
-        desc = "Open CodeCompanion chat for Git assistance",
-      })
-
-      -- Add shorter alias
-      vim.api.nvim_create_user_command("CCGit", function()
-        vim.cmd("CodeCompanionGit")
-      end, {
-        desc = "Open CodeCompanion chat for Git assistance (short alias)",
-      })
-    end
-    -- Add to CodeCompanion slash commands if requested
-    if opts.add_slash_command then
-      local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
-      local gitcommit_select_count = (opts.gitcommit_select_count or 100)
-      slash_commands["gitcommit"] = {
-        description = "Select a commit and insert its full content (message + diff)",
-        callback = function(chat)
-          if not Git.is_repository() then
-            chat:add_reference({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
-            return
-          end
-
-          -- 获取最近N条commit，数量可配置
-          local Job = require("plenary.job")
-          Job
-            :new({
-              command = "git",
-              args = { "log", "--oneline", "-n", tostring(gitcommit_select_count) },
-              on_exit = function(j, return_val)
-                if return_val ~= 0 then
-                  vim.schedule(function()
-                    chat:add_reference(
-                      { role = "user", content = "Error: Failed to get git log" },
-                      "git",
-                      "<git_error>"
-                    )
-                  end)
-                  return
-                end
-                local output = j:result()
-                if not output or #output == 0 then
-                  vim.schedule(function()
-                    chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
-                  end)
-                  return
-                end
-                -- 解析commit hash和message
-                local items = {}
-                for _, line in ipairs(output) do
-                  local hash, msg = line:match("^(%w+)%s(.+)$")
-                  if hash and msg then
-                    table.insert(items, { label = hash .. " " .. msg, hash = hash })
-                  end
-                end
-                if #items == 0 then
-                  vim.schedule(function()
-                    chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
-                  end)
-                  return
-                end
-                vim.schedule(function()
-                  vim.ui.select(items, {
-                    prompt = "Select a commit to insert:",
-                    format_item = function(item)
-                      return item.label
-                    end,
-                  }, function(choice)
-                    if not choice then
-                      return
-                    end
-                    -- 获取完整commit内容
-                    Job
-                      :new({
-                        command = "git",
-                        args = { "show", choice.hash },
-                        on_exit = function(j2, rv2)
-                          local commit_content = table.concat(j2:result(), "\n")
-                          if rv2 ~= 0 or not commit_content or commit_content == "" then
-                            vim.schedule(function()
-                              chat:add_reference(
-                                { role = "user", content = "Error: Failed to get commit content." },
-                                "git",
-                                "<git_error>"
-                              )
-                            end)
-                            return
-                          end
-                          vim.schedule(function()
-                            chat:add_reference({
-                              role = "user",
-                              content = "Selected commit ("
-                                .. choice.hash
-                                .. ") full content:\n```\n"
-                                .. commit_content
-                                .. "\n```",
-                            }, "git", "<git_commit>")
-                          end)
-                        end,
-                      })
-                      :start()
-                  end)
-                end)
-              end,
-            })
-            :start()
-        end,
-        opts = {
-          contains_code = true,
-        },
-      }
-    end
+    setup_tools(opts)
+    setup_commands(opts)
+    setup_slash_commands(opts)
   end,
+
 
   exports = {
     ---Generate commit message programmatically (for external use)
