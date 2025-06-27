@@ -135,14 +135,16 @@ local function setup_slash_commands(opts)
       args = { "show", choice.hash },
       on_exit = function(j, rv)
         local content = table.concat(j:result(), "\n")
-        if rv ~= 0 or not content or content == "" then
-          chat:add_reference({ role = "user", content = "Error: Failed to get commit content." }, "git", "<git_error>")
-        else
-          chat:add_reference({
-            role = "user",
-            content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, content),
-          }, "git", "<git_commit>")
-        end
+        vim.schedule(function()
+          if rv ~= 0 or not content or content == "" then
+            chat:add_reference({ role = "user", content = "Error: Failed to get commit content." }, "git", "<git_error>")
+          else
+            chat:add_reference({
+              role = "user",
+              content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, content),
+            }, "git", "<git_commit>")
+          end
+        end)
       end,
     }):start()
   end
@@ -165,24 +167,24 @@ local function setup_slash_commands(opts)
       command = "git",
       args = { "log", "--oneline", "-n", tostring(opts.gitcommit_select_count) },
       on_exit = function(j, rv)
-        if rv ~= 0 then
-          return chat:add_reference({ role = "user", content = "Error: Failed to get git log" }, "git", "<git_error>")
-        end
         local output = j:result()
-        if not output or #output == 0 then
-          return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
-        end
-        local items = {}
-        for _, line in ipairs(output) do
-          local hash, msg = line:match("^(%w+)%s(.+)$")
-          if hash and msg then
-            table.insert(items, { label = hash .. " " .. msg, hash = hash })
-          end
-        end
-        if #items == 0 then
-          return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
-        end
         vim.schedule(function()
+          if rv ~= 0 then
+            return chat:add_reference({ role = "user", content = "Error: Failed to get git log" }, "git", "<git_error>")
+          end
+          if not output or #output == 0 then
+            return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+          end
+          local items = {}
+          for _, line in ipairs(output) do
+            local hash, msg = line:match("^(%w+)%s(.+)$")
+            if hash and msg then
+              table.insert(items, { label = hash .. " " .. msg, hash = hash })
+            end
+          end
+          if #items == 0 then
+            return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+          end
           select_commit(chat, items)
         end)
       end,
