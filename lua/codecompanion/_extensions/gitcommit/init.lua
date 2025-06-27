@@ -62,35 +62,46 @@ local function setup_tools(opts)
   codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
   local chat_tools = codecompanion_config.strategies.chat.tools
 
-  chat_tools["git_read"] = {
-    description = "Read-only Git operations (status, log, diff, etc.)",
-    callback = GitRead,
-    opts = {
-      auto_submit_errors = opts.git_tool_auto_submit_errors,
-      auto_submit_success = opts.git_tool_auto_submit_success,
-    },
-  }
-  chat_tools["git_edit"] = {
-    description = "Write-access Git operations (stage, unstage, branch, etc.)",
-    callback = GitEdit,
-    opts = {
-      auto_submit_errors = opts.git_tool_auto_submit_errors,
-      auto_submit_success = opts.git_tool_auto_submit_success,
-    },
-  }
+  local git_read_enabled = opts.enable_git_read
+  local git_edit_enabled = opts.enable_git_edit
+  local git_bot_enabled = opts.enable_git_bot and git_read_enabled and git_edit_enabled
 
-  chat_tools.groups = chat_tools.groups or {}
-  chat_tools.groups["git_bot"] = {
-    description = "A Git agent that can perform read and write operations.",
-    system_prompt = "You are a Git assistant. You have access to the `git_read` and `git_edit` tools to manage the git repository.",
-    tools = {
-      "git_read",
-      "git_edit",
-    },
-    opts = {
-      collapse_tools = true,
-    },
-  }
+  if git_read_enabled then
+    chat_tools["git_read"] = {
+      description = "Read-only Git operations (status, log, diff, etc.)",
+      callback = GitRead,
+      opts = {
+        auto_submit_errors = opts.git_tool_auto_submit_errors,
+        auto_submit_success = opts.git_tool_auto_submit_success,
+      },
+    }
+  end
+
+  if git_edit_enabled then
+    chat_tools["git_edit"] = {
+      description = "Write-access Git operations (stage, unstage, branch, etc.)",
+      callback = GitEdit,
+      opts = {
+        auto_submit_errors = opts.git_tool_auto_submit_errors,
+        auto_submit_success = opts.git_tool_auto_submit_success,
+      },
+    }
+  end
+
+  if git_bot_enabled then
+    chat_tools.groups = chat_tools.groups or {}
+    chat_tools.groups["git_bot"] = {
+      description = "A Git agent that can perform read and write operations.",
+      system_prompt = "You are a Git assistant. You have access to the `git_read` and `git_edit` tools to manage the git repository.",
+      tools = {
+        "git_read",
+        "git_edit",
+      },
+      opts = {
+        collapse_tools = true,
+      },
+    }
+  end
 end
 
 local function create_command(name, callback, desc)

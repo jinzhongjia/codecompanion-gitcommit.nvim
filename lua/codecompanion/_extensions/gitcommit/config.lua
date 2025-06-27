@@ -26,6 +26,9 @@ M.default_opts = {
   },
   add_slash_command = true,
   add_git_tool = true,
+  enable_git_read = true,
+  enable_git_edit = true,
+  enable_git_bot = true, -- Only enabled if both enable_git_read and enable_git_edit are true
   add_git_commands = true,
   git_tool_auto_submit_errors = false,
   git_tool_auto_submit_success = false,
