@@ -201,6 +201,17 @@ function Git.get_contextual_diff()
     end
   end
 
+  -- 3. Fallback: If no staged changes and not amending, check for all local changes (working directory vs. HEAD)
+  local all_local_diff = vim.fn.system("git diff --no-ext-diff HEAD")
+  if vim.v.shell_error == 0 and vim.trim(all_local_diff) ~= "" then
+    local filtered_diff = Git._filter_diff(all_local_diff)
+    if vim.trim(filtered_diff) ~= "" then
+      return filtered_diff, "unstaged_or_all_local"
+    else
+      return nil, "no_changes_after_filter"
+    end
+  end
+
   return nil, "no_changes"
 end
 
@@ -220,7 +231,7 @@ function Git.commit_changes(message)
       if Git.is_amending() then
         vim.notify("No changes to amend. The commit already exists.", vim.log.levels.WARN)
       else
-        vim.notify("No staged changes found. Please stage your changes first.", vim.log.levels.ERROR)
+        vim.notify("No changes found to commit. Please stage your changes or ensure there are unstaged changes in your working directory.", vim.log.levels.ERROR)
       end
     end
     return false
