@@ -393,8 +393,9 @@ end
 ---@param remote? string The name of the remote to push to (e.g., origin)
 ---@param branch? string The name of the branch to push (defaults to current branch)
 ---@param force? boolean Force push (DANGEROUS: overwrites remote history)
+---@param tags? boolean Push all tags
 ---@return boolean success, string output
-function GitTool.push(remote, branch, force)
+function GitTool.push(remote, branch, force, tags)
   local cmd = "git push"
   if force then
     cmd = cmd .. " --force"
@@ -404,6 +405,9 @@ function GitTool.push(remote, branch, force)
   end
   if branch then
     cmd = cmd .. " " .. vim.fn.shellescape(branch)
+  end
+  if tags then
+    cmd = cmd .. " --tags"
   end
   return execute_git_command(cmd)
 end
@@ -446,6 +450,50 @@ function GitTool.revert(commit_hash)
     return false, "Commit hash is required for revert"
   end
   local cmd = "git revert --no-edit " .. vim.fn.shellescape(commit_hash)
+  return execute_git_command(cmd)
+end
+
+---Get all tags
+---@return boolean success, string output
+function GitTool.get_tags()
+  return execute_git_command("git tag")
+end
+
+---Create a new tag
+---@param tag_name string The name of the tag
+---@param message? string An optional message for an annotated tag
+---@param commit_hash? string An optional commit hash to tag
+---@return boolean success, string output
+function GitTool.create_tag(tag_name, message, commit_hash)
+  if not tag_name then
+    return false, "Tag name is required"
+  end
+  local cmd = "git tag "
+  if message then
+    cmd = cmd .. "-a " .. vim.fn.shellescape(tag_name) .. " -m " .. vim.fn.shellescape(message)
+  else
+    cmd = cmd .. vim.fn.shellescape(tag_name)
+  end
+  if commit_hash then
+    cmd = cmd .. " " .. vim.fn.shellescape(commit_hash)
+  end
+  return execute_git_command(cmd)
+end
+
+---Delete a tag
+---@param tag_name string The name of the tag to delete
+---@param remote? string The name of the remote to delete from
+---@return boolean success, string output
+function GitTool.delete_tag(tag_name, remote)
+  if not tag_name then
+    return false, "Tag name is required for deletion"
+  end
+  local cmd
+  if remote then
+    cmd = "git push --delete " .. vim.fn.shellescape(remote) .. " " .. vim.fn.shellescape(tag_name)
+  else
+    cmd = "git tag -d " .. vim.fn.shellescape(tag_name)
+  end
   return execute_git_command(cmd)
 end
 
