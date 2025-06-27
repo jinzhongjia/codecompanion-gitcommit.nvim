@@ -29,6 +29,7 @@ GitEdit.schema = {
             "push",
             "rebase",
             "cherry_pick",
+            "revert",
             "help",
           },
           description = "The write-access Git operation to perform.",
@@ -111,6 +112,10 @@ GitEdit.schema = {
               type = "string",
               description = "The commit hash to cherry-pick",
             },
+            revert_commit_hash = {
+              type = "string",
+              description = "The commit hash to revert",
+            },
           },
           additionalProperties = false,
         },
@@ -143,6 +148,7 @@ GitEdit.system_prompt = [[## Git Edit Tool (`git_edit`)
 - `rebase`: Rebase current branch onto another (args: onto, base, interactive)
   WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.
 - `cherry_pick`: Apply the changes introduced by some existing commits (args: cherry_pick_commit_hash)
+- `revert`: Revert a commit (args: revert_commit_hash)
 - `help`: Show available edit operations
 ]]
 
@@ -164,6 +170,7 @@ Available write-access Git operations:
 • push: Push changes to a remote repository (WARNING: force push is dangerous)
 • rebase: Rebase current branch (WARNING: interactive rebase is dangerous)
 • cherry_pick: Apply changes from existing commits
+• revert: Revert a commit
       ]]
       return { status = "success", data = help_text }
     end
@@ -220,6 +227,11 @@ Available write-access Git operations:
         return { status = "error", data = "Commit hash is required for cherry-pick" }
       end
       success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
+    elseif operation == "revert" then
+      if not op_args.revert_commit_hash then
+        return { status = "error", data = "Commit hash is required for revert" }
+      end
+      success, output = GitTool.revert(op_args.revert_commit_hash)
     else
       return { status = "error", data = "Unknown Git edit operation: " .. operation }
     end

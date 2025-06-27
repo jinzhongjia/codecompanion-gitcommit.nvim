@@ -156,6 +156,7 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 • `@git_edit rebase [--onto ONTO] [--base BASE] [--interactive BOOL]` - Rebase current branch onto another.
   WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.
 • `@git_edit cherry_pick --cherry_pick_commit_hash HASH` - Apply the changes introduced by some existing commits.
+• `@git_edit revert --revert_commit_hash HASH` - Revert a commit.
 
 #### Safety Features
 
