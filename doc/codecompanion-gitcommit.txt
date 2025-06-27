@@ -394,6 +394,7 @@ Repository Status & Info~
 • `@git_read blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
 • `@git_read gitignore_get` - View current .gitignore content
 • `@git_read gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+• `@git_read tags` - List all tags
 
 @git_edit: Write-access Git Operations~
 
@@ -409,6 +410,10 @@ Stash Operations~
 • `@git_edit stash [--message "MSG"] [--include_untracked]` - Stash changes
 • `@git_edit apply_stash [--stash_ref "stash@{0}"]` - Apply stash
 
+Tag Management~
+• `@git_edit create_tag --tag_name NAME [--tag_message "MSG"] [--tag_commit_hash HASH]` - Create a new tag
+• `@git_edit delete_tag --tag_name NAME [--remote REMOTE]` - Delete a tag (from local and optionally remote)
+
 Advanced Operations~ (require approval)
 • `@git_edit reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
 
@@ -420,7 +425,7 @@ GitIgnore Management~
 • `@git_edit rebase: Rebase current branch (WARNING: interactive rebase is dangerous)
 • `@git_edit cherry_pick: Apply changes from existing commits
 • `@git_edit revert: Revert a commit
-• `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL]` - Push changes to a remote repository.
+• `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL] [--tags BOOL]` - Push changes to a remote repository.
   WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
 
 7.4 Safety Features				*codecompanion-gitcommit-safety*

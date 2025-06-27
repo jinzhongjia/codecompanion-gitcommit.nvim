@@ -126,9 +126,10 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 - `@git_read diff_commits --commit1 HASH1 [--commit2 HASH2] [--file_path PATH]` - Compare commits
 - `@git_read search_commits --pattern "PATTERN" [--count N]` - Search commits
 - `@git_read stash_list` - List all stashes
-- `@git_read blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
+• `@git_read blame --file_path PATH [--line_start N] [--line_end N]` - Show blame info
 - `@git_read gitignore_get` - View current .gitignore content
 - `@git_read gitignore_check --gitignore_file "FILE"` - Check if file is ignored
+- `@git_read tags` - List all tags
 
 **@git_edit: Write-access Git Operations**
 
@@ -144,6 +145,10 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 - `@git_edit stash [--message "MSG"] [--include_untracked]` - Stash changes
 - `@git_edit apply_stash [--stash_ref "stash@{0}"]` - Apply stash
 
+**Tag Management**
+- `@git_edit create_tag --tag_name NAME [--tag_message "MSG"] [--tag_commit_hash HASH]` - Create a new tag
+• `@git_edit delete_tag --tag_name NAME [--remote REMOTE]` - Delete a tag (from local and optionally remote)
+
 **Advanced Operations** (require approval)
 - `@git_edit reset --commit_hash HASH [--mode soft|mixed|hard]` - Reset to commit
 
@@ -151,7 +156,7 @@ In any CodeCompanion chat buffer, use `@git_read` or `@git_edit` to perform Git 
 - `@git_edit gitignore_add --gitignore_rule "RULE"` - Add rule to .gitignore
 - `@git_edit gitignore_add --gitignore_rules ["rule1", "rule2"]` - Add multiple rules
 • `@git_edit gitignore_remove --gitignore_rule "RULE"` - Remove rule from .gitignore
-• `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL]` - Push changes to a remote repository.
+• `@git_edit push [--remote REMOTE] [--branch BRANCH] [--force BOOL] [--tags BOOL]` - Push changes to a remote repository.
   WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
 • `@git_edit rebase [--onto ONTO] [--base BASE] [--interactive BOOL]` - Rebase current branch onto another.
   WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.

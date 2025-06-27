@@ -30,6 +30,8 @@ GitEdit.schema = {
             "rebase",
             "cherry_pick",
             "revert",
+            "create_tag",
+            "delete_tag",
             "help",
           },
           description = "The write-access Git operation to perform.",
@@ -96,6 +98,10 @@ GitEdit.schema = {
               type = "boolean",
               description = "Force push (DANGEROUS: overwrites remote history)",
             },
+            tags = {
+              type = "boolean",
+              description = "Push all tags",
+            },
             onto = {
               type = "string",
               description = "The branch to rebase onto",
@@ -115,6 +121,18 @@ GitEdit.schema = {
             revert_commit_hash = {
               type = "string",
               description = "The commit hash to revert",
+            },
+            tag_name = {
+              type = "string",
+              description = "The name of the tag",
+            },
+            tag_message = {
+              type = "string",
+              description = "An optional message for an annotated tag",
+            },
+            tag_commit_hash = {
+              type = "string",
+              description = "An optional commit hash to tag",
             },
           },
           additionalProperties = false,
@@ -149,6 +167,8 @@ GitEdit.system_prompt = [[## Git Edit Tool (`git_edit`)
   WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.
 - `cherry_pick`: Apply the changes introduced by some existing commits (args: cherry_pick_commit_hash)
 - `revert`: Revert a commit (args: revert_commit_hash)
+- `create_tag`: Create a new tag (args: tag_name, tag_message, tag_commit_hash)
+- `delete_tag`: Delete a tag (args: tag_name)
 - `help`: Show available edit operations
 ]]
 
@@ -171,6 +191,8 @@ Available write-access Git operations:
 • rebase: Rebase current branch (WARNING: interactive rebase is dangerous)
 • cherry_pick: Apply changes from existing commits
 • revert: Revert a commit
+• create_tag: Create a new tag
+• delete_tag: Delete a tag
       ]]
       return { status = "success", data = help_text }
     end
@@ -219,7 +241,7 @@ Available write-access Git operations:
       end
       success, output = GitTool.remove_gitignore_rule(rules)
     elseif operation == "push" then
-      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force)
+      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags)
     elseif operation == "rebase" then
       success, output = GitTool.rebase(op_args.onto, op_args.base, op_args.interactive)
     elseif operation == "cherry_pick" then
@@ -232,6 +254,16 @@ Available write-access Git operations:
         return { status = "error", data = "Commit hash is required for revert" }
       end
       success, output = GitTool.revert(op_args.revert_commit_hash)
+    elseif operation == "create_tag" then
+      if not op_args.tag_name then
+        return { status = "error", data = "Tag name is required" }
+      end
+      success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
+    elseif operation == "delete_tag" then
+      if not op_args.tag_name then
+        return { status = "error", data = "Tag name is required for deletion" }
+      end
+      success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
     else
       return { status = "error", data = "Unknown Git edit operation: " .. operation }
     end
