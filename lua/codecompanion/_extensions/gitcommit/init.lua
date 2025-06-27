@@ -60,7 +60,9 @@ local function setup_tools(opts)
   end
 
   codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
-  codecompanion_config.strategies.chat.tools["git_read"] = {
+  local chat_tools = codecompanion_config.strategies.chat.tools
+
+  chat_tools["git_read"] = {
     description = "Read-only Git operations (status, log, diff, etc.)",
     callback = GitRead,
     opts = {
@@ -68,12 +70,25 @@ local function setup_tools(opts)
       auto_submit_success = opts.git_tool_auto_submit_success,
     },
   }
-  codecompanion_config.strategies.chat.tools["git_edit"] = {
+  chat_tools["git_edit"] = {
     description = "Write-access Git operations (stage, unstage, branch, etc.)",
     callback = GitEdit,
     opts = {
       auto_submit_errors = opts.git_tool_auto_submit_errors,
       auto_submit_success = opts.git_tool_auto_submit_success,
+    },
+  }
+
+  chat_tools.groups = chat_tools.groups or {}
+  chat_tools.groups["git_bot"] = {
+    description = "A Git agent that can perform read and write operations.",
+    system_prompt = "You are a Git assistant. You have access to the `git_read` and `git_edit` tools to manage the git repository.",
+    tools = {
+      "git_read",
+      "git_edit",
+    },
+    opts = {
+      collapse_tools = true,
     },
   }
 end
