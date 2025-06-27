@@ -394,8 +394,9 @@ end
 ---@param branch? string The name of the branch to push (defaults to current branch)
 ---@param force? boolean Force push (DANGEROUS: overwrites remote history)
 ---@param tags? boolean Push all tags
+---@param tag_name? string The name of a single tag to push
 ---@return boolean success, string output
-function GitTool.push(remote, branch, force, tags)
+function GitTool.push(remote, branch, force, tags, tag_name)
   local cmd = "git push"
   if force then
     cmd = cmd .. " --force"
@@ -408,6 +409,9 @@ function GitTool.push(remote, branch, force, tags)
   end
   if tags then
     cmd = cmd .. " --tags"
+  end
+  if tag_name then
+    cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
   end
   return execute_git_command(cmd)
 end
