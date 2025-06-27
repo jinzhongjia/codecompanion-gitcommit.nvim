@@ -102,6 +102,10 @@ GitEdit.schema = {
               type = "boolean",
               description = "Push all tags",
             },
+            tag_name = {
+              type = "string",
+              description = "The name of a single tag to push",
+            },
             onto = {
               type = "string",
               description = "The branch to rebase onto",
@@ -241,7 +245,7 @@ Available write-access Git operations:
       end
       success, output = GitTool.remove_gitignore_rule(rules)
     elseif operation == "push" then
-      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags)
+      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags, op_args.tag_name)
     elseif operation == "rebase" then
       success, output = GitTool.rebase(op_args.onto, op_args.base, op_args.interactive)
     elseif operation == "cherry_pick" then
