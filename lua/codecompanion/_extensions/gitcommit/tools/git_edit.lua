@@ -28,7 +28,6 @@ GitEdit.schema = {
             "gitignore_add",
             "gitignore_remove",
             "push",
-            "rebase",
             "cherry_pick",
             "revert",
             "create_tag",
@@ -116,18 +115,6 @@ GitEdit.schema = {
               type = "string",
               description = "The name of a single tag to push",
             },
-            onto = {
-              type = "string",
-              description = "The branch to rebase onto",
-            },
-            base = {
-              type = "string",
-              description = "The upstream branch to rebase from",
-            },
-            interactive = {
-              type = "boolean",
-              description = "Perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)",
-            },
             cherry_pick_commit_hash = {
               type = "string",
               description = "The commit hash to cherry-pick",
@@ -178,7 +165,7 @@ Best practices:
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
-Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, merge, help]]
+Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
 GitEdit.cmds = {
   function(self, args, input)
@@ -197,7 +184,6 @@ Available write-access Git operations:
 • gitignore_add: Add rule to .gitignore
 • gitignore_remove: Remove rule from .gitignore
 • push: Push changes to a remote repository (WARNING: force push is dangerous)
-• rebase: Rebase current branch (WARNING: interactive rebase is dangerous)
 • cherry_pick: Apply changes from existing commits
 • revert: Revert a commit
 • create_tag: Create a new tag
@@ -268,8 +254,6 @@ Available write-access Git operations:
       success, output = GitTool.remove_gitignore_rule(rules)
     elseif operation == "push" then
       success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags, op_args.tag_name)
-    elseif operation == "rebase" then
-      success, output = GitTool.rebase(op_args.onto, op_args.base, op_args.interactive)
     elseif operation == "cherry_pick" then
       if not op_args.cherry_pick_commit_hash then
         return { status = "error", data = "Commit hash is required for cherry-pick" }
@@ -316,13 +300,8 @@ GitEdit.handlers = {
 
 GitEdit.output = {
   success = function(self, agent, cmd, stdout)
-    local operation = self.args.operation
-    -- For push operations, remain completely silent on success.
-    if operation == "push" then
-      return
-    end
-
     local chat = agent.chat
+    local operation = self.args.operation
     local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
     return chat:add_tool_output(self, stdout[1], user_msg)
   end,
