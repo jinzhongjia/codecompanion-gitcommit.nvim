@@ -540,7 +540,8 @@ function GitTool.merge(branch)
     return true, output
   else
     if output:match("CONFLICT") then
-      return false, "Merge conflict detected. Please resolve the conflicts manually. You can use 'git merge --abort' to cancel."
+      return false,
+        "Merge conflict detected. Please resolve the conflicts manually. You can use 'git merge --abort' to cancel."
     else
       return false, output
     end

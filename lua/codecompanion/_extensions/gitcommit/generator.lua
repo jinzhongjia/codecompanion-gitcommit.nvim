@@ -117,7 +117,7 @@ function Generator._handle_response(err, data, _adapter, callback)
     local error_msg = "Error generating commit message: " .. (err.stderr or err.message or "Unknown error")
     return callback(nil, error_msg)
   end
-  
+
   -- Check for empty or invalid data
   if not data then
     return callback(nil, "No response received from LLM")

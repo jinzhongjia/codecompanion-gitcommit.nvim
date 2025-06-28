@@ -211,9 +211,12 @@ Available write-access Git operations:
         -- Check if there are staged changes
         local diff_success, diff_output = GitTool.get_diff(true) -- staged changes
         if not diff_success or not diff_output or vim.trim(diff_output) == "" then
-          return { status = "error", data = "No staged changes found for commit. Please stage your changes first using the stage operation." }
+          return {
+            status = "error",
+            data = "No staged changes found for commit. Please stage your changes first using the stage operation.",
+          }
         end
-        
+
         -- Return success with instruction for AI to use the diff tool
         return {
           status = "success",

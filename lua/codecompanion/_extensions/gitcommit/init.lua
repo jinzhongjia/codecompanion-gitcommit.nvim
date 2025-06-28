@@ -169,13 +169,21 @@ local function setup_slash_commands(opts)
     end)
 
     vim.uv.read_start(stdout, function(err, data)
-      if err then return end
-      if data then output = output .. data end
+      if err then
+        return
+      end
+      if data then
+        output = output .. data
+      end
     end)
 
     vim.uv.read_start(stderr, function(err, data)
-      if err then return end
-      if data then error_output = error_output .. data end
+      if err then
+        return
+      end
+      if data then
+        error_output = error_output .. data
+      end
     end)
   end
 
@@ -219,19 +227,31 @@ local function setup_slash_commands(opts)
           end
           select_commit(chat, items)
         else
-          chat:add_reference({ role = "user", content = "Error: Failed to get git log\n" .. error_output }, "git", "<git_error>")
+          chat:add_reference(
+            { role = "user", content = "Error: Failed to get git log\n" .. error_output },
+            "git",
+            "<git_error>"
+          )
         end
       end)
     end)
 
     vim.uv.read_start(stdout, function(err, data)
-      if err then return end
-      if data then output = output .. data end
+      if err then
+        return
+      end
+      if data then
+        output = output .. data
+      end
     end)
 
     vim.uv.read_start(stderr, function(err, data)
-      if err then return end
-      if data then error_output = error_output .. data end
+      if err then
+        return
+      end
+      if data then
+        error_output = error_output .. data
+      end
     end)
   end
 
