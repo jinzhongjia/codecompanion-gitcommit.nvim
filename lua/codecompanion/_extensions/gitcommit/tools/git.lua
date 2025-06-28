@@ -420,64 +420,39 @@ function GitTool.push(remote, branch, force, tags, tag_name)
   end
 
   local args = { "push" }
-  if force then
-    table.insert(args, "--force")
-  end
-  if remote then
-    table.insert(args, remote)
-  end
-  if branch then
-    table.insert(args, branch)
-  end
-  if tags then
-    table.insert(args, "--tags")
-  end
-  if tag_name then
-    table.insert(args, tag_name)
-  end
+  if force then table.insert(args, "--force") end
+  if remote then table.insert(args, remote) end
+  if branch then table.insert(args, branch) end
+  if tags then table.insert(args, "--tags") end
+  if tag_name then table.insert(args, tag_name) end
 
-  vim.notify("Git push started...", vim.log.levels.INFO)
-
-  local stdout = vim.uv.new_pipe(false)
-  local stderr = vim.uv.new_pipe(false)
+  local stderr_pipe = vim.uv.new_pipe(false)
+  local stderr_output = {}
 
   local handle = vim.uv.spawn("git", {
     args = args,
-    stdio = { nil, stdout, stderr },
+    stdio = { nil, nil, stderr_pipe }, -- We only care about stderr for failures
   }, function(code, signal)
     vim.schedule(function()
-      stdout:close()
-      stderr:close()
-      if code == 0 then
-        vim.notify("Git push completed successfully.", vim.log.levels.INFO)
-      else
-        vim.notify("Git push failed with code: " .. tostring(code) .. " and signal: " .. tostring(signal), vim.log.levels.ERROR)
+      stderr_pipe:close()
+      if code ~= 0 then
+        local error_message = table.concat(stderr_output, "")
+        vim.notify("Git push failed:\n" .. vim.trim(error_message), vim.log.levels.ERROR)
       end
+      -- On success (code == 0), do nothing.
     end)
   end)
 
   if not handle then
-    vim.notify("Failed to start git push process.", vim.log.levels.ERROR)
-    return false, "Failed to start git push process."
+    return false, "Failed to spawn git push process."
   end
 
-  local function read_and_notify(pipe, level)
-    vim.uv.read_start(pipe, function(err, data)
-      if err then
-        return
-      end
-      if data then
-        vim.schedule(function()
-          vim.notify(vim.trim(data), level)
-        end)
-      end
-    end)
-  end
+  vim.uv.read_start(stderr_pipe, function(err, data)
+    if err then return end
+    if data then table.insert(stderr_output, data) end
+  end)
 
-  read_and_notify(stdout, vim.log.levels.INFO)
-  read_and_notify(stderr, vim.log.levels.WARN)
-
-  return true, "Git push started in the background. You will be notified upon completion."
+  return true, "Git push initiated."
 end
 
 ---Perform a git rebase operation
