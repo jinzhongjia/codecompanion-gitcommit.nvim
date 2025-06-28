@@ -316,16 +316,13 @@ GitEdit.handlers = {
 
 GitEdit.output = {
   success = function(self, agent, cmd, stdout)
-    local chat = agent.chat
     local operation = self.args.operation
-
-    -- For push operations, the immediate output from the tool is enough.
-    -- The final result is handled by vim.notify on failure.
+    -- For push operations, remain completely silent on success.
     if operation == "push" then
-      local user_msg = "Git push initiated in the background."
-      return chat:add_tool_output(self, stdout[1], user_msg)
+      return
     end
 
+    local chat = agent.chat
     local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
     return chat:add_tool_output(self, stdout[1], user_msg)
   end,

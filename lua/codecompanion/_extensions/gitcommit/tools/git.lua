@@ -407,7 +407,7 @@ function GitTool.search_commits(pattern, count)
   return execute_git_command(cmd)
 end
 
----Push changes to a remote repository (asynchronously)
+---Push changes to a remote repository
 ---@param remote? string The name of the remote to push to (e.g., origin)
 ---@param branch? string The name of the branch to push (defaults to current branch)
 ---@param force? boolean Force push (DANGEROUS: overwrites remote history)
@@ -415,44 +415,23 @@ end
 ---@param tag_name? string The name of a single tag to push
 ---@return boolean success, string output
 function GitTool.push(remote, branch, force, tags, tag_name)
-  if not is_git_repo() then
-    return false, "Not in a git repository"
+  local cmd = "git push"
+  if force then
+    cmd = cmd .. " --force"
   end
-
-  local args = { "push" }
-  if force then table.insert(args, "--force") end
-  if remote then table.insert(args, remote) end
-  if branch then table.insert(args, branch) end
-  if tags then table.insert(args, "--tags") end
-  if tag_name then table.insert(args, tag_name) end
-
-  local stderr_pipe = vim.uv.new_pipe(false)
-  local stderr_output = {}
-
-  local handle = vim.uv.spawn("git", {
-    args = args,
-    stdio = { nil, nil, stderr_pipe }, -- We only care about stderr for failures
-  }, function(code, signal)
-    vim.schedule(function()
-      stderr_pipe:close()
-      if code ~= 0 then
-        local error_message = table.concat(stderr_output, "")
-        vim.notify("Git push failed:\n" .. vim.trim(error_message), vim.log.levels.ERROR)
-      end
-      -- On success (code == 0), do nothing.
-    end)
-  end)
-
-  if not handle then
-    return false, "Failed to spawn git push process."
+  if remote then
+    cmd = cmd .. " " .. vim.fn.shellescape(remote)
   end
-
-  vim.uv.read_start(stderr_pipe, function(err, data)
-    if err then return end
-    if data then table.insert(stderr_output, data) end
-  end)
-
-  return true, "Git push initiated."
+  if branch then
+    cmd = cmd .. " " .. vim.fn.shellescape(branch)
+  end
+  if tags then
+    cmd = cmd .. " --tags"
+  end
+  if tag_name then
+    cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
+  end
+  return execute_git_command(cmd)
 end
 
 ---Perform a git rebase operation
