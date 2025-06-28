@@ -139,30 +139,44 @@ local function setup_slash_commands(opts)
   end
 
   local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
-  local Job = require("plenary.job")
 
   local function get_commit_content(chat, choice)
-    Job:new({
-      command = "git",
+    local stdout = vim.uv.new_pipe(false)
+    local stderr = vim.uv.new_pipe(false)
+    local output = ""
+    local error_output = ""
+
+    local handle = vim.uv.spawn("git", {
       args = { "show", choice.hash },
-      on_exit = function(j, rv)
-        local content = table.concat(j:result(), "\n")
-        vim.schedule(function()
-          if rv ~= 0 or not content or content == "" then
-            chat:add_reference(
-              { role = "user", content = "Error: Failed to get commit content." },
-              "git",
-              "<git_error>"
-            )
-          else
-            chat:add_reference({
-              role = "user",
-              content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, content),
-            }, "git", "<git_commit>")
-          end
-        end)
-      end,
-    }):start()
+      stdio = { nil, stdout, stderr },
+    }, function(code, signal)
+      vim.schedule(function()
+        stdout:close()
+        stderr:close()
+        if code == 0 then
+          chat:add_reference({
+            role = "user",
+            content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, output),
+          }, "git", "<git_commit>")
+        else
+          chat:add_reference(
+            { role = "user", content = "Error: Failed to get commit content.\n" .. error_output },
+            "git",
+            "<git_error>"
+          )
+        end
+      end)
+    end)
+
+    vim.uv.read_start(stdout, function(err, data)
+      if err then return end
+      if data then output = output .. data end
+    end)
+
+    vim.uv.read_start(stderr, function(err, data)
+      if err then return end
+      if data then error_output = error_output .. data end
+    end)
   end
 
   local function select_commit(chat, items)
@@ -179,20 +193,22 @@ local function setup_slash_commands(opts)
   end
 
   local function get_commit_list(chat, opts)
-    Job:new({
-      command = "git",
+    local stdout = vim.uv.new_pipe(false)
+    local stderr = vim.uv.new_pipe(false)
+    local output = ""
+    local error_output = ""
+
+    local handle = vim.uv.spawn("git", {
       args = { "log", "--oneline", "-n", tostring(opts.gitcommit_select_count) },
-      on_exit = function(j, rv)
-        local output = j:result()
-        vim.schedule(function()
-          if rv ~= 0 then
-            return chat:add_reference({ role = "user", content = "Error: Failed to get git log" }, "git", "<git_error>")
-          end
-          if not output or #output == 0 then
-            return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
-          end
+      stdio = { nil, stdout, stderr },
+    }, function(code, signal)
+      vim.schedule(function()
+        stdout:close()
+        stderr:close()
+        if code == 0 then
+          local lines = vim.split(output, "\n")
           local items = {}
-          for _, line in ipairs(output) do
+          for _, line in ipairs(lines) do
             local hash, msg = line:match("^(%w+)%s(.+)$")
             if hash and msg then
               table.insert(items, { label = hash .. " " .. msg, hash = hash })
@@ -202,9 +218,21 @@ local function setup_slash_commands(opts)
             return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
           end
           select_commit(chat, items)
-        end)
-      end,
-    }):start()
+        else
+          chat:add_reference({ role = "user", content = "Error: Failed to get git log\n" .. error_output }, "git", "<git_error>")
+        end
+      end)
+    end)
+
+    vim.uv.read_start(stdout, function(err, data)
+      if err then return end
+      if data then output = output .. data end
+    end)
+
+    vim.uv.read_start(stderr, function(err, data)
+      if err then return end
+      if data then error_output = error_output .. data end
+    end)
   end
 
   slash_commands["gitcommit"] = {
@@ -407,6 +435,13 @@ return {
       search_commits = function(pattern, count)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.search_commits(pattern, count)
+      end,
+
+      ---Merge a branch
+      ---@param branch string The branch to merge
+      merge = function(branch)
+        local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+        return GitTool.merge(branch)
       end,
     },
   },

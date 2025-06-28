@@ -33,6 +33,7 @@ GitEdit.schema = {
             "revert",
             "create_tag",
             "delete_tag",
+            "merge",
             "help",
           },
           description = "The write-access Git operation to perform.",
@@ -101,7 +102,7 @@ GitEdit.schema = {
             },
             branch = {
               type = "string",
-              description = "The name of the branch to push (defaults to current branch)",
+              description = "The name of the branch to push or merge",
             },
             force = {
               type = "boolean",
@@ -177,7 +178,7 @@ Best practices:
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
-Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, help]]
+Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
 GitEdit.cmds = {
   function(self, args, input)
@@ -201,6 +202,7 @@ Available write-access Git operations:
 • revert: Revert a commit
 • create_tag: Create a new tag
 • delete_tag: Delete a tag
+• merge: Merge a branch into the current branch (requires branch parameter)
       ]]
       return { status = "success", data = help_text }
     end
@@ -288,6 +290,11 @@ Available write-access Git operations:
         return { status = "error", data = "Tag name is required for deletion" }
       end
       success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
+    elseif operation == "merge" then
+      if not op_args.branch then
+        return { status = "error", data = "Branch to merge is required" }
+      end
+      success, output = GitTool.merge(op_args.branch)
     else
       return { status = "error", data = "Unknown Git edit operation: " .. operation }
     end

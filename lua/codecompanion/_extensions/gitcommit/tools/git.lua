@@ -407,7 +407,7 @@ function GitTool.search_commits(pattern, count)
   return execute_git_command(cmd)
 end
 
----Push changes to a remote repository
+---Push changes to a remote repository (asynchronously)
 ---@param remote? string The name of the remote to push to (e.g., origin)
 ---@param branch? string The name of the branch to push (defaults to current branch)
 ---@param force? boolean Force push (DANGEROUS: overwrites remote history)
@@ -415,26 +415,73 @@ end
 ---@param tag_name? string The name of a single tag to push
 ---@return boolean success, string output
 function GitTool.push(remote, branch, force, tags, tag_name)
-  local cmd = "git push"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local args = { "push" }
   if force then
-    cmd = cmd .. " --force"
+    table.insert(args, "--force")
   end
   if remote then
-    cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    table.insert(args, remote)
   end
   if branch then
-    cmd = cmd .. " " .. vim.fn.shellescape(branch)
+    table.insert(args, branch)
   end
   if tags then
-    cmd = cmd .. " --tags"
+    table.insert(args, "--tags")
   end
   if tag_name then
-    cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
+    table.insert(args, tag_name)
   end
-  return execute_git_command(cmd)
+
+  vim.notify("Git push started...", vim.log.levels.INFO)
+
+  local stdout = vim.uv.new_pipe(false)
+  local stderr = vim.uv.new_pipe(false)
+
+  local handle = vim.uv.spawn("git", {
+    args = args,
+    stdio = { nil, stdout, stderr },
+  }, function(code, signal)
+    vim.schedule(function()
+      stdout:close()
+      stderr:close()
+      if code == 0 then
+        vim.notify("Git push completed successfully.", vim.log.levels.INFO)
+      else
+        vim.notify("Git push failed with code: " .. tostring(code) .. " and signal: " .. tostring(signal), vim.log.levels.ERROR)
+      end
+    end)
+  end)
+
+  if not handle then
+    vim.notify("Failed to start git push process.", vim.log.levels.ERROR)
+    return false, "Failed to start git push process."
+  end
+
+  local function read_and_notify(pipe, level)
+    vim.uv.read_start(pipe, function(err, data)
+      if err then
+        return
+      end
+      if data then
+        vim.schedule(function()
+          vim.notify(vim.trim(data), level)
+        end)
+      end
+    end)
+  end
+
+  read_and_notify(stdout, vim.log.levels.INFO)
+  read_and_notify(stderr, vim.log.levels.WARN)
+
+  return true, "Git push started in the background. You will be notified upon completion."
 end
 
 ---Perform a git rebase operation
+
 ---@param onto? string The branch to rebase onto
 ---@param base? string The upstream branch to rebase from
 ---@param interactive? boolean Whether to perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)
@@ -517,6 +564,33 @@ function GitTool.delete_tag(tag_name, remote)
     cmd = "git tag -d " .. vim.fn.shellescape(tag_name)
   end
   return execute_git_command(cmd)
+end
+
+---Merge a branch into the current branch
+---@param branch string The name of the branch to merge
+---@return boolean success, string output
+function GitTool.merge(branch)
+  if not branch or vim.trim(branch) == "" then
+    return false, "Branch name is required for merge"
+  end
+
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git merge " .. vim.fn.shellescape(branch) .. " --no-edit"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, output
+  else
+    if output:match("CONFLICT") then
+      return false, "Merge conflict detected. Please resolve the conflicts manually. You can use 'git merge --abort' to cancel."
+    else
+      return false, output
+    end
+  end
 end
 
 M.GitTool = GitTool
