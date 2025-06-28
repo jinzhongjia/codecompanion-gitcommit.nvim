@@ -137,7 +137,11 @@ local function setup_slash_commands(opts)
         local content = table.concat(j:result(), "\n")
         vim.schedule(function()
           if rv ~= 0 or not content or content == "" then
-            chat:add_reference({ role = "user", content = "Error: Failed to get commit content." }, "git", "<git_error>")
+            chat:add_reference(
+              { role = "user", content = "Error: Failed to get commit content." },
+              "git",
+              "<git_error>"
+            )
           else
             chat:add_reference({
               role = "user",
