@@ -507,7 +507,7 @@ function GitTool.cherry_pick(commit_hash)
   if not commit_hash then
     return false, "Commit hash is required for cherry-pick"
   end
-  local cmd = "git cherry-pick " .. vim.fn.shellescape(commit_hash)
+  local cmd = "git cherry-pick --no-edit " .. vim.fn.shellescape(commit_hash)
   return execute_git_command(cmd)
 end
 
