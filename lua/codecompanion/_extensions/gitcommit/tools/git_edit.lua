@@ -19,6 +19,7 @@ GitEdit.schema = {
           enum = {
             "stage",
             "unstage",
+            "commit",
             "create_branch",
             "checkout",
             "stash",
@@ -59,6 +60,14 @@ GitEdit.schema = {
             message = {
               type = "string",
               description = "Message for stash or commit",
+            },
+            commit_message = {
+              type = "string",
+              description = "Commit message for the commit operation",
+            },
+            amend = {
+              type = "boolean",
+              description = "Amend the last commit instead of creating a new one",
             },
             include_untracked = {
               type = "boolean",
@@ -102,7 +111,7 @@ GitEdit.schema = {
               type = "boolean",
               description = "Push all tags",
             },
-            tag_name = {
+            single_tag_name = {
               type = "string",
               description = "The name of a single tag to push",
             },
@@ -164,7 +173,7 @@ Best practices:
 • Ensure file paths and branch names are valid
 • Always specify required parameters for operations
 
-Available operations: stage, unstage, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, help]]
+Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, help]]
 
 GitEdit.cmds = {
   function(self, args, input)
@@ -175,6 +184,7 @@ GitEdit.cmds = {
       local help_text = [[
 Available write-access Git operations:
 • stage/unstage: Stage/unstage files
+• commit: Commit staged changes with message
 • create_branch: Create new branch
 • checkout: Switch branch/commit
 • stash/apply_stash: Stash operations
@@ -203,6 +213,12 @@ Available write-access Git operations:
         return { status = "error", data = "No files specified for unstaging" }
       end
       success, output = GitTool.unstage_files(op_args.files)
+    elseif operation == "commit" then
+      local message = op_args.commit_message or op_args.message
+      if not message then
+        return { status = "error", data = "Commit message is required" }
+      end
+      success, output = GitTool.commit(message, op_args.amend)
     elseif operation == "create_branch" then
       if not op_args.branch_name then
         return { status = "error", data = "Branch name is required" }
@@ -281,7 +297,7 @@ GitEdit.output = {
   success = function(self, agent, cmd, stdout)
     local chat = agent.chat
     local operation = self.args.operation
-    local user_msg = string.format("Git operation [%s] completed", operation)
+    local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
     return chat:add_tool_output(self, stdout[1], user_msg)
   end,
   error = function(self, agent, cmd, stderr, stdout)

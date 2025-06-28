@@ -187,7 +187,7 @@ function Buffer._insert_commit_message(bufnr, message)
   -- Move cursor to the beginning of the commit message
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
 
-  vim.notify("✅ Commit message generated and inserted!", vim.log.levels.INFO)
+  vim.notify("Commit message generated and inserted!", vim.log.levels.INFO)
 end
 
 ---Get current configuration

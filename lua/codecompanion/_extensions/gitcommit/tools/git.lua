@@ -251,6 +251,24 @@ function GitTool.unstage_files(files)
   return execute_git_command(cmd)
 end
 
+---Commit staged changes
+---@param message string Commit message
+---@param amend? boolean Whether to amend the last commit (default: false)
+---@return boolean success, string output
+function GitTool.commit(message, amend)
+  if not message or vim.trim(message) == "" then
+    return false, "Commit message is required"
+  end
+
+  local cmd = "git commit"
+  if amend then
+    cmd = cmd .. " --amend"
+  end
+  cmd = cmd .. " -m " .. vim.fn.shellescape(message)
+
+  return execute_git_command(cmd)
+end
+
 ---Create a new branch
 ---@param branch_name string Name of the new branch
 ---@param checkout? boolean Whether to checkout the new branch (default: true)

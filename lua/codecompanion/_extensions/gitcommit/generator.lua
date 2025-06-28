@@ -7,7 +7,7 @@ local codecompanion_schema = require("codecompanion.schema")
 local Generator = {}
 
 --- @type string?
-local _adapater = nil
+local _adapter = nil
 --- @type string?
 local _model = nil
 
@@ -19,12 +19,12 @@ local CONSTANTS = {
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
 function Generator.setup(adapter, model)
-  _adapater = adapter or codecompanion_config.strategies.chat.adapter
+  _adapter = adapter or codecompanion_config.strategies.chat.adapter
   _model = model or codecompanion_config.strategies.chat.model
 
   -- Validate adapter
-  if not codecompanion_adapter.resolve(_adapater) then
-    error("Invalid adapter specified: " .. tostring(_adapater))
+  if not codecompanion_adapter.resolve(_adapter) then
+    error("Invalid adapter specified: " .. tostring(_adapter))
   end
 end
 
@@ -35,7 +35,7 @@ end
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
 function Generator.generate_commit_message(diff, lang, callback)
   -- Setup adapter
-  local adapter = codecompanion_adapter.resolve(_adapater)
+  local adapter = codecompanion_adapter.resolve(_adapter)
   if not adapter then
     return callback(nil, "Failed to resolve adapter")
   end
@@ -113,9 +113,14 @@ end
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
 function Generator._handle_response(err, data, _adapter, callback)
   -- Handle request errors
-  if err and err.stderr ~= "{}" then
-    local error_msg = "Error generating commit message: " .. (err.stderr or "Unknown error")
+  if err then
+    local error_msg = "Error generating commit message: " .. (err.stderr or err.message or "Unknown error")
     return callback(nil, error_msg)
+  end
+  
+  -- Check for empty or invalid data
+  if not data then
+    return callback(nil, "No response received from LLM")
   end
 
   -- Process successful response
