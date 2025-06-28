@@ -149,32 +149,22 @@ GitEdit.schema = {
   },
 }
 
-GitEdit.system_prompt = [[## Git Edit Tool (`git_edit`)
-- You have access to a write-access Git tool.
-- You can perform operations like stage, unstage, create branches, and apply stashes.
-- Always check if you're in a Git repository before performing operations.
-- Use this tool to modify the repository state.
+GitEdit.system_prompt = [[Execute write-access Git repository operations
 
-## AVAILABLE OPERATIONS
-- `stage`: Stage files (args: files)
-- `unstage`: Unstage files (args: files)
-- `create_branch`: Create new branch (args: branch_name, checkout)
-- `checkout`: Switch branch/commit (args: target)
-- `stash`: Stash changes (args: message, include_untracked)
-- `apply_stash`: Apply stash (args: stash_ref)
-- `reset`: Reset to commit (args: commit_hash, mode)
-- `gitignore_add`: Add a rule to .gitignore
-- `gitignore_remove`: Remove a rule from .gitignore
-- `push`: Push changes to a remote repository (args: remote, branch, force)
-  WARNING: `force` push is dangerous and can overwrite remote history. Use with extreme caution.
-- `rebase`: Rebase current branch onto another (args: onto, base, interactive)
-  WARNING: `interactive` rebase opens an editor and is not suitable for automated environments. It can also rewrite history.
-- `cherry_pick`: Apply the changes introduced by some existing commits (args: cherry_pick_commit_hash)
-- `revert`: Revert a commit (args: revert_commit_hash)
-- `create_tag`: Create a new tag (args: tag_name, tag_message, tag_commit_hash)
-- `delete_tag`: Delete a tag (args: tag_name)
-- `help`: Show available edit operations
-]]
+When to use:
+• When staging or unstaging file changes
+• When creating or switching between branches
+• When managing stashes and repository state
+• When performing safe repository modifications
+
+Best practices:
+• Must verify Git repository before operations
+• Avoid force push operations that rewrite history
+• Use interactive rebase cautiously in automated environments
+• Ensure file paths and branch names are valid
+• Always specify required parameters for operations
+
+Available operations: stage, unstage, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, help]]
 
 GitEdit.cmds = {
   function(self, args, input)

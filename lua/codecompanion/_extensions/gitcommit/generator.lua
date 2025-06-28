@@ -73,32 +73,34 @@ end
 ---@return string prompt The formatted prompt
 function Generator._create_prompt(diff, lang)
   return string.format(
-    [[You are an expert at following the Conventional Commit specification.
+    [[Generate Conventional Commit compliant messages
 
-Please only return a commit message that strictly follows the Conventional Commit specification, without any additional text or explanations. The commit message should include:
+When to use:
+• When analyzing git diffs for commit messages
+• When standardizing commit format across projects  
+• When ensuring consistent commit message patterns
+• When generating structured commit documentation
 
-1. Type (required): lowercase, e.g., feat, fix, docs, style, refactor, perf, test, chore
-2. Scope (optional): in parentheses after type, e.g., feat(parser)
-3. Description (required): space after colon, start with verb, be concise
-4. Body (optional): use bullet points (-) to list specific changes
+Best practices:
+• Must include required type (feat, fix, docs, style, refactor, perf, test, chore)
+• Use lowercase for type, optional scope in parentheses
+• Start description with imperative verb, keep under 50 characters
+• Add body with bullet points for complex changes
+• Ensure language matches specification: %s
 
-Example format:
+Format: type(scope): description
 
-feat(scope): add new feature
+Example:
+feat(auth): add OAuth2 integration
 
-- implement X functionality
-- update Y module
-- add tests for Z
+- implement Google OAuth provider
+- update user authentication flow
+- add integration tests
 
-Note: You need to answer in %s.
-
-Based on the git diff provided below, generate a standardized commit message.
-
+Generate commit message for this diff:
 ```diff
 %s
-```
-
-]],
+```]],
     lang or "English",
     diff
   )

@@ -92,7 +92,19 @@ local function setup_tools(opts)
     chat_tools.groups = chat_tools.groups or {}
     chat_tools.groups["git_bot"] = {
       description = "A Git agent that can perform read and write operations.",
-      system_prompt = "You are a Git assistant. You have access to the `git_read` and `git_edit` tools to manage the git repository.",
+      system_prompt = [[Provide Git repository assistance and management
+
+When to use:
+• When users need comprehensive Git operations
+• When combining read and write Git operations
+• When providing guided Git workflow assistance
+• When troubleshooting Git repository issues
+
+Best practices:
+• Use git_read tool for repository analysis first
+• Ensure operations are safe before execution
+• Avoid destructive operations without user confirmation
+• Provide clear explanations for Git commands]],
       tools = {
         "git_read",
         "git_edit",
