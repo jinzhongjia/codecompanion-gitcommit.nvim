@@ -228,10 +228,10 @@ Available write-access Git operations:
           return { status = "error", data = "No staged changes found for commit. Please stage your changes first using the stage operation." }
         end
         
-        -- Return success with instruction for AI to generate message
-        return { 
-          status = "success", 
-          data = "No commit message provided. I need to generate a Conventional Commit compliant message. Let me analyze the staged changes first and then create an appropriate commit message.\n\nStaged changes detected:\n" .. diff_output:sub(1, 500) .. (string.len(diff_output) > 500 and "...\n[truncated]" or "")
+        -- Return success with instruction for AI to use the diff tool
+        return {
+          status = "success",
+          data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@git_read diff --staged` tool to see the changes and then create an appropriate commit message.",
         }
       end
       success, output = GitTool.commit(message, op_args.amend)
