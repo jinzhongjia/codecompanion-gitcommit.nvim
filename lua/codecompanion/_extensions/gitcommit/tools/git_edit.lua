@@ -43,7 +43,7 @@ GitEdit.schema = {
             files = {
               type = "array",
               items = { type = "string" },
-              description = "List of files to operate on",
+              description = "Required: List of files to stage/unstage (can use '.' for all files)",
             },
             branch_name = {
               type = "string",
@@ -168,10 +168,10 @@ When to use:
 
 Best practices:
 • Must verify Git repository before operations
+• Always specify files parameter for stage/unstage operations
+• Use '.' to stage all modified files or specific file paths
 • Avoid force push operations that rewrite history
-• Use interactive rebase cautiously in automated environments
 • Ensure file paths and branch names are valid
-• Always specify required parameters for operations
 
 Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, rebase, cherry_pick, revert, create_tag, delete_tag, help]]
 
@@ -183,7 +183,7 @@ GitEdit.cmds = {
     if operation == "help" then
       local help_text = [[
 Available write-access Git operations:
-• stage/unstage: Stage/unstage files
+• stage/unstage: Stage/unstage files (requires files parameter)
 • commit: Commit staged changes with message
 • create_branch: Create new branch
 • checkout: Switch branch/commit
