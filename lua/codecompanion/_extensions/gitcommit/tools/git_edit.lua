@@ -63,7 +63,7 @@ GitEdit.schema = {
             },
             commit_message = {
               type = "string",
-              description = "Commit message for the commit operation. Ask user if they want to use their input or AI-generated message",
+              description = "Optional commit message for the commit operation. If not provided, will automatically analyze staged diff and generate Conventional Commit compliant message using format: type(scope): description with types: feat,fix,docs,style,refactor,perf,test,chore.",
             },
             amend = {
               type = "boolean",
@@ -170,7 +170,10 @@ Best practices:
 • Must verify Git repository before operations
 • Always specify files parameter for stage/unstage operations
 • Use '.' to stage all modified files or specific file paths
-• For commit operations, ask user if they prefer their own message or AI-generated one
+• For commit operations, if no commit_message provided, automatically generate AI message
+• Auto-generation analyzes staged changes and creates Conventional Commit compliant messages
+• Use format: type(scope): description with lowercase type and imperative verb description
+• Include body with bullet points for complex changes, keep description under 50 characters
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
@@ -185,7 +188,7 @@ GitEdit.cmds = {
       local help_text = [[
 Available write-access Git operations:
 • stage/unstage: Stage/unstage files (requires files parameter)
-• commit: Commit staged changes (ask user for message preference: manual or AI-generated)
+• commit: Commit staged changes (automatically generates AI message from staged diff if no message provided)
 • create_branch: Create new branch
 • checkout: Switch branch/commit
 • stash/apply_stash: Stash operations
@@ -217,7 +220,17 @@ Available write-access Git operations:
     elseif operation == "commit" then
       local message = op_args.commit_message or op_args.message
       if not message then
-        return { status = "error", data = "Commit message is required" }
+        -- Check if there are staged changes
+        local diff_success, diff_output = GitTool.get_diff(true) -- staged changes
+        if not diff_success or not diff_output or vim.trim(diff_output) == "" then
+          return { status = "error", data = "No staged changes found for commit. Please stage your changes first using the stage operation." }
+        end
+        
+        -- Return success with instruction for AI to generate message
+        return { 
+          status = "success", 
+          data = "No commit message provided. I need to generate a Conventional Commit compliant message. Let me analyze the staged changes first and then create an appropriate commit message.\n\nStaged changes detected:\n" .. diff_output:sub(1, 500) .. (string.len(diff_output) > 500 and "...\n[truncated]" or "")
+        }
       end
       success, output = GitTool.commit(message, op_args.amend)
     elseif operation == "create_branch" then
