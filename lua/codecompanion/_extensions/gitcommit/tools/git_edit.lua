@@ -63,7 +63,7 @@ GitEdit.schema = {
             },
             commit_message = {
               type = "string",
-              description = "Commit message for the commit operation",
+              description = "Commit message for the commit operation. Ask user if they want to use their input or AI-generated message",
             },
             amend = {
               type = "boolean",
@@ -170,6 +170,7 @@ Best practices:
 • Must verify Git repository before operations
 • Always specify files parameter for stage/unstage operations
 • Use '.' to stage all modified files or specific file paths
+• For commit operations, ask user if they prefer their own message or AI-generated one
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
@@ -184,7 +185,7 @@ GitEdit.cmds = {
       local help_text = [[
 Available write-access Git operations:
 • stage/unstage: Stage/unstage files (requires files parameter)
-• commit: Commit staged changes with message
+• commit: Commit staged changes (ask user for message preference: manual or AI-generated)
 • create_branch: Create new branch
 • checkout: Switch branch/commit
 • stash/apply_stash: Stash operations
