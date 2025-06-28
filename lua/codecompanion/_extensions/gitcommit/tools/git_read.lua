@@ -97,8 +97,21 @@ GitRead.schema = {
   },
 }
 
-GitRead.system_prompt =
-  "## Git Read Tool (`git_read`)\n- You have access to a read-only Git tool.\n- You can perform operations like status, diff, log, and branch listing.\n- Always check if you're in a Git repository before performing operations.\n- Use this tool to gather information about the repository state.\n\n## AVAILABLE OPERATIONS\n- `status`: Show repository status\n- `log`: Show commit history (args: count, format)\n- `diff`: Show differences (args: staged, file_path)\n- `branch`: List branches (args: remote_only)\n- `remotes`: Show remote repositories\n- `show`: Show commit details (args: commit_hash)\n- `blame`: Show file blame information (args: file_path, line_start, line_end)\n- `stash_list`: List stashes\n- `diff_commits`: Compare commits (args: commit1, commit2, file_path)\n- `contributors`: Show top contributors (args: count)\n- `search_commits`: Search commits by message (args: pattern, count)\n- `tags`: List all tags\n- `gitignore_get`: Get the content of the .gitignore file\n- `gitignore_check`: Check if a file is ignored by .gitignore\n- `help`: Show available read operations\n"
+GitRead.system_prompt = [[Execute read-only Git repository operations
+
+When to use:
+• When examining repository status and history
+• When analyzing code changes and diffs
+• When investigating commit patterns and contributors
+• When checking branch states and configurations
+
+Best practices:
+• Must verify Git repository before operations
+• Use specific operation parameters for targeted results
+• Avoid operations that modify repository state
+• Ensure operation args match expected parameters
+
+Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, gitignore_get, gitignore_check, help]]
 
 GitRead.cmds = {
   function(self, args, input)
@@ -177,7 +190,7 @@ GitRead.output = {
   success = function(self, agent, cmd, stdout)
     local chat = agent.chat
     local operation = self.args.operation
-    local user_msg = string.format("Git operation [%s] completed", operation)
+    local user_msg = string.format("Git read operation [%s] executed successfully", operation)
     return chat:add_tool_output(self, stdout[1], user_msg)
   end,
   error = function(self, agent, cmd, stderr, stdout)

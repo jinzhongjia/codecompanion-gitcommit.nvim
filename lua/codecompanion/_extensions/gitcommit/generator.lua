@@ -7,7 +7,7 @@ local codecompanion_schema = require("codecompanion.schema")
 local Generator = {}
 
 --- @type string?
-local _adapater = nil
+local _adapter = nil
 --- @type string?
 local _model = nil
 
@@ -19,12 +19,12 @@ local CONSTANTS = {
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
 function Generator.setup(adapter, model)
-  _adapater = adapter or codecompanion_config.strategies.chat.adapter
+  _adapter = adapter or codecompanion_config.strategies.chat.adapter
   _model = model or codecompanion_config.strategies.chat.model
 
   -- Validate adapter
-  if not codecompanion_adapter.resolve(_adapater) then
-    error("Invalid adapter specified: " .. tostring(_adapater))
+  if not codecompanion_adapter.resolve(_adapter) then
+    error("Invalid adapter specified: " .. tostring(_adapter))
   end
 end
 
@@ -35,7 +35,7 @@ end
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
 function Generator.generate_commit_message(diff, lang, callback)
   -- Setup adapter
-  local adapter = codecompanion_adapter.resolve(_adapater)
+  local adapter = codecompanion_adapter.resolve(_adapter)
   if not adapter then
     return callback(nil, "Failed to resolve adapter")
   end
@@ -73,32 +73,34 @@ end
 ---@return string prompt The formatted prompt
 function Generator._create_prompt(diff, lang)
   return string.format(
-    [[You are an expert at following the Conventional Commit specification.
+    [[Generate Conventional Commit compliant messages
 
-Please only return a commit message that strictly follows the Conventional Commit specification, without any additional text or explanations. The commit message should include:
+When to use:
+• When analyzing git diffs for commit messages
+• When standardizing commit format across projects  
+• When ensuring consistent commit message patterns
+• When generating structured commit documentation
 
-1. Type (required): lowercase, e.g., feat, fix, docs, style, refactor, perf, test, chore
-2. Scope (optional): in parentheses after type, e.g., feat(parser)
-3. Description (required): space after colon, start with verb, be concise
-4. Body (optional): use bullet points (-) to list specific changes
+Best practices:
+• Must include required type (feat, fix, docs, style, refactor, perf, test, chore)
+• Use lowercase for type, optional scope in parentheses
+• Start description with imperative verb, keep under 50 characters
+• Add body with bullet points for complex changes
+• Ensure language matches specification: %s
 
-Example format:
+Format: type(scope): description
 
-feat(scope): add new feature
+Example:
+feat(auth): add OAuth2 integration
 
-- implement X functionality
-- update Y module
-- add tests for Z
+- implement Google OAuth provider
+- update user authentication flow
+- add integration tests
 
-Note: You need to answer in %s.
-
-Based on the git diff provided below, generate a standardized commit message.
-
+Generate commit message for this diff:
 ```diff
 %s
-```
-
-]],
+```]],
     lang or "English",
     diff
   )
@@ -111,9 +113,14 @@ end
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
 function Generator._handle_response(err, data, _adapter, callback)
   -- Handle request errors
-  if err and err.stderr ~= "{}" then
-    local error_msg = "Error generating commit message: " .. (err.stderr or "Unknown error")
+  if err then
+    local error_msg = "Error generating commit message: " .. (err.stderr or err.message or "Unknown error")
     return callback(nil, error_msg)
+  end
+  
+  -- Check for empty or invalid data
+  if not data then
+    return callback(nil, "No response received from LLM")
   end
 
   -- Process successful response

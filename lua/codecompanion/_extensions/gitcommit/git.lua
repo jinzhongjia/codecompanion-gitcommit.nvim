@@ -1,7 +1,7 @@
 ---@class CodeCompanion.GitCommit.Git
 local Git = {}
 
--- 存储配置
+-- Store configuration
 local config = {}
 
 ---Setup Git module with configuration
@@ -201,7 +201,7 @@ function Git.get_contextual_diff()
     end
   end
 
-  -- 3. Fallback: If no staged changes and not amending, check for all local changes (working directory vs. HEAD)
+  -- Fallback: If no staged changes and not amending, check for all local changes (working directory vs. HEAD)
   local all_local_diff = vim.fn.system("git diff --no-ext-diff HEAD")
   if vim.v.shell_error == 0 and vim.trim(all_local_diff) ~= "" then
     local filtered_diff = Git._filter_diff(all_local_diff)
@@ -240,7 +240,7 @@ function Git.commit_changes(message)
     return false
   end
 
-  -- 直接通过 stdin 传递 commit message，无需临时文件
+  -- Pass commit message directly through stdin without temporary files
   local cmd
   if Git.is_amending() then
     cmd = "git commit --amend -F -"

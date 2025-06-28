@@ -91,7 +91,7 @@ function UI._create_window(buf, width, height)
     row = math.floor((vim.o.lines - height) / 2),
     style = "minimal",
     border = "rounded",
-    title = " 🚀 Git Commit Assistant ",
+    title = " Git Commit Assistant ",
     title_pos = "center",
   })
 end
@@ -129,13 +129,13 @@ function UI._setup_keymaps(buf, win, message, on_commit)
 
   vim.keymap.set("n", "c", function()
     copy_to_clipboard(message)
-    vim.notify("📋 Commit message copied to clipboard", vim.log.levels.INFO)
+    vim.notify("Commit message copied to clipboard", vim.log.levels.INFO)
   end, opts)
 
   -- Copy to yank register
   vim.keymap.set("n", "y", function()
     vim.fn.setreg('"', message)
-    vim.notify("📝 Commit message copied to yank register", vim.log.levels.INFO)
+    vim.notify("Commit message copied to yank register", vim.log.levels.INFO)
   end, opts)
 
   -- Submit commit
@@ -149,7 +149,7 @@ function UI._setup_keymaps(buf, win, message, on_commit)
   -- Copy and close
   vim.keymap.set("n", "<CR>", function()
     copy_to_clipboard(message)
-    vim.notify("📋 Commit message copied to clipboard", vim.log.levels.INFO)
+    vim.notify("Commit message copied to clipboard", vim.log.levels.INFO)
     vim.api.nvim_win_close(win, true)
   end, opts)
 end

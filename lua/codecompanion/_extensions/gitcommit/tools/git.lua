@@ -251,6 +251,24 @@ function GitTool.unstage_files(files)
   return execute_git_command(cmd)
 end
 
+---Commit staged changes
+---@param message string Commit message
+---@param amend? boolean Whether to amend the last commit (default: false)
+---@return boolean success, string output
+function GitTool.commit(message, amend)
+  if not message or vim.trim(message) == "" then
+    return false, "Commit message is required"
+  end
+
+  local cmd = "git commit"
+  if amend then
+    cmd = cmd .. " --amend"
+  end
+  cmd = cmd .. " -m " .. vim.fn.shellescape(message)
+
+  return execute_git_command(cmd)
+end
+
 ---Create a new branch
 ---@param branch_name string Name of the new branch
 ---@param checkout? boolean Whether to checkout the new branch (default: true)
@@ -417,6 +435,7 @@ function GitTool.push(remote, branch, force, tags, tag_name)
 end
 
 ---Perform a git rebase operation
+
 ---@param onto? string The branch to rebase onto
 ---@param base? string The upstream branch to rebase from
 ---@param interactive? boolean Whether to perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)
@@ -442,7 +461,7 @@ function GitTool.cherry_pick(commit_hash)
   if not commit_hash then
     return false, "Commit hash is required for cherry-pick"
   end
-  local cmd = "git cherry-pick " .. vim.fn.shellescape(commit_hash)
+  local cmd = "git cherry-pick --no-edit " .. vim.fn.shellescape(commit_hash)
   return execute_git_command(cmd)
 end
 
@@ -499,6 +518,33 @@ function GitTool.delete_tag(tag_name, remote)
     cmd = "git tag -d " .. vim.fn.shellescape(tag_name)
   end
   return execute_git_command(cmd)
+end
+
+---Merge a branch into the current branch
+---@param branch string The name of the branch to merge
+---@return boolean success, string output
+function GitTool.merge(branch)
+  if not branch or vim.trim(branch) == "" then
+    return false, "Branch name is required for merge"
+  end
+
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git merge " .. vim.fn.shellescape(branch) .. " --no-edit"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, output
+  else
+    if output:match("CONFLICT") then
+      return false, "Merge conflict detected. Please resolve the conflicts manually. You can use 'git merge --abort' to cancel."
+    else
+      return false, output
+    end
+  end
 end
 
 M.GitTool = GitTool
