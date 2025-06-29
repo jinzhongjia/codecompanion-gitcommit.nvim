@@ -434,6 +434,52 @@ function GitTool.push(remote, branch, force, tags, tag_name)
   return execute_git_command(cmd)
 end
 
+---Push changes to a remote repository asynchronously
+---@param remote? string The name of the remote to push to (e.g., origin)
+---@param branch? string The name of the branch to push (defaults to current branch)
+---@param force? boolean Force push (DANGEROUS: overwrites remote history)
+---@param tags? boolean Push all tags
+---@param tag_name? string The name of a single tag to push
+---@param on_exit function The callback function to execute on completion
+function GitTool.push_async(remote, branch, force, tags, tag_name, on_exit)
+  local cmd = { "push" }
+  if force then
+    table.insert(cmd, "--force")
+  end
+  if remote then
+    table.insert(cmd, remote)
+  end
+  if branch then
+    table.insert(cmd, branch)
+  end
+  if tags then
+    table.insert(cmd, "--tags")
+  end
+  if tag_name then
+    table.insert(cmd, tag_name)
+  end
+
+  require("plenary.job")
+    :new({
+      command = "git",
+      args = cmd,
+      on_exit = function(job, return_val)
+        if return_val == 0 then
+          on_exit({
+            status = "success",
+            data = table.concat(job:result()),
+          })
+        else
+          on_exit({
+            status = "error",
+            data = table.concat(job:stderr_result()),
+          })
+        end
+      end,
+    })
+    :start()
+end
+
 ---Perform a git rebase operation
 
 ---@param onto? string The branch to rebase onto

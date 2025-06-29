@@ -256,7 +256,20 @@ Available write-access Git operations:
       end
       success, output = GitTool.remove_gitignore_rule(rules)
     elseif operation == "push" then
-      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags, op_args.tag_name)
+      return GitTool.push_async(
+        op_args.remote,
+        op_args.branch,
+        op_args.force,
+        op_args.tags,
+        op_args.tag_name,
+        (function(result)
+          if result.status == "success" then
+            return { status = "success", data = result.data }
+          else
+            return { status = "error", data = result.data }
+          end
+        end)
+      )
     elseif operation == "cherry_pick" then
       if not op_args.cherry_pick_commit_hash then
         return { status = "error", data = "Commit hash is required for cherry-pick" }
