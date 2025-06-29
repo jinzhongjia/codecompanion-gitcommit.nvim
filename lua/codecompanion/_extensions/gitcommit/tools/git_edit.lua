@@ -319,8 +319,9 @@ GitEdit.output = {
   end,
   error = function(self, agent, cmd, stderr, stdout)
     local chat = agent.chat
-    local error_msg = stderr[1] or "Git edit operation failed"
-    local user_msg = "Git edit operation failed"
+    local operation = self.args.operation
+    local error_msg = stderr and stderr[1] or ("Git edit operation [%s] failed"):format(operation)
+    local user_msg = string.format("Git edit operation [%s] failed", operation)
     return chat:add_tool_output(self, error_msg, user_msg)
   end,
 }
