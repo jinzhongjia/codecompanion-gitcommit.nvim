@@ -107,6 +107,10 @@ GitEdit.schema = {
               type = "boolean",
               description = "Force push (DANGEROUS: overwrites remote history)",
             },
+            set_upstream = {
+              type = "boolean",
+              description = "Set the upstream branch for the current local branch",
+            },
             tags = {
               type = "boolean",
               description = "Push all tags",
@@ -162,13 +166,14 @@ Best practices:
 • Auto-generation analyzes staged changes and creates Conventional Commit compliant messages
 • Use format: type(scope): description with lowercase type and imperative verb description
 • Include body with bullet points for complex changes, keep description under 50 characters
+• Use the `set_upstream` option to create and track a remote branch if it doesn't exist
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
 Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
 GitEdit.cmds = {
-  function(self, args, input)
+  function(self, args, input, output_handler)
     local operation = args.operation
     local op_args = args.args or {}
 
@@ -191,6 +196,18 @@ Available write-access Git operations:
 • merge: Merge a branch into the current branch (requires branch parameter)
       ]]
       return { status = "success", data = help_text }
+    end
+
+    if operation == "push" then
+      return GitTool.push_async(
+        op_args.remote,
+        op_args.branch,
+        op_args.force,
+        op_args.set_upstream,
+        op_args.tags,
+        op_args.single_tag_name,
+        output_handler
+      )
     end
 
     local success, output
@@ -255,8 +272,6 @@ Available write-access Git operations:
         return { status = "error", data = "No rule(s) specified for .gitignore remove" }
       end
       success, output = GitTool.remove_gitignore_rule(rules)
-    elseif operation == "push" then
-      success, output = GitTool.push(op_args.remote, op_args.branch, op_args.force, op_args.tags, op_args.tag_name)
     elseif operation == "cherry_pick" then
       if not op_args.cherry_pick_commit_hash then
         return { status = "error", data = "Commit hash is required for cherry-pick" }
@@ -310,8 +325,9 @@ GitEdit.output = {
   end,
   error = function(self, agent, cmd, stderr, stdout)
     local chat = agent.chat
-    local error_msg = stderr[1] or "Git edit operation failed"
-    local user_msg = "Git edit operation failed"
+    local operation = self.args.operation
+    local error_msg = stderr and stderr[1] or ("Git edit operation [%s] failed"):format(operation)
+    local user_msg = string.format("Git edit operation [%s] failed", operation)
     return chat:add_tool_output(self, error_msg, user_msg)
   end,
 }
