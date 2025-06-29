@@ -448,6 +448,7 @@ function GitTool.push_async(remote, branch, force, tags, tag_name, on_exit)
   end
   if remote then
     table.insert(cmd, remote)
+  
   end
   if branch then
     table.insert(cmd, branch)
@@ -459,12 +460,33 @@ function GitTool.push_async(remote, branch, force, tags, tag_name, on_exit)
     table.insert(cmd, tag_name)
   end
 
+  local stdout_lines = {}
+  local stderr_lines = {}
+
   vim.fn.jobstart(cmd, {
+    on_stdout = function(_, data)
+      if data then
+        for _, line in ipairs(data) do
+          if line ~= "" then
+            table.insert(stdout_lines, line)
+          end
+        end
+      end
+    end,
+    on_stderr = function(_, data)
+      if data then
+        for _, line in ipairs(data) do
+          if line ~= "" then
+            table.insert(stderr_lines, line)
+          end
+        end
+      end
+    end,
     on_exit = function(_, code)
       if code == 0 then
-        on_exit({ status = "success", data = "Push successful." })
+        on_exit({ status = "success", data = table.concat(stdout_lines, "\n") })
       else
-        on_exit({ status = "error", data = "Push failed." })
+        on_exit({ status = "error", data = table.concat(stderr_lines, "\n") })
       end
     end,
   })
