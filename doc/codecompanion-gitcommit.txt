@@ -26,9 +26,9 @@ to generate meaningful git commit messages following the Conventional Commits
 specification. It integrates seamlessly with CodeCompanion's LLM adapters to
 analyze your staged changes and create appropriate commit messages.
 
-The extension provides comprehensive Git operations through @git_read and
-@git_edit tools, offering a natural language interface for Git workflow
-management within CodeCompanion chat buffers.
+The extension provides comprehensive Git operations through @git_read,
+@git_edit, and @git_bot tools, offering a natural language interface for
+Git workflow management within CodeCompanion chat buffers.
 
 ==============================================================================
 2. FEATURES					*codecompanion-gitcommit-features*
@@ -42,6 +42,7 @@ management within CodeCompanion chat buffers.
 🛠️ Git Tool Integration
 • @git_read tool - Execute read-only Git operations through chat
 • @git_edit tool - Execute write-access Git operations through chat
+• @git_bot tool group - Comprehensive Git assistant combining read/write ops
 • Natural language interface for Git workflow control
 • Automatic approval requirements for destructive operations
 
@@ -64,12 +65,13 @@ Add this extension to your CodeCompanion configuration:
 	        -- Basic configuration
 	        adapter = "openai",                    -- LLM adapter
 	        model = "gpt-4",                      -- Model name
-	        languages = { "English", "Chinese" }, -- Supported languages
+	        languages = { "English", "Chinese", "Japanese", "French" }, -- Supported languages
 	        
 	        -- File filtering (optional)
 	        exclude_files = { 
-	          "*.pb.go", "*.min.js", "package-lock.json",
-	          "dist/*", "build/*", "node_modules/*"
+	          "*.pb.go", "*.min.js", "*.min.css", "package-lock.json",
+	          "yarn.lock", "*.log", "dist/*", "build/*", ".next/*",
+	          "node_modules/*", "vendor/*"
 	        },
 	        
 	        -- Buffer integration
@@ -77,13 +79,16 @@ Add this extension to your CodeCompanion configuration:
 	          enabled = true,              -- Enable gitcommit buffer keymaps
 	          keymap = "<leader>gc",       -- Keymap for generating commit messages
 	          auto_generate = true,        -- Auto-generate on buffer enter
-	          auto_generate_delay = 100,   -- Auto-generation delay (ms)
+	          auto_generate_delay = 200,   -- Auto-generation delay (ms)
 	        },
 	        
 	        -- Feature toggles
 	        add_slash_command = true,      -- Add /gitcommit slash command
 	        add_git_tool = true,          -- Add @git_read and @git_edit tools
-	        add_git_commands = true,      -- Add :CodeCompanionGit commands
+	        enable_git_read = true,       -- Enable read-only Git operations
+	        enable_git_edit = true,       -- Enable write-access Git operations
+	        enable_git_bot = true,        -- Enable @git_bot tool group
+	        add_git_commands = true,      -- Add :CodeCompanionGitCommit commands
 	      }
 	    }
 	  }
@@ -126,12 +131,6 @@ GitCommit buffer integration:
 *:CCGitCommit*
 	Generate Git commit message (short alias)
 
-*:CodeCompanionGit*
-	Open Git assistant chat
-
-*:CCGit*
-	Open Git assistant chat (short alias)
-
 ==============================================================================
 6. GIT TOOLS					*codecompanion-gitcommit-git-tools*
 
@@ -149,26 +148,36 @@ Read-only operations (@git_read):			*git_read*
 • contributors - Show contributors
 • search_commits - Search commit messages
 • tags - List all tags
+• gitignore_get - Get .gitignore content
+• gitignore_check - Check if a file is ignored
 
 Write operations (@git_edit):				*git_edit*
 
 • stage/unstage - Stage/unstage files
+• commit - Commit changes (can auto-generate AI commit message)
 • create_branch - Create new branch
 • checkout - Switch branch/commit
 • stash/apply_stash - Stash operations
 • reset - Reset to specific commit
 • gitignore_add/remove - Manage .gitignore
 • push - Push changes to remote repository
-• rebase - Rebase operations
 • cherry_pick - Cherry-pick commits
 • revert - Revert commits
 • create_tag/delete_tag - Tag management
+• merge - Merge branches
+
+Git bot (@git_bot):				*git_bot*
+
+Comprehensive Git assistant that combines read and write operations to provide
+intelligent Git workflow assistance.
 
 Examples: >
 	@git_read status
 	@git_read log --count 5
 	@git_edit stage --files ["src/main.lua"]
 	@git_edit create_branch --branch_name "feature/new"
+	@git_edit commit --commit_message "feat: add new feature"
+	@git_bot Please help me create a new branch and commit current changes
 <
 
 Safety features:
@@ -191,21 +200,31 @@ Safety features:
 *languages*					Type: table
 	A list of languages for generating commit messages. When specified,
 	the extension will prompt you to select a language before generating.
-	Example: { "English", "Chinese", "Japanese" }
+	Example: { "English", "Chinese", "Japanese", "French" }
 
 *exclude_files*					Type: table
 	A list of file patterns to exclude from git diff analysis. Supports
 	glob patterns using * and ? wildcards.
 	Example: { "*.pb.go", "*.min.js", "dist/*", "node_modules/*" }
 
-*add_slash_command*				Type: boolean, Default: false
+*add_slash_command*				Type: boolean, Default: true
 	When enabled, adds /gitcommit slash command to CodeCompanion chat buffers.
 
 *add_git_tool*					Type: boolean, Default: true
 	When enabled, adds @git_read and @git_edit tools to CodeCompanion chat buffers.
 
+*enable_git_read*				Type: boolean, Default: true
+	Enable read-only Git operations (@git_read tool).
+
+*enable_git_edit*				Type: boolean, Default: true
+	Enable write-access Git operations (@git_edit tool).
+
+*enable_git_bot*				Type: boolean, Default: true
+	Enable @git_bot tool group. Only takes effect when both enable_git_read 
+	and enable_git_edit are true.
+
 *add_git_commands*				Type: boolean, Default: true
-	When enabled, adds :CodeCompanionGit and :CCGit commands.
+	When enabled, adds :CodeCompanionGitCommit and :CCGitCommit commands.
 
 *gitcommit_select_count*			Type: number, Default: 100
 	Number of recent commits to show when using /gitcommit slash command.
@@ -226,10 +245,10 @@ Buffer configuration:
 *buffer.keymap*					Type: string, Default: "<leader>gc"
 	The keymap used in gitcommit buffers to trigger commit message generation.
 
-*buffer.auto_generate*				Type: boolean, Default: false
+*buffer.auto_generate*				Type: boolean, Default: true
 	When true, automatically generates commit message upon entering gitcommit buffer.
 
-*buffer.auto_generate_delay*			Type: number, Default: 100
+*buffer.auto_generate_delay*			Type: number, Default: 200
 	The delay in milliseconds before triggering automatic generation.
 
 ==============================================================================

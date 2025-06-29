@@ -22,28 +22,32 @@ require("codecompanion").setup({
       callback = "codecompanion._extensions.gitcommit",
       opts = {
         -- Basic configuration
-        adapter = "openai",                    -- LLM adapter
-        model = "gpt-4",                      -- Model name
-        languages = { "English", "Chinese" }, -- Supported languages
+        adapter = "openai",                       -- LLM adapter
+        model = "gpt-4",                         -- Model name
+        languages = { "English", "Chinese", "Japanese", "French" }, -- Supported languages
         
         -- File filtering (optional)
         exclude_files = { 
-          "*.pb.go", "*.min.js", "package-lock.json",
-          "dist/*", "build/*", "node_modules/*"
+          "*.pb.go", "*.min.js", "*.min.css", "package-lock.json",
+          "yarn.lock", "*.log", "dist/*", "build/*", ".next/*",
+          "node_modules/*", "vendor/*"
         },
         
         -- Buffer integration
         buffer = {
-          enabled = true,              -- Enable gitcommit buffer keymaps
-          keymap = "<leader>gc",       -- Keymap for generating commit messages
-          auto_generate = true,        -- Auto-generate on buffer enter
-          auto_generate_delay = 100,   -- Auto-generation delay (ms)
+          enabled = true,                -- Enable gitcommit buffer keymaps
+          keymap = "<leader>gc",         -- Keymap for generating commit messages
+          auto_generate = true,          -- Auto-generate on buffer enter
+          auto_generate_delay = 200,     -- Auto-generation delay (ms)
         },
         
         -- Feature toggles
-        add_slash_command = true,      -- Add /gitcommit slash command
-        add_git_tool = true,          -- Add @git_read and @git_edit tools, and @git_bot tool group
-        add_git_commands = true,      -- Add :CodeCompanionGit commands
+        add_slash_command = true,        -- Add /gitcommit slash command
+        add_git_tool = true,            -- Add @git_read and @git_edit tools
+        enable_git_read = true,         -- Enable read-only Git operations
+        enable_git_edit = true,         -- Enable write-access Git operations  
+        enable_git_bot = true,          -- Enable @git_bot tool group (requires both read/write enabled)
+        add_git_commands = true,        -- Add :CodeCompanionGitCommit commands
       }
     }
   }
@@ -73,6 +77,8 @@ Use Git tools in CodeCompanion chat:
 @git_read diff --staged             # Show staged changes
 @git_read branch                    # List all branches
 @git_read contributors --count 10   # Show top 10 contributors
+@git_read tags                      # List all tags
+@git_read gitignore_get             # Get .gitignore content
 ```
 
 #### ✏️ Write Operations (`@git_edit`)
@@ -82,15 +88,26 @@ Use Git tools in CodeCompanion chat:
 @git_edit create_branch --branch_name "feature/new-ui"
 @git_edit stash --message "Work in progress"
 @git_edit checkout --target "main"
+@git_edit commit --commit_message "feat: add new feature"
+@git_edit push --remote "origin" --branch "main"
+```
+
+#### 🤖 Git Bot (`@git_bot`)
+
+Use a comprehensive Git assistant that combines read and write operations:
+
+```
+@git_bot Please help me create a new branch and push the current changes
+@git_bot Analyze recent commit history and summarize main changes
 ```
 
 ### Workflow Examples
 
 **Quick commit workflow:**
 ```
-@git_read status           # Check status
-@git_edit stage --files [...]  # Stage files
-:CodeCompanionGitCommit    # Generate commit message
+@git_read status                    # Check status
+@git_edit stage --files [...]       # Stage files
+:CodeCompanionGitCommit             # Generate commit message
 ```
 
 **Branch management:**
@@ -99,7 +116,7 @@ Use Git tools in CodeCompanion chat:
 @git_edit create_branch --branch_name "feature/awesome"
 # ... make changes ...
 @git_edit stage --files [...]
-/gitcommit                 # Generate commit message in chat
+/gitcommit                          # Generate commit message in chat
 ```
 
 ## ⚙️ Configuration Options
@@ -111,10 +128,18 @@ Use Git tools in CodeCompanion chat:
 opts = {
   adapter = "openai",                           -- LLM adapter
   model = "gpt-4",                             -- Model name
-  languages = { "English", "Chinese" },        -- Supported languages list
-  exclude_files = { "*.min.js", "dist/*" },   -- Excluded file patterns
+  languages = { "English", "Chinese", "Japanese", "French" }, -- Supported languages list
+  exclude_files = {                            -- Excluded file patterns
+    "*.pb.go", "*.min.js", "*.min.css",
+    "package-lock.json", "yarn.lock", "*.log",
+    "dist/*", "build/*", ".next/*",
+    "node_modules/*", "vendor/*"
+  },
   add_slash_command = true,                    -- Add /gitcommit command
   add_git_tool = true,                        -- Add Git tools
+  enable_git_read = true,                     -- Enable read-only Git operations
+  enable_git_edit = true,                     -- Enable write-access Git operations
+  enable_git_bot = true,                      -- Enable Git bot (requires both read/write enabled)
   add_git_commands = true,                    -- Add Git commands
   gitcommit_select_count = 100,               -- Commits shown in /gitcommit
   git_tool_auto_submit_errors = false,       -- Auto-submit errors to LLM
@@ -123,7 +148,7 @@ opts = {
     enabled = true,                           -- Enable buffer integration
     keymap = "<leader>gc",                   -- Keymap
     auto_generate = true,                    -- Auto-generate
-    auto_generate_delay = 100,              -- Generation delay
+    auto_generate_delay = 200,              -- Generation delay (ms)
   }
 }
 ```
