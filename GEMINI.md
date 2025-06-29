@@ -11,6 +11,12 @@ This project is a CodeCompanion extension designed to generate AI-powered Git co
 - **File Filtering**: Supports glob patterns to exclude generated files from analysis.
 - **Natural Language Interface**: Enables controlling Git workflows through conversational commands.
 
+## Development Principles
+
+- **No Plenary**: The use of the `plenary.nvim` library is prohibited. Instead, leverage Neovim's built-in `vim.uv` library for I/O and other system-level operations.
+- **Asynchronous by Default**: For any operation that could be time-consuming (e.g., network requests, file system operations), always prefer an asynchronous implementation to avoid blocking the main thread.
+- **Comprehensive Feedback**: Regardless of the outcome, every asynchronous operation must report its result (both success and failure) back to the language model. This ensures the LLM is always aware of the state of the tool.
+
 ## Installation:
 
 Add this extension to your CodeCompanion configuration in `init.lua` or similar:
