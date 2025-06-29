@@ -168,7 +168,7 @@ Best practices:
 Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
 GitEdit.cmds = {
-  function(self, args, input)
+  function(self, args, input, output_handler)
     local operation = args.operation
     local op_args = args.args or {}
 
@@ -191,6 +191,17 @@ Available write-access Git operations:
 • merge: Merge a branch into the current branch (requires branch parameter)
       ]]
       return { status = "success", data = help_text }
+    end
+
+    if operation == "push" then
+      return GitTool.push_async(
+        op_args.remote,
+        op_args.branch,
+        op_args.force,
+        op_args.tags,
+        op_args.single_tag_name,
+        output_handler
+      )
     end
 
     local success, output
@@ -255,21 +266,6 @@ Available write-access Git operations:
         return { status = "error", data = "No rule(s) specified for .gitignore remove" }
       end
       success, output = GitTool.remove_gitignore_rule(rules)
-    elseif operation == "push" then
-      return GitTool.push_async(
-        op_args.remote,
-        op_args.branch,
-        op_args.force,
-        op_args.tags,
-        op_args.tag_name,
-        (function(result)
-          if result.status == "success" then
-            return { status = "success", data = result.data }
-          else
-            return { status = "error", data = result.data }
-          end
-        end)
-      )
     elseif operation == "cherry_pick" then
       if not op_args.cherry_pick_commit_hash then
         return { status = "error", data = "Commit hash is required for cherry-pick" }

@@ -442,7 +442,7 @@ end
 ---@param tag_name? string The name of a single tag to push
 ---@param on_exit function The callback function to execute on completion
 function GitTool.push_async(remote, branch, force, tags, tag_name, on_exit)
-  local cmd = { "push" }
+  local cmd = { "git", "push" }
   if force then
     table.insert(cmd, "--force")
   end
@@ -459,25 +459,15 @@ function GitTool.push_async(remote, branch, force, tags, tag_name, on_exit)
     table.insert(cmd, tag_name)
   end
 
-  require("plenary.job")
-    :new({
-      command = "git",
-      args = cmd,
-      on_exit = function(job, return_val)
-        if return_val == 0 then
-          on_exit({
-            status = "success",
-            data = table.concat(job:result()),
-          })
-        else
-          on_exit({
-            status = "error",
-            data = table.concat(job:stderr_result()),
-          })
-        end
-      end,
-    })
-    :start()
+  vim.fn.jobstart(cmd, {
+    on_exit = function(_, code)
+      if code == 0 then
+        on_exit({ status = "success", data = "Push successful." })
+      else
+        on_exit({ status = "error", data = "Push failed." })
+      end
+    end,
+  })
 end
 
 ---Perform a git rebase operation
