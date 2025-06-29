@@ -107,6 +107,10 @@ GitEdit.schema = {
               type = "boolean",
               description = "Force push (DANGEROUS: overwrites remote history)",
             },
+            set_upstream = {
+              type = "boolean",
+              description = "Set the upstream branch for the current local branch",
+            },
             tags = {
               type = "boolean",
               description = "Push all tags",
@@ -162,6 +166,7 @@ Best practices:
 • Auto-generation analyzes staged changes and creates Conventional Commit compliant messages
 • Use format: type(scope): description with lowercase type and imperative verb description
 • Include body with bullet points for complex changes, keep description under 50 characters
+• Use the `set_upstream` option to create and track a remote branch if it doesn't exist
 • Avoid force push operations that rewrite history
 • Ensure file paths and branch names are valid
 
@@ -198,6 +203,7 @@ Available write-access Git operations:
         op_args.remote,
         op_args.branch,
         op_args.force,
+        op_args.set_upstream,
         op_args.tags,
         op_args.single_tag_name,
         output_handler
