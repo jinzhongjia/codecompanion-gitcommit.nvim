@@ -450,17 +450,18 @@ function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name,
   if set_upstream then
     table.insert(cmd, "--set-upstream")
   end
+  if tags then
+    table.insert(cmd, "--tags")
+  end
+  if tag_name then
+    table.insert(cmd, "tag")
+    table.insert(cmd, tag_name)
+  end
   if remote then
     table.insert(cmd, remote)
   end
   if branch then
     table.insert(cmd, branch)
-  end
-  if tags then
-    table.insert(cmd, "--tags")
-  end
-  if tag_name then
-    table.insert(cmd, tag_name)
   end
 
   local stdout_lines = {}
