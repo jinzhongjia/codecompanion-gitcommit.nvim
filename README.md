@@ -42,7 +42,7 @@ require("codecompanion").setup({
         
         -- Feature toggles
         add_slash_command = true,      -- Add /gitcommit slash command
-        add_git_tool = true,          -- Add @git_read and @git_edit tools
+        add_git_tool = true,          -- Add @git_read and @git_edit tools, and @git_bot tool group
         add_git_commands = true,      -- Add :CodeCompanionGit commands
       }
     }
