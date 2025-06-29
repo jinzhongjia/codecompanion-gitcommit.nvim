@@ -123,14 +123,6 @@ end
 local function setup_commands(opts)
   create_command("CodeCompanionGitCommit", M.generate_commit_message, "Generate Git commit message using AI")
   create_command("CCGitCommit", M.generate_commit_message, "Generate Git commit message using AI (short alias)")
-
-  if opts.add_git_commands then
-    local chat_command = function()
-      require("codecompanion").chat()
-    end
-    create_command("CodeCompanionGit", chat_command, "Open CodeCompanion chat for Git assistance")
-    create_command("CCGit", chat_command, "Open CodeCompanion chat for Git assistance (short alias)")
-  end
 end
 
 local function setup_slash_commands(opts)
