@@ -181,7 +181,18 @@ function GitTool.get_log(count, format)
   count = count or 10
   format = format or "oneline"
 
-  local cmd = string.format("git log -%d --%s", count, format)
+  -- Map format to valid git log options
+  local format_map = {
+    oneline = "--oneline",
+    short = "--pretty=short",
+    medium = "--pretty=medium", 
+    full = "--pretty=full",
+    fuller = "--pretty=fuller",
+    format = "--pretty=format"
+  }
+  
+  local format_option = format_map[format] or "--oneline"
+  local cmd = string.format("git log -%d %s", count, format_option)
   return execute_git_command(cmd)
 end
 

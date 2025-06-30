@@ -44,7 +44,7 @@ GitRead.schema = {
             },
             format = {
               type = "string",
-              description = "Format for log output (oneline, short, full, etc.)",
+              description = "Format for log output (oneline, short, medium, full, fuller)",
             },
             staged = {
               type = "boolean",
