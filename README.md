@@ -1,15 +1,16 @@
-# CodeCompanion Git Commit Extension
+# CodeCompanion GitCommit Extension
 
-A CodeCompanion extension that generates AI-powered git commit messages following the Conventional Commits specification, with powerful Git tool integration.
+A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit messages following the Conventional Commits specification, with comprehensive Git workflow integration.
 
 ## ✨ Features
 
 - 🤖 **AI Commit Generation** - Generate Conventional Commits compliant messages using CodeCompanion's LLM adapters
-- 🛠️ **Git Tool Integration** - Execute Git operations through `@git_read` and `@git_edit` tools in chat
+- 🛠️ **Git Tool Integration** - Execute Git operations through `@git_read` (15 operations) and `@git_edit` (16 operations) tools in chat
+- 🤖 **Git Assistant** - Intelligent Git workflow assistance via `@git_bot` combining read/write operations
 - 🌍 **Multi-language Support** - Generate commit messages in multiple languages
-- 📝 **Smart Buffer Integration** - Auto-generate commit messages in gitcommit buffers
-- 📋 **File Filtering** - Support glob patterns to exclude generated files from analysis
-- 💬 **Natural Language Interface** - Control Git workflows through conversation
+- 📝 **Smart Buffer Integration** - Auto-generate commit messages in gitcommit buffers with configurable keymaps
+- 📋 **File Filtering** - Support glob patterns to exclude files from diff analysis
+- ⚡ **Async Operations** - Non-blocking Git operations with proper error handling
 
 ## 📦 Installation
 
@@ -62,8 +63,6 @@ require("codecompanion").setup({
 |---------|-------------|
 | `:CodeCompanionGitCommit` | Generate Git commit message |
 | `:CCGitCommit` | Generate Git commit message (short alias) |
-| `:CodeCompanionGit` | Open Git assistant chat |
-| `:CCGit` | Open Git assistant chat (short alias) |
 
 ### Git Tool Operations
 
@@ -101,22 +100,25 @@ Use a comprehensive Git assistant that combines read and write operations:
 @git_bot Analyze recent commit history and summarize main changes
 ```
 
-### Workflow Examples
+### Basic Usage
 
-**Quick commit workflow:**
+**1. Generate commit message:**
 ```
-@git_read status                    # Check status
-@git_edit stage --files [...]       # Stage files
-:CodeCompanionGitCommit             # Generate commit message
+:CodeCompanionGitCommit
 ```
 
-**Branch management:**
+**2. GitCommit buffer integration:**
+- Run `git commit` to open commit buffer
+- Press `<leader>gc` to generate message (or auto-generates if enabled)
+- Edit and save to complete commit
+
+**3. Chat-based Git workflow:**
 ```
-@git_read branch
-@git_edit create_branch --branch_name "feature/awesome"
-# ... make changes ...
-@git_edit stage --files [...]
+@git_read status                    # Check repository status
+@git_edit stage --files ["file1.txt", "file2.txt"]  # Stage files
 /gitcommit                          # Generate commit message in chat
+@git_edit commit --commit_message "feat: add new feature"  # Commit
+@git_edit push --remote "origin" --branch "main"    # Push changes
 ```
 
 ## ⚙️ Configuration Options

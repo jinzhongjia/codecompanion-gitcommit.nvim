@@ -1,10 +1,10 @@
 *codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Jan 02
 
-CODECOMPANION GIT COMMIT EXTENSION			*codecompanion-gitcommit*
+CODECOMPANION GITCOMMIT EXTENSION			*codecompanion-gitcommit*
 
-A CodeCompanion extension that generates AI-powered git commit messages
-following the Conventional Commits specification, with powerful Git tool
-integration.
+A Neovim plugin extension for CodeCompanion that generates AI-powered Git
+commit messages following the Conventional Commits specification, with
+comprehensive Git workflow integration.
 
 ==============================================================================
 CONTENTS						*codecompanion-gitcommit-contents*
@@ -21,14 +21,16 @@ CONTENTS						*codecompanion-gitcommit-contents*
 ==============================================================================
 1. INTRODUCTION					*codecompanion-gitcommit-intro*
 
-The CodeCompanion Git Commit Extension is a powerful tool that leverages AI
-to generate meaningful git commit messages following the Conventional Commits
-specification. It integrates seamlessly with CodeCompanion's LLM adapters to
-analyze your staged changes and create appropriate commit messages.
+The CodeCompanion GitCommit Extension is a powerful Neovim plugin that
+leverages AI to generate meaningful Git commit messages following the
+Conventional Commits specification. It integrates seamlessly with
+CodeCompanion's LLM adapters to analyze your staged changes and create
+appropriate commit messages.
 
-The extension provides comprehensive Git operations through @git_read,
-@git_edit, and @git_bot tools, offering a natural language interface for
-Git workflow management within CodeCompanion chat buffers.
+The extension provides comprehensive Git operations through @git_read (15
+operations), @git_edit (16 operations), and @git_bot tools, offering a
+natural language interface for Git workflow management within CodeCompanion
+chat buffers.
 
 ==============================================================================
 2. FEATURES					*codecompanion-gitcommit-features*
@@ -38,19 +40,22 @@ Git workflow management within CodeCompanion chat buffers.
 • Conventional Commits specification compliance
 • Multi-language support for commit messages
 • Support for regular commits and amend commits
+• Smart diff analysis with file filtering capabilities
 
 🛠️ Git Tool Integration
-• @git_read tool - Execute read-only Git operations through chat
-• @git_edit tool - Execute write-access Git operations through chat
-• @git_bot tool group - Comprehensive Git assistant combining read/write ops
+• @git_read tool - 15 read-only Git operations (status, log, diff, etc.)
+• @git_edit tool - 16 write-access Git operations (stage, commit, push, etc.)
+• @git_bot tool - Comprehensive Git assistant combining all operations
 • Natural language interface for Git workflow control
-• Automatic approval requirements for destructive operations
+• Async operations with proper error handling
+• Safety confirmations for destructive operations
 
 📝 Smart Integration
-• Smart keymap integration for gitcommit buffers
-• Automatic git repository detection
-• Support for user commands and slash commands
-• File filtering support using glob patterns
+• GitCommit buffer keymap integration with auto-generation
+• Automatic Git repository detection
+• Slash commands (/gitcommit) for chat integration
+• Configurable file filtering using glob patterns
+• Programmable API for external integrations
 
 ==============================================================================
 3. INSTALLATION					*codecompanion-gitcommit-install*
@@ -98,29 +103,34 @@ Add this extension to your CodeCompanion configuration:
 ==============================================================================
 4. USAGE					*codecompanion-gitcommit-usage*
 
-Basic workflow:
+Basic Usage:
 
-1. Stage your changes: >
-	git add .
-<
-2. Generate commit message: >
+1. Generate commit message: >
 	:CodeCompanionGitCommit
 <
-3. Review the generated commit message in the floating window
-
-4. Choose an action:
+2. Review the generated commit message in the floating window
+3. Choose an action:
    • c - Copy to clipboard
    • y - Copy to yank register
    • s - Submit changes
    • Enter - Copy and close
    • q/Esc - Close
 
-GitCommit buffer integration:
+GitCommit Buffer Integration:
 
 1. Run `git commit` to open commit buffer
-2. If `auto_generate` is enabled, message appears automatically
-3. Otherwise, press `<leader>gc` in normal mode to generate
-4. Edit as needed and save to complete the commit
+2. Press `<leader>gc` to generate message (or auto-generates if enabled)
+3. Edit as needed and save to complete the commit
+
+Chat-based Git Workflow:
+
+Use Git tools in CodeCompanion chat: >
+	@git_read status                    # Check repository status
+	@git_edit stage --files ["file.txt"]  # Stage files
+	/gitcommit                          # Generate commit message
+	@git_edit commit --commit_message "feat: add feature"  # Commit
+	@git_edit push --remote "origin" --branch "main"      # Push
+<
 
 ==============================================================================
 5. COMMANDS					*codecompanion-gitcommit-commands*
