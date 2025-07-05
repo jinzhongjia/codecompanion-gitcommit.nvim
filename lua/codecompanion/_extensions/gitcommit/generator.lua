@@ -59,8 +59,8 @@ function Generator.generate_commit_message(diff, lang, callback)
 
   -- Send request to LLM
   new_client:request(payload, {
-    callback = function(err, data, _adapter)
-      Generator._handle_response(err, data, _adapter, callback)
+    callback = function(err, data, adapter)
+      Generator._handle_response(err, data, adapter, callback)
     end,
   }, {
     silent = true,
@@ -106,12 +106,11 @@ Generate commit message for this diff:
   )
 end
 
----Handle LLM response
 ---@param err table|nil Error from request
 ---@param data table|nil Response data
----@param _adapter table The adapter used
+---@param adapter table The adapter used
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
-function Generator._handle_response(err, data, _adapter, callback)
+function Generator._handle_response(err, data, adapter, callback)
   -- Handle request errors
   if err then
     local error_msg = "Error generating commit message: " .. (err.stderr or err.message or "Unknown error")

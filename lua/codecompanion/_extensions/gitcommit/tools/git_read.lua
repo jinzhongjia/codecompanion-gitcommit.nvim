@@ -114,7 +114,7 @@ Best practices:
 Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, gitignore_get, gitignore_check, help]]
 
 GitRead.cmds = {
-  function(self, args, input)
+  function(self, args, _input)
     local operation = args.operation
     local op_args = args.args or {}
 
@@ -126,82 +126,119 @@ GitRead.cmds = {
 
     local success, output, user_msg, llm_msg
 
-    if operation == "status" then
-      success, output, user_msg, llm_msg = GitTool.get_status()
-    elseif operation == "log" then
-      success, output, user_msg, llm_msg = GitTool.get_log(op_args.count, op_args.format)
-    elseif operation == "diff" then
-      success, output, user_msg, llm_msg = GitTool.get_diff(op_args.staged, op_args.file_path)
-    elseif operation == "branch" then
-      success, output, user_msg, llm_msg = GitTool.get_branches(op_args.remote_only)
-    elseif operation == "remotes" then
-      success, output, user_msg, llm_msg = GitTool.get_remotes()
-    elseif operation == "show" then
-      success, output, user_msg, llm_msg = GitTool.show_commit(op_args.commit_hash)
-    elseif operation == "blame" then
-      if not op_args.file_path then
-        return { status = "error", data = "File path is required for blame" }
-      end
-      success, output, user_msg, llm_msg = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
-    elseif operation == "stash_list" then
-      success, output, user_msg, llm_msg = GitTool.list_stashes()
-    elseif operation == "diff_commits" then
-      if not op_args.commit1 then
-        return { status = "error", data = "First commit is required for comparison" }
-      end
-      success, output, user_msg, llm_msg = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
-    elseif operation == "contributors" then
-      success, output, user_msg, llm_msg = GitTool.get_contributors(op_args.count)
-    elseif operation == "search_commits" then
-      if not op_args.pattern then
-        return { status = "error", data = "Search pattern is required" }
-      end
-      success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
-    elseif operation == "tags" then
-      success, output, user_msg, llm_msg = GitTool.get_tags()
-    elseif operation == "gitignore_get" then
-      success, output, user_msg, llm_msg = GitTool.get_gitignore()
-    elseif operation == "gitignore_check" then
-      local file = op_args.gitignore_file
-      if not file then
+    -- 通过 pcall 安全执行操作，确保始终有响应
+    local ok, result = pcall(function()
+      if operation == "status" then
+        success, output, user_msg, llm_msg = GitTool.get_status()
+      elseif operation == "log" then
+        success, output, user_msg, llm_msg = GitTool.get_log(op_args.count, op_args.format)
+      elseif operation == "diff" then
+        success, output, user_msg, llm_msg = GitTool.get_diff(op_args.staged, op_args.file_path)
+      elseif operation == "branch" then
+        success, output, user_msg, llm_msg = GitTool.get_branches(op_args.remote_only)
+      elseif operation == "remotes" then
+        success, output, user_msg, llm_msg = GitTool.get_remotes()
+      elseif operation == "show" then
+        success, output, user_msg, llm_msg = GitTool.show_commit(op_args.commit_hash)
+      elseif operation == "blame" then
+        if not op_args.file_path then
+          return { status = "error", data = "File path is required for blame" }
+        end
+        success, output, user_msg, llm_msg = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
+      elseif operation == "stash_list" then
+        success, output, user_msg, llm_msg = GitTool.list_stashes()
+      elseif operation == "diff_commits" then
+        if not op_args.commit1 then
+          return { status = "error", data = "First commit is required for comparison" }
+        end
+        success, output, user_msg, llm_msg = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
+      elseif operation == "contributors" then
+        success, output, user_msg, llm_msg = GitTool.get_contributors(op_args.count)
+      elseif operation == "search_commits" then
+        if not op_args.pattern then
+          return { status = "error", data = "Search pattern is required" }
+        end
+        success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
+      elseif operation == "tags" then
+        success, output, user_msg, llm_msg = GitTool.get_tags()
+      elseif operation == "gitignore_get" then
+        success, output, user_msg, llm_msg = GitTool.get_gitignore()
+      elseif operation == "gitignore_check" then
+        local file = op_args.gitignore_file
+        if not file then
+          return {
+            status = "error",
+            data = {
+              output = "No file specified for .gitignore check",
+              user_msg = "No file specified for .gitignore check",
+              llm_msg = "<gitIgnoreCheckTool>fail: No file specified for .gitignore check</gitIgnoreCheckTool>",
+            },
+          }
+        end
+        success, output, user_msg, llm_msg = GitTool.is_ignored(file)
+      else
         return {
           status = "error",
           data = {
-            output = "No file specified for .gitignore check",
-            user_msg = "No file specified for .gitignore check",
-            llm_msg = "<gitIgnoreCheckTool>fail: No file specified for .gitignore check</gitIgnoreCheckTool>",
+            output = "Unknown Git read operation: " .. operation,
+            user_msg = "Unknown Git read operation: " .. operation,
+            llm_msg = "<gitReadTool>fail: Unknown Git read operation: " .. operation .. "</gitReadTool>",
           },
         }
       end
-      success, output, user_msg, llm_msg = GitTool.is_ignored(file)
-    else
-      return { status = "error", data = "Unknown Git read operation: " .. operation }
+
+      return { success = success, output = output, user_msg = user_msg, llm_msg = llm_msg }
+    end)
+
+    -- 如果执行过程中出现异常
+    if not ok then
+      local error_msg = "Git read operation failed unexpectedly: " .. tostring(result)
+      return {
+        status = "error",
+        data = {
+          output = error_msg,
+          user_msg = error_msg,
+          llm_msg = "<gitReadTool>fail: " .. error_msg .. "</gitReadTool>",
+        },
+      }
     end
 
-    if success then
-      return { status = "success", data = { output = output, user_msg = user_msg, llm_msg = llm_msg } }
+    local success, output, user_msg, llm_msg = result.success, result.output, result.user_msg, result.llm_msg
+
+    -- 确保即使操作失败也有适当的响应格式
+    if op_success then
+      return { status = "success", data = { output = op_output, user_msg = op_user_msg, llm_msg = op_llm_msg } }
     else
-      return { status = "error", data = { output = output, user_msg = user_msg, llm_msg = llm_msg } }
+      -- 确保错误信息格式一致
+      if type(op_output) == "string" then
+        local formatted_output = {
+          output = op_output,
+          user_msg = op_user_msg or op_output,
+          llm_msg = op_llm_msg or ("<gitReadTool>fail: " .. op_output .. "</gitReadTool>"),
+        }
+        return { status = "error", data = formatted_output }
+      end
+      return { status = "error", data = { output = op_output, user_msg = op_user_msg, llm_msg = op_llm_msg } }
     end
   end,
 }
 
 GitRead.handlers = {
-  setup = function(self, agent)
+  setup = function(_self, _agent)
     return true
   end,
-  on_exit = function(self, agent) end,
+  on_exit = function(_self, _agent) end,
 }
 
 GitRead.output = {
-  success = function(self, agent, cmd, stdout)
+  success = function(self, agent, _cmd, stdout)
     local chat = agent.chat
     local data = stdout[1]
     local llm_msg = data and data.llm_msg or data.output
     local user_msg = data and data.user_msg or data.output
     return chat:add_tool_output(self, llm_msg, user_msg)
   end,
-  error = function(self, agent, cmd, stderr, stdout)
+  error = function(self, agent, _cmd, stderr, stdout)
     local chat = agent.chat
     local data = stderr[1] or stdout[1]
     local llm_msg = data and data.llm_msg or (type(data) == "string" and data or "Git read operation failed")
@@ -211,7 +248,7 @@ GitRead.output = {
 }
 
 GitRead.opts = {
-  requires_approval = function(self, agent)
+  requires_approval = function(_self, _agent)
     return false
   end,
 }

@@ -162,34 +162,38 @@ function GitTool.is_ignored(file)
   return true, trimmed, user_msg, llm_msg
 end
 
----Check if we're in a git repository
----@return boolean
 local function is_git_repo()
   -- 使用 Neovim 内置 vim.fn.system 代替 io.popen
-  local cmd = "git rev-parse --is-inside-work-tree"
-  local result = vim.fn.system(cmd)
-  return vim.v.shell_error == 0 and result:match("true") ~= nil
+  local ok, result = pcall(function()
+    local cmd = "git rev-parse --is-inside-work-tree"
+    local output = vim.fn.system(cmd)
+    return vim.v.shell_error == 0 and output:match("true") ~= nil
+  end)
+  return ok and result or false
 end
 
----Execute git command safely
----@param cmd string The git command to execute
----@return boolean success, string output
 local function execute_git_command(cmd)
-  if not is_git_repo() then
-    return false, "Not in a git repository"
+  local ok, success, output = pcall(function()
+    if not is_git_repo() then
+      return false, "Not in a git repository"
+    end
+
+    local cmd_output = vim.fn.system(cmd)
+    local exit_code = vim.v.shell_error
+
+    if exit_code ~= 0 or (cmd_output and cmd_output:match("fatal: ")) then
+      return false, cmd_output or "Git command failed"
+    end
+    return true, cmd_output or ""
+  end)
+
+  if not ok then
+    return false, "Git command execution failed: " .. tostring(success)
   end
 
-  local output = vim.fn.system(cmd)
-  local exit_code = vim.v.shell_error
-
-  if exit_code ~= 0 or (output and output:match("fatal: ")) then
-    return false, output
-  end
-  return true, output or ""
+  return success, output
 end
 
----Get git status
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_status()
   local success, output = execute_git_command("git status --porcelain")
   local user_msg, llm_msg
@@ -199,20 +203,16 @@ function GitTool.get_status()
       user_msg = msg
       llm_msg = "<gitStatusTool>" .. msg .. "</gitStatusTool>"
     else
-      user_msg = "git status tool execute successfully"
-      llm_msg = "<gitStatusTool>success</gitStatusTool>"
+      user_msg = "git status tool execute successfully - no changes found"
+      llm_msg = "<gitStatusTool>success: working tree clean</gitStatusTool>"
     end
   else
-    user_msg = "git status tool execute failed"
+    user_msg = "git status tool execute failed: " .. (output or "unknown error")
     llm_msg = "<gitStatusTool>fail: " .. (output or "unknown error") .. "</gitStatusTool>"
   end
   return success, output, user_msg, llm_msg
 end
 
----Get git log with specified format and count
----@param count? number Number of commits to show (default: 10)
----@param format? string Log format (default: oneline)
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_log(count, format)
   count = count or 10
   format = format or "oneline"
@@ -234,20 +234,16 @@ function GitTool.get_log(count, format)
       user_msg = msg
       llm_msg = "<gitLogTool>" .. msg .. "</gitLogTool>"
     else
-      user_msg = "git log tool execute successfully"
-      llm_msg = "<gitLogTool>success</gitLogTool>"
+      user_msg = "git log tool execute successfully - no commits found"
+      llm_msg = "<gitLogTool>success: no commits found</gitLogTool>"
     end
   else
-    user_msg = "git log tool execute failed"
+    user_msg = "git log tool execute failed: " .. (output or "unknown error")
     llm_msg = "<gitLogTool>fail: " .. (output or "unknown error") .. "</gitLogTool>"
   end
   return success, output, user_msg, llm_msg
 end
 
----Get git diff for staged or unstaged changes
----@param staged? boolean Whether to get staged changes (default: false)
----@param file? string Specific file to diff (optional)
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_diff(staged, file)
   local cmd = "git diff"
   if staged then
@@ -264,11 +260,12 @@ function GitTool.get_diff(staged, file)
       user_msg = msg
       llm_msg = "<gitDiffTool>" .. msg .. "</gitDiffTool>"
     else
-      user_msg = "git diff tool execute successfully"
-      llm_msg = "<gitDiffTool>success</gitDiffTool>"
+      local diff_type = staged and "staged" or "unstaged"
+      user_msg = "git diff tool execute successfully - no " .. diff_type .. " changes found"
+      llm_msg = "<gitDiffTool>success: no " .. diff_type .. " changes found</gitDiffTool>"
     end
   else
-    user_msg = "git diff tool execute failed"
+    user_msg = "git diff tool execute failed: " .. (output or "unknown error")
     llm_msg = "<gitDiffTool>fail: " .. (output or "unknown error") .. "</gitDiffTool>"
   end
   return success, output, user_msg, llm_msg
@@ -286,11 +283,11 @@ function GitTool.get_current_branch()
       user_msg = msg
       llm_msg = "<gitBranchTool>" .. msg .. "</gitBranchTool>"
     else
-      user_msg = "git branch tool execute successfully"
-      llm_msg = "<gitBranchTool>success</gitBranchTool>"
+      user_msg = "git branch tool execute successfully - no current branch (detached HEAD?)"
+      llm_msg = "<gitBranchTool>success: no current branch (possibly detached HEAD)</gitBranchTool>"
     end
   else
-    user_msg = "git branch tool execute failed"
+    user_msg = "git branch tool execute failed: " .. (output or "unknown error")
     llm_msg = "<gitBranchTool>fail: " .. (output or "unknown error") .. "</gitBranchTool>"
   end
   return success, output, user_msg, llm_msg
@@ -309,50 +306,61 @@ function GitTool.get_branches(remote_only)
       user_msg = msg
       llm_msg = "<gitBranchTool>" .. msg .. "</gitBranchTool>"
     else
-      user_msg = "git branch tool execute successfully"
-      llm_msg = "<gitBranchTool>success</gitBranchTool>"
+      local branch_type = remote_only and "remote branches" or "branches"
+      user_msg = "git branch tool execute successfully - no " .. branch_type .. " found"
+      llm_msg = "<gitBranchTool>success: no " .. branch_type .. " found</gitBranchTool>"
     end
   else
-    user_msg = "git branch tool execute failed"
+    user_msg = "git branch tool execute failed: " .. (output or "unknown error")
     llm_msg = "<gitBranchTool>fail: " .. (output or "unknown error") .. "</gitBranchTool>"
   end
   return success, output, user_msg, llm_msg
 end
 
----Stage files
----@param files string|table Files to stage, can be string or table of strings
----@return boolean success, string output
 function GitTool.stage_files(files)
-  if type(files) == "string" then
-    files = { files }
+  local ok, success, output = pcall(function()
+    if type(files) == "string" then
+      files = { files }
+    end
+
+    local escaped_files = {}
+    for _, file in ipairs(files) do
+      table.insert(escaped_files, vim.fn.shellescape(file))
+    end
+
+    local cmd = "git add " .. table.concat(escaped_files, " ")
+    return execute_git_command(cmd)
+  end)
+
+  if not ok then
+    return false, "Failed to stage files: " .. tostring(success)
   end
 
-  local escaped_files = {}
-  for _, file in ipairs(files) do
-    table.insert(escaped_files, vim.fn.shellescape(file))
-  end
-
-  local cmd = "git add " .. table.concat(escaped_files, " ")
-  return execute_git_command(cmd)
+  return success, output
 end
 
----Unstage files
----@param files string|table Files to unstage, can be string or table of strings
----@return boolean success, string output
 function GitTool.unstage_files(files)
-  if type(files) == "string" then
-    files = { files }
+  local ok, success, output = pcall(function()
+    if type(files) == "string" then
+      files = { files }
+    end
+
+    local escaped_files = {}
+    for _, file in ipairs(files) do
+      table.insert(escaped_files, vim.fn.shellescape(file))
+    end
+
+    local cmd = "git reset HEAD " .. table.concat(escaped_files, " ")
+    return execute_git_command(cmd)
+  end)
+
+  if not ok then
+    return false, "Failed to unstage files: " .. tostring(success)
   end
 
-  local escaped_files = {}
-  for _, file in ipairs(files) do
-    table.insert(escaped_files, vim.fn.shellescape(file))
-  end
-
-  local cmd = "git reset HEAD " .. table.concat(escaped_files, " ")
-  return execute_git_command(cmd)
+  return success, output
 end
-
+---Commit staged changes
 ---Commit staged changes
 ---@param message string Commit message
 ---@param amend? boolean Whether to amend the last commit (default: false)
@@ -698,7 +706,6 @@ function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name,
 end
 
 ---Perform a git rebase operation
-
 ---@param onto? string The branch to rebase onto
 ---@param base? string The upstream branch to rebase from
 ---@param interactive? boolean Whether to perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)
