@@ -97,9 +97,12 @@ function Buffer._generate_and_insert_commit_message(bufnr)
   -- Get relevant changes (staged or amend)
   local diff, context = Git.get_contextual_diff()
   if not diff then
-    local msg = context == "no_changes"
-        and (Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first.")
-      or ("Failed to get git changes, context=" .. tostring(context))
+    local msg
+    if context == "no_changes" then
+      msg = Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first."
+    else
+      msg = "Failed to get git changes, context=" .. tostring(context)
+    end
     vim.notify(msg, vim.log.levels.ERROR)
     return
   end

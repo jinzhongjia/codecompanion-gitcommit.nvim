@@ -172,6 +172,14 @@ Best practices:
 
 Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
+-- Helper function to validate required parameters
+local function validate_required_param(param_name, param_value, error_msg)
+  if not param_value or (type(param_value) == "table" and #param_value == 0) then
+    return { status = "error", data = error_msg or (param_name .. " is required") }
+  end
+  return nil
+end
+
 GitEdit.cmds = {
   function(self, args, input, output_handler)
     local operation = args.operation
@@ -215,13 +223,15 @@ Available write-access Git operations:
       local success, output
 
       if operation == "stage" then
-        if not op_args.files or #op_args.files == 0 then
-          return { status = "error", data = "No files specified for staging" }
+        local validation_error = validate_required_param("files", op_args.files, "No files specified for staging")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.stage_files(op_args.files)
       elseif operation == "unstage" then
-        if not op_args.files or #op_args.files == 0 then
-          return { status = "error", data = "No files specified for unstaging" }
+        local validation_error = validate_required_param("files", op_args.files, "No files specified for unstaging")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.unstage_files(op_args.files)
       elseif operation == "commit" then
@@ -249,8 +259,10 @@ Available write-access Git operations:
         end
         success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
       elseif operation == "checkout" then
-        if not op_args.target then
-          return { status = "error", data = "Target branch or commit is required" }
+        local validation_error =
+          validate_required_param("target", op_args.target, "Target branch or commit is required")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.checkout(op_args.target)
       elseif operation == "stash" then
@@ -258,8 +270,10 @@ Available write-access Git operations:
       elseif operation == "apply_stash" then
         success, output = GitTool.apply_stash(op_args.stash_ref)
       elseif operation == "reset" then
-        if not op_args.commit_hash then
-          return { status = "error", data = "Commit hash is required for reset" }
+        local validation_error =
+          validate_required_param("commit_hash", op_args.commit_hash, "Commit hash is required for reset")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
       elseif operation == "gitignore_add" then
@@ -275,28 +289,42 @@ Available write-access Git operations:
         end
         success, output = GitTool.remove_gitignore_rule(rules)
       elseif operation == "cherry_pick" then
-        if not op_args.cherry_pick_commit_hash then
-          return { status = "error", data = "Commit hash is required for cherry-pick" }
+        local validation_error = validate_required_param(
+          "cherry_pick_commit_hash",
+          op_args.cherry_pick_commit_hash,
+          "Commit hash is required for cherry-pick"
+        )
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
       elseif operation == "revert" then
-        if not op_args.revert_commit_hash then
-          return { status = "error", data = "Commit hash is required for revert" }
+        local validation_error = validate_required_param(
+          "revert_commit_hash",
+          op_args.revert_commit_hash,
+          "Commit hash is required for revert"
+        )
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.revert(op_args.revert_commit_hash)
       elseif operation == "create_tag" then
-        if not op_args.tag_name then
-          return { status = "error", data = "Tag name is required" }
+        local validation_error = validate_required_param("tag_name", op_args.tag_name, "Tag name is required")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
       elseif operation == "delete_tag" then
-        if not op_args.tag_name then
-          return { status = "error", data = "Tag name is required for deletion" }
+        local validation_error =
+          validate_required_param("tag_name", op_args.tag_name, "Tag name is required for deletion")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
       elseif operation == "merge" then
-        if not op_args.branch then
-          return { status = "error", data = "Branch to merge is required" }
+        local validation_error = validate_required_param("branch", op_args.branch, "Branch to merge is required")
+        if validation_error then
+          return validation_error
         end
         success, output = GitTool.merge(op_args.branch)
       else
@@ -306,20 +334,20 @@ Available write-access Git operations:
       return { success = success, output = output }
     end)
 
-    -- 如果执行过程中出现异常
+    -- Handle unexpected execution errors
     if not ok then
       local error_msg = "Git edit operation failed unexpectedly: " .. tostring(result)
       return { status = "error", data = error_msg }
     end
 
-    -- 检查是否是提前返回的情况
+    -- Check if this is an early return case
     if result.status then
       return result
     end
 
     local success, output = result.success, result.output
 
-    -- 确保即使操作失败也有适当的响应
+    -- Ensure proper response even if operation fails
     if success then
       return { status = "success", data = output }
     else

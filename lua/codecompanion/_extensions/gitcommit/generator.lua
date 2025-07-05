@@ -122,25 +122,25 @@ function Generator._handle_response(err, data, adapter, callback)
     return callback(nil, "No response received from LLM")
   end
 
-  -- Process successful response
-  if data then
-    local result = _adapter.handlers.chat_output(_adapter, data)
-    if result and result.status then
-      if result.status == CONSTANTS.STATUS_SUCCESS then
-        local content = result.output and result.output.content
-        if content and vim.trim(content) ~= "" then
-          return callback(vim.trim(content), nil)
-        else
-          return callback(nil, "Generated content is empty")
-        end
-      elseif result.status == CONSTANTS.STATUS_ERROR then
-        local error_msg = result.output or "Unknown error occurred"
-        return callback(nil, error_msg)
-      end
-    end
+  -- Process the LLM response
+  local result = _adapter.handlers.chat_output(_adapter, data)
+  if not (result and result.status) then
+    return callback(nil, "No valid response received")
   end
 
-  return callback(nil, "No valid response received")
+  if result.status == CONSTANTS.STATUS_SUCCESS then
+    local content = result.output and result.output.content
+    if content and vim.trim(content) ~= "" then
+      return callback(vim.trim(content), nil)
+    else
+      return callback(nil, "Generated content is empty")
+    end
+  elseif result.status == CONSTANTS.STATUS_ERROR then
+    local error_msg = result.output or "Unknown error occurred"
+    return callback(nil, error_msg)
+  else
+    return callback(nil, "Unexpected response status: " .. tostring(result.status))
+  end
 end
 
 return Generator

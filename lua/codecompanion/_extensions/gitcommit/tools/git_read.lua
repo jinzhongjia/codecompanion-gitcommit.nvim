@@ -113,6 +113,21 @@ Best practices:
 
 Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, gitignore_get, gitignore_check, help]]
 
+-- Helper function to validate required parameters
+local function validate_required_param(param_name, param_value, error_msg)
+  if not param_value or param_value == "" then
+    return {
+      status = "error",
+      data = {
+        output = error_msg or (param_name .. " is required"),
+        user_msg = error_msg or (param_name .. " is required"),
+        llm_msg = "<gitReadTool>fail: " .. (error_msg or (param_name .. " is required")) .. "</gitReadTool>",
+      },
+    }
+  end
+  return nil
+end
+
 GitRead.cmds = {
   function(self, args, _input)
     local operation = args.operation
@@ -141,22 +156,27 @@ GitRead.cmds = {
       elseif operation == "show" then
         success, output, user_msg, llm_msg = GitTool.show_commit(op_args.commit_hash)
       elseif operation == "blame" then
-        if not op_args.file_path then
-          return { status = "error", data = "File path is required for blame" }
+        local validation_error =
+          validate_required_param("file_path", op_args.file_path, "File path is required for blame")
+        if validation_error then
+          return validation_error
         end
         success, output, user_msg, llm_msg = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
       elseif operation == "stash_list" then
         success, output, user_msg, llm_msg = GitTool.list_stashes()
       elseif operation == "diff_commits" then
-        if not op_args.commit1 then
-          return { status = "error", data = "First commit is required for comparison" }
+        local validation_error =
+          validate_required_param("commit1", op_args.commit1, "First commit is required for comparison")
+        if validation_error then
+          return validation_error
         end
         success, output, user_msg, llm_msg = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
       elseif operation == "contributors" then
         success, output, user_msg, llm_msg = GitTool.get_contributors(op_args.count)
       elseif operation == "search_commits" then
-        if not op_args.pattern then
-          return { status = "error", data = "Search pattern is required" }
+        local validation_error = validate_required_param("pattern", op_args.pattern, "Search pattern is required")
+        if validation_error then
+          return validation_error
         end
         success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
       elseif operation == "tags" then
@@ -164,18 +184,12 @@ GitRead.cmds = {
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then
-        local file = op_args.gitignore_file
-        if not file then
-          return {
-            status = "error",
-            data = {
-              output = "No file specified for .gitignore check",
-              user_msg = "No file specified for .gitignore check",
-              llm_msg = "<gitIgnoreCheckTool>fail: No file specified for .gitignore check</gitIgnoreCheckTool>",
-            },
-          }
+        local validation_error =
+          validate_required_param("gitignore_file", op_args.gitignore_file, "No file specified for .gitignore check")
+        if validation_error then
+          return validation_error
         end
-        success, output, user_msg, llm_msg = GitTool.is_ignored(file)
+        success, output, user_msg, llm_msg = GitTool.is_ignored(op_args.gitignore_file)
       else
         return {
           status = "error",
@@ -190,7 +204,7 @@ GitRead.cmds = {
       return { success = success, output = output, user_msg = user_msg, llm_msg = llm_msg }
     end)
 
-    -- 如果执行过程中出现异常
+    -- Handle unexpected execution errors
     if not ok then
       local error_msg = "Git read operation failed unexpectedly: " .. tostring(result)
       return {
@@ -205,20 +219,17 @@ GitRead.cmds = {
 
     local success, output, user_msg, llm_msg = result.success, result.output, result.user_msg, result.llm_msg
 
-    -- 确保即使操作失败也有适当的响应格式
-    if op_success then
-      return { status = "success", data = { output = op_output, user_msg = op_user_msg, llm_msg = op_llm_msg } }
+    -- Ensure proper response format even if operation fails
+    if success then
+      return { status = "success", data = { output = output, user_msg = user_msg, llm_msg = llm_msg } }
     else
-      -- 确保错误信息格式一致
-      if type(op_output) == "string" then
-        local formatted_output = {
-          output = op_output,
-          user_msg = op_user_msg or op_output,
-          llm_msg = op_llm_msg or ("<gitReadTool>fail: " .. op_output .. "</gitReadTool>"),
-        }
-        return { status = "error", data = formatted_output }
-      end
-      return { status = "error", data = { output = op_output, user_msg = op_user_msg, llm_msg = op_llm_msg } }
+      -- Ensure consistent error message format
+      local formatted_output = {
+        output = output or "Git read operation failed",
+        user_msg = user_msg or "Git read operation failed",
+        llm_msg = llm_msg or "<gitReadTool>fail: Git read operation failed</gitReadTool>",
+      }
+      return { status = "error", data = formatted_output }
     end
   end,
 }

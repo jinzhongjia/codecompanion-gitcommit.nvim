@@ -68,8 +68,8 @@ function Git._filter_diff(diff_content)
     end
   end
 
-  -- 如果所有涉及的文件都被排除，则返回原始 diff
-  if #all_files > 0 and #excluded_files == #all_files then
+  -- If all files are excluded, return original diff to avoid empty output
+  if #all_files > 0 and #excluded_files >= #all_files then
     return diff_content
   end
 

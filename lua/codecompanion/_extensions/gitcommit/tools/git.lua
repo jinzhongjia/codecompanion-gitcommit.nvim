@@ -163,7 +163,7 @@ function GitTool.is_ignored(file)
 end
 
 local function is_git_repo()
-  -- 使用 Neovim 内置 vim.fn.system 代替 io.popen
+  -- Use Neovim built-in vim.fn.system instead of io.popen
   local ok, result = pcall(function()
     local cmd = "git rev-parse --is-inside-work-tree"
     local output = vim.fn.system(cmd)
@@ -194,22 +194,32 @@ local function execute_git_command(cmd)
   return success, output
 end
 
-function GitTool.get_status()
-  local success, output = execute_git_command("git status --porcelain")
+-- Helper function to format git tool responses consistently
+local function format_git_response(tool_name, success, output, empty_msg)
   local user_msg, llm_msg
+  local tag = "git" .. tool_name:gsub("^%l", string.upper) .. "Tool"
+
   if success then
     if output and vim.trim(output) ~= "" then
-      local msg = "git status tool execute successfully\n```\n" .. output .. "\n```"
+      local msg = string.format("git %s tool execute successfully\n```\n%s\n```", tool_name, output)
       user_msg = msg
-      llm_msg = "<gitStatusTool>" .. msg .. "</gitStatusTool>"
+      llm_msg = string.format("<%s>%s</%s>", tag, msg, tag)
     else
-      user_msg = "git status tool execute successfully - no changes found"
-      llm_msg = "<gitStatusTool>success: working tree clean</gitStatusTool>"
+      user_msg =
+        string.format("git %s tool execute successfully%s", tool_name, empty_msg and (" - " .. empty_msg) or "")
+      llm_msg = string.format("<%s>success%s</%s>", tag, empty_msg and (": " .. empty_msg) or "", tag)
     end
   else
-    user_msg = "git status tool execute failed: " .. (output or "unknown error")
-    llm_msg = "<gitStatusTool>fail: " .. (output or "unknown error") .. "</gitStatusTool>"
+    user_msg = string.format("git %s tool execute failed: %s", tool_name, output or "unknown error")
+    llm_msg = string.format("<%s>fail: %s</%s>", tag, output or "unknown error", tag)
   end
+
+  return user_msg, llm_msg
+end
+
+function GitTool.get_status()
+  local success, output = execute_git_command("git status --porcelain")
+  local user_msg, llm_msg = format_git_response("status", success, output, "no changes found")
   return success, output, user_msg, llm_msg
 end
 
@@ -227,20 +237,7 @@ function GitTool.get_log(count, format)
   local format_option = format_map[format] or "--oneline"
   local cmd = string.format("git log -%d %s", count, format_option)
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git log tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitLogTool>" .. msg .. "</gitLogTool>"
-    else
-      user_msg = "git log tool execute successfully - no commits found"
-      llm_msg = "<gitLogTool>success: no commits found</gitLogTool>"
-    end
-  else
-    user_msg = "git log tool execute failed: " .. (output or "unknown error")
-    llm_msg = "<gitLogTool>fail: " .. (output or "unknown error") .. "</gitLogTool>"
-  end
+  local user_msg, llm_msg = format_git_response("log", success, output, "no commits found")
   return success, output, user_msg, llm_msg
 end
 
@@ -253,21 +250,9 @@ function GitTool.get_diff(staged, file)
     cmd = cmd .. " " .. vim.fn.shellescape(file)
   end
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git diff tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitDiffTool>" .. msg .. "</gitDiffTool>"
-    else
-      local diff_type = staged and "staged" or "unstaged"
-      user_msg = "git diff tool execute successfully - no " .. diff_type .. " changes found"
-      llm_msg = "<gitDiffTool>success: no " .. diff_type .. " changes found</gitDiffTool>"
-    end
-  else
-    user_msg = "git diff tool execute failed: " .. (output or "unknown error")
-    llm_msg = "<gitDiffTool>fail: " .. (output or "unknown error") .. "</gitDiffTool>"
-  end
+  local diff_type = staged and "staged" or "unstaged"
+  local empty_msg = "no " .. diff_type .. " changes found"
+  local user_msg, llm_msg = format_git_response("diff", success, output, empty_msg)
   return success, output, user_msg, llm_msg
 end
 
@@ -276,20 +261,7 @@ end
 
 function GitTool.get_current_branch()
   local success, output = execute_git_command("git branch --show-current")
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git branch tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitBranchTool>" .. msg .. "</gitBranchTool>"
-    else
-      user_msg = "git branch tool execute successfully - no current branch (detached HEAD?)"
-      llm_msg = "<gitBranchTool>success: no current branch (possibly detached HEAD)</gitBranchTool>"
-    end
-  else
-    user_msg = "git branch tool execute failed: " .. (output or "unknown error")
-    llm_msg = "<gitBranchTool>fail: " .. (output or "unknown error") .. "</gitBranchTool>"
-  end
+  local user_msg, llm_msg = format_git_response("branch", success, output, "no current branch (possibly detached HEAD)")
   return success, output, user_msg, llm_msg
 end
 
@@ -299,21 +271,9 @@ end
 function GitTool.get_branches(remote_only)
   local cmd = remote_only and "git branch -r" or "git branch -a"
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git branch tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitBranchTool>" .. msg .. "</gitBranchTool>"
-    else
-      local branch_type = remote_only and "remote branches" or "branches"
-      user_msg = "git branch tool execute successfully - no " .. branch_type .. " found"
-      llm_msg = "<gitBranchTool>success: no " .. branch_type .. " found</gitBranchTool>"
-    end
-  else
-    user_msg = "git branch tool execute failed: " .. (output or "unknown error")
-    llm_msg = "<gitBranchTool>fail: " .. (output or "unknown error") .. "</gitBranchTool>"
-  end
+  local branch_type = remote_only and "remote branches" or "branches"
+  local empty_msg = "no " .. branch_type .. " found"
+  local user_msg, llm_msg = format_git_response("branch", success, output, empty_msg)
   return success, output, user_msg, llm_msg
 end
 
@@ -404,20 +364,7 @@ end
 ---@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_remotes()
   local success, output = execute_git_command("git remote -v")
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git remote tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitRemoteTool>" .. msg .. "</gitRemoteTool>"
-    else
-      user_msg = "git remote tool execute successfully"
-      llm_msg = "<gitRemoteTool>success</gitRemoteTool>"
-    end
-  else
-    user_msg = "git remote tool execute failed"
-    llm_msg = "<gitRemoteTool>fail: " .. (output or "unknown error") .. "</gitRemoteTool>"
-  end
+  local user_msg, llm_msg = format_git_response("remote", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -428,20 +375,7 @@ function GitTool.show_commit(commit_hash)
   commit_hash = commit_hash or "HEAD"
   local cmd = "git show " .. vim.fn.shellescape(commit_hash)
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git show tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitShowTool>" .. msg .. "</gitShowTool>"
-    else
-      user_msg = "git show tool execute successfully"
-      llm_msg = "<gitShowTool>success</gitShowTool>"
-    end
-  else
-    user_msg = "git show tool execute failed"
-    llm_msg = "<gitShowTool>fail: " .. (output or "unknown error") .. "</gitShowTool>"
-  end
+  local user_msg, llm_msg = format_git_response("show", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -458,20 +392,7 @@ function GitTool.get_blame(file_path, line_start, line_end)
     cmd = cmd .. " -L " .. line_start .. ",+10"
   end
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git blame tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitBlameTool>" .. msg .. "</gitBlameTool>"
-    else
-      user_msg = "git blame tool execute successfully"
-      llm_msg = "<gitBlameTool>success</gitBlameTool>"
-    end
-  else
-    user_msg = "git blame tool execute failed"
-    llm_msg = "<gitBlameTool>fail: " .. (output or "unknown error") .. "</gitBlameTool>"
-  end
+  local user_msg, llm_msg = format_git_response("blame", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -497,20 +418,7 @@ end
 ---@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.list_stashes()
   local success, output = execute_git_command("git stash list")
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git stash tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitStashTool>" .. msg .. "</gitStashTool>"
-    else
-      user_msg = "git stash tool execute successfully"
-      llm_msg = "<gitStashTool>success</gitStashTool>"
-    end
-  else
-    user_msg = "git stash tool execute failed"
-    llm_msg = "<gitStashTool>fail: " .. (output or "unknown error") .. "</gitStashTool>"
-  end
+  local user_msg, llm_msg = format_git_response("stash", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -545,20 +453,7 @@ function GitTool.diff_commits(commit1, commit2, file_path)
     cmd = cmd .. " -- " .. vim.fn.shellescape(file_path)
   end
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git diff_commits tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitDiffCommitsTool>" .. msg .. "</gitDiffCommitsTool>"
-    else
-      user_msg = "git diff_commits tool execute successfully"
-      llm_msg = "<gitDiffCommitsTool>success</gitDiffCommitsTool>"
-    end
-  else
-    user_msg = "git diff_commits tool execute failed"
-    llm_msg = "<gitDiffCommitsTool>fail: " .. (output or "unknown error") .. "</gitDiffCommitsTool>"
-  end
+  local user_msg, llm_msg = format_git_response("diff_commits", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -574,20 +469,7 @@ function GitTool.get_contributors(count)
     head_cmd = string.format("git shortlog -sn | head -%d", count)
   end
   local success, output = execute_git_command(head_cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git contributors tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitContributorsTool>" .. msg .. "</gitContributorsTool>"
-    else
-      user_msg = "git contributors tool execute successfully"
-      llm_msg = "<gitContributorsTool>success</gitContributorsTool>"
-    end
-  else
-    user_msg = "git contributors tool execute failed"
-    llm_msg = "<gitContributorsTool>fail: " .. (output or "unknown error") .. "</gitContributorsTool>"
-  end
+  local user_msg, llm_msg = format_git_response("contributors", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -599,20 +481,7 @@ function GitTool.search_commits(pattern, count)
   count = count or 20
   local cmd = string.format("git log --grep=%s --oneline -%d", vim.fn.shellescape(pattern), count)
   local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git search_commits tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitSearchCommitsTool>" .. msg .. "</gitSearchCommitsTool>"
-    else
-      user_msg = "git search_commits tool execute successfully"
-      llm_msg = "<gitSearchCommitsTool>success</gitSearchCommitsTool>"
-    end
-  else
-    user_msg = "git search_commits tool execute failed"
-    llm_msg = "<gitSearchCommitsTool>fail: " .. (output or "unknown error") .. "</gitSearchCommitsTool>"
-  end
+  local user_msg, llm_msg = format_git_response("search_commits", success, output)
   return success, output, user_msg, llm_msg
 end
 
@@ -750,20 +619,7 @@ end
 ---@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_tags()
   local success, output = execute_git_command("git tag")
-  local user_msg, llm_msg
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = "git tag tool execute successfully\n```\n" .. output .. "\n```"
-      user_msg = msg
-      llm_msg = "<gitTagTool>" .. msg .. "</gitTagTool>"
-    else
-      user_msg = "git tag tool execute successfully"
-      llm_msg = "<gitTagTool>success</gitTagTool>"
-    end
-  else
-    user_msg = "git tag tool execute failed"
-    llm_msg = "<gitTagTool>fail: " .. (output or "unknown error") .. "</gitTagTool>"
-  end
+  local user_msg, llm_msg = format_git_response("tag", success, output)
   return success, output, user_msg, llm_msg
 end
 
