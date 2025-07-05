@@ -22,32 +22,42 @@ function Git._filter_diff(diff_content)
 
   local lines = vim.split(diff_content, "\n")
   local filtered_lines = {}
+  local all_files = {}
+  local excluded_files = {}
   local current_file = nil
   local skip_current_file = false
 
   for _, line in ipairs(lines) do
-    -- Check for file header (diff --git a/file b/file)
     local file_match = line:match("^diff %-%-git a/(.*) b/")
     if file_match then
       current_file = file_match
+      table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
+      if skip_current_file then table.insert(excluded_files, current_file) end
     end
 
-    -- Check for traditional diff format (+++ b/file, --- a/file)
     local plus_file = line:match("^%+%+%+ b/(.*)")
     local minus_file = line:match("^%-%-%-a/(.*)")
     if plus_file then
       current_file = plus_file
+      table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
+      if skip_current_file then table.insert(excluded_files, current_file) end
     elseif minus_file then
       current_file = minus_file
+      table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
+      if skip_current_file then table.insert(excluded_files, current_file) end
     end
 
-    -- Only include line if we're not skipping current file
     if not skip_current_file then
       table.insert(filtered_lines, line)
     end
+  end
+
+  -- 如果所有涉及的文件都被排除，则返回原始 diff
+  if #all_files > 0 and #excluded_files == #all_files then
+    return diff_content
   end
 
   return table.concat(filtered_lines, "\n")
@@ -169,11 +179,15 @@ function Git.get_contextual_diff()
     return nil, "not_in_repo"
   end
 
+  local function trim(s)
+    return (s:gsub("^%s*(.-)%s*$", "%1"))
+  end
+
   -- Check for staged changes first
   local staged_diff = vim.fn.system("git diff --no-ext-diff --staged")
-  if vim.v.shell_error == 0 and vim.trim(staged_diff) ~= "" then
+  if vim.v.shell_error == 0 and trim(staged_diff) ~= "" then
     local filtered_diff = Git._filter_diff(staged_diff)
-    if vim.trim(filtered_diff) ~= "" then
+    if trim(filtered_diff) ~= "" then
       return filtered_diff, "staged"
     else
       return nil, "no_changes_after_filter"
@@ -182,30 +196,27 @@ function Git.get_contextual_diff()
 
   -- Check if we're amending
   if Git.is_amending() then
-    -- Try to get the last commit's diff
     local last_commit_diff = vim.fn.system("git diff --no-ext-diff HEAD~1")
-    if vim.v.shell_error == 0 and vim.trim(last_commit_diff) ~= "" then
+    if vim.v.shell_error == 0 and trim(last_commit_diff) ~= "" then
       local filtered_diff = Git._filter_diff(last_commit_diff)
-      if vim.trim(filtered_diff) ~= "" then
+      if trim(filtered_diff) ~= "" then
         return filtered_diff, "amend_with_parent"
       end
     end
 
-    -- Fallback for initial commit amend
     local show_diff = vim.fn.system("git show --no-ext-diff --format= HEAD")
-    if vim.v.shell_error == 0 and vim.trim(show_diff) ~= "" then
+    if vim.v.shell_error == 0 and trim(show_diff) ~= "" then
       local filtered_diff = Git._filter_diff(show_diff)
-      if vim.trim(filtered_diff) ~= "" then
+      if trim(filtered_diff) ~= "" then
         return filtered_diff, "amend_initial"
       end
     end
   end
 
-  -- Fallback: If no staged changes and not amending, check for all local changes (working directory vs. HEAD)
   local all_local_diff = vim.fn.system("git diff --no-ext-diff HEAD")
-  if vim.v.shell_error == 0 and vim.trim(all_local_diff) ~= "" then
+  if vim.v.shell_error == 0 and trim(all_local_diff) ~= "" then
     local filtered_diff = Git._filter_diff(all_local_diff)
-    if vim.trim(filtered_diff) ~= "" then
+    if trim(filtered_diff) ~= "" then
       return filtered_diff, "unstaged_or_all_local"
     else
       return nil, "no_changes_after_filter"

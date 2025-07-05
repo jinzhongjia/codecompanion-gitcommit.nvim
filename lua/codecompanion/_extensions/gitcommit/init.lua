@@ -11,42 +11,41 @@ local M = {}
 
 ---Generate and display commit message using AI
 function M.generate_commit_message()
-  vim.notify("Generating commit message...", vim.log.levels.INFO)
+   -- Check if we're in a git repository
+   if not Git.is_repository() then
+     vim.notify("Not in a git repository", vim.log.levels.ERROR)
+     return
+   end
+ 
+   -- Get relevant changes (staged or amend)
+   local diff, context = Git.get_contextual_diff()
+   if not diff then
+     local msg = context == "no_changes"
+         and (Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first.")
+       or "Failed to get git changes"
+     vim.notify(msg, vim.log.levels.ERROR)
+     return
+   end
+ 
+   Langs.select_lang(function(lang)
+     vim.notify("Generating commit message...", vim.log.levels.INFO)
+     -- Generate commit message using LLM
+     Generator.generate_commit_message(diff, lang, function(result, error)
+       if error then
+         vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
+         return
+       end
 
-  -- Check if we're in a git repository
-  if not Git.is_repository() then
-    vim.notify("Not in a git repository", vim.log.levels.ERROR)
-    return
-  end
-
-  -- Get relevant changes (staged or amend)
-  local diff, context = Git.get_contextual_diff()
-  if not diff then
-    local msg = context == "no_changes"
-        and (Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first.")
-      or "Failed to get git changes"
-    vim.notify(msg, vim.log.levels.ERROR)
-    return
-  end
-
-  Langs.select_lang(function(lang)
-    -- Generate commit message using LLM
-    Generator.generate_commit_message(diff, lang, function(result, error)
-      if error then
-        vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
-        return
-      end
-
-      if result then
-        -- Show interactive UI with commit options
-        UI.show_commit_message(result, function(message)
-          return Git.commit_changes(message)
-        end)
-      else
-        vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
-      end
-    end)
-  end)
+       if result then
+         -- Show interactive UI with commit options
+         UI.show_commit_message(result, function(message)
+           return Git.commit_changes(message)
+         end)
+       else
+         vim.notify("Failed to generate commit message", vim.log.levels.ERROR)
+       end
+     end)
+   end)
 end
 
 local function setup_tools(opts)

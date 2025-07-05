@@ -31,7 +31,7 @@ M.default_opts = {
   enable_git_bot = true, -- Only enabled if both enable_git_read and enable_git_edit are true
   add_git_commands = true,
   git_tool_auto_submit_errors = false,
-  git_tool_auto_submit_success = false,
+  git_tool_auto_submit_success = true,
   gitcommit_select_count = 100,
 }
 
