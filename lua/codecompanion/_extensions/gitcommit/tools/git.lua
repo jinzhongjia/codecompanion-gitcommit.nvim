@@ -22,19 +22,31 @@ end
 function GitTool.get_gitignore()
   local path = get_gitignore_path()
   if not path then
-    return false, ".gitignore not found (not in a git repo)"
+    local msg = ".gitignore not found (not in a git repo)"
+    local user_msg = msg
+    local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
+    return false, msg, user_msg, llm_msg
   end
   local stat = vim.uv.fs_stat(path)
   if not stat then
-    return true, "" -- treat as empty if not exists
+    local msg = "" -- treat as empty if not exists
+    local user_msg = ".gitignore is empty"
+    local llm_msg = "<gitIgnoreTool>success: .gitignore is empty</gitIgnoreTool>"
+    return true, msg, user_msg, llm_msg
   end
   local fd = vim.uv.fs_open(path, "r", 438)
   if not fd then
-    return false, "Failed to open .gitignore for reading"
+    local msg = "Failed to open .gitignore for reading"
+    local user_msg = msg
+    local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
+    return false, msg, user_msg, llm_msg
   end
   local data = vim.uv.fs_read(fd, stat.size, 0)
   vim.uv.fs_close(fd)
-  return true, data or ""
+  local msg = data or ""
+  local user_msg = ".gitignore content:\n" .. (data or "(empty)")
+  local llm_msg = "<gitIgnoreTool>success:\n" .. (data or "(empty)") .. "</gitIgnoreTool>"
+  return true, msg, user_msg, llm_msg
 end
 
 --- Add rule(s) to .gitignore (no duplicates)
@@ -130,15 +142,24 @@ end
 --- Check if a file is ignored by .gitignore
 function GitTool.is_ignored(file)
   if not file or file == "" then
-    return false, "No file specified"
+    local msg = "No file specified"
+    local user_msg = msg
+    local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
+    return false, msg, user_msg, llm_msg
   end
   local ok, result = pcall(function()
     return vim.fn.system({ "git", "check-ignore", file })
   end)
   if not ok or vim.v.shell_error ~= 0 then
-    return false, "File is not ignored or not in a git repo"
+    local msg = "File is not ignored or not in a git repo"
+    local user_msg = msg
+    local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
+    return false, msg, user_msg, llm_msg
   end
-  return true, vim.trim(result)
+  local trimmed = vim.trim(result)
+  local user_msg = string.format("File '%s' is ignored by .gitignore", file)
+  local llm_msg = string.format("<gitIgnoreCheckTool>success: %s is ignored</gitIgnoreCheckTool>", file)
+  return true, trimmed, user_msg, llm_msg
 end
 
 ---Check if we're in a git repository

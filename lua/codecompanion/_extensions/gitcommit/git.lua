@@ -33,7 +33,9 @@ function Git._filter_diff(diff_content)
       current_file = file_match
       table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
-      if skip_current_file then table.insert(excluded_files, current_file) end
+      if skip_current_file then
+        table.insert(excluded_files, current_file)
+      end
     end
 
     local plus_file = line:match("^%+%+%+ b/(.*)")
@@ -42,12 +44,16 @@ function Git._filter_diff(diff_content)
       current_file = plus_file
       table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
-      if skip_current_file then table.insert(excluded_files, current_file) end
+      if skip_current_file then
+        table.insert(excluded_files, current_file)
+      end
     elseif minus_file then
       current_file = minus_file
       table.insert(all_files, current_file)
       skip_current_file = Git._should_exclude_file(current_file)
-      if skip_current_file then table.insert(excluded_files, current_file) end
+      if skip_current_file then
+        table.insert(excluded_files, current_file)
+      end
     end
 
     if not skip_current_file then
