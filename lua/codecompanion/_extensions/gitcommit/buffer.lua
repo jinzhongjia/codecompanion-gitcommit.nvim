@@ -88,8 +88,6 @@ end
 ---Generate commit message and insert into gitcommit buffer
 ---@param bufnr number Buffer number
 function Buffer._generate_and_insert_commit_message(bufnr)
-  vim.notify("Generating commit message...", vim.log.levels.INFO)
-
   -- Check if we're in a git repository
   if not Git.is_repository() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
@@ -99,14 +97,18 @@ function Buffer._generate_and_insert_commit_message(bufnr)
   -- Get relevant changes (staged or amend)
   local diff, context = Git.get_contextual_diff()
   if not diff then
-    local msg = context == "no_changes"
-        and (Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first.")
-      or "Failed to get git changes"
+    local msg
+    if context == "no_changes" then
+      msg = Git.is_amending() and "No changes to amend" or "No staged changes found. Please stage your changes first."
+    else
+      msg = "Failed to get git changes, context=" .. tostring(context)
+    end
     vim.notify(msg, vim.log.levels.ERROR)
     return
   end
 
   Langs.select_lang(function(lang)
+    vim.notify("Generating commit message...", vim.log.levels.INFO)
     -- Generate commit message using LLM
     Generator.generate_commit_message(diff, lang, function(result, error)
       if error then

@@ -172,6 +172,14 @@ Best practices:
 
 Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
 
+-- Helper function to validate required parameters
+local function validate_required_param(param_name, param_value, error_msg)
+  if not param_value or (type(param_value) == "table" and #param_value == 0) then
+    return { status = "error", data = error_msg or (param_name .. " is required") }
+  end
+  return nil
+end
+
 GitEdit.cmds = {
   function(self, args, input, output_handler)
     local operation = args.operation
@@ -210,101 +218,140 @@ Available write-access Git operations:
       )
     end
 
-    local success, output
+    -- 通过 pcall 安全执行操作，确保始终有响应
+    local ok, result = pcall(function()
+      local success, output
 
-    if operation == "stage" then
-      if not op_args.files or #op_args.files == 0 then
-        return { status = "error", data = "No files specified for staging" }
-      end
-      success, output = GitTool.stage_files(op_args.files)
-    elseif operation == "unstage" then
-      if not op_args.files or #op_args.files == 0 then
-        return { status = "error", data = "No files specified for unstaging" }
-      end
-      success, output = GitTool.unstage_files(op_args.files)
-    elseif operation == "commit" then
-      local message = op_args.commit_message or op_args.message
-      if not message then
-        -- Check if there are staged changes
-        local diff_success, diff_output = GitTool.get_diff(true) -- staged changes
-        if not diff_success or not diff_output or vim.trim(diff_output) == "" then
+      if operation == "stage" then
+        local validation_error = validate_required_param("files", op_args.files, "No files specified for staging")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.stage_files(op_args.files)
+      elseif operation == "unstage" then
+        local validation_error = validate_required_param("files", op_args.files, "No files specified for unstaging")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.unstage_files(op_args.files)
+      elseif operation == "commit" then
+        local message = op_args.commit_message or op_args.message
+        if not message then
+          -- Check if there are staged changes
+          local diff_success, diff_output = GitTool.get_diff(true) -- staged changes
+          if not diff_success or not diff_output or vim.trim(diff_output) == "" then
+            return {
+              status = "error",
+              data = "No staged changes found for commit. Please stage your changes first using the stage operation.",
+            }
+          end
+
+          -- Return success with instruction for AI to use the diff tool
           return {
-            status = "error",
-            data = "No staged changes found for commit. Please stage your changes first using the stage operation.",
+            status = "success",
+            data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@git_read diff --staged` tool to see the changes and then create an appropriate commit message.",
           }
         end
+        success, output = GitTool.commit(message, op_args.amend)
+      elseif operation == "create_branch" then
+        if not op_args.branch_name then
+          return { status = "error", data = "Branch name is required" }
+        end
+        success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
+      elseif operation == "checkout" then
+        local validation_error =
+          validate_required_param("target", op_args.target, "Target branch or commit is required")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.checkout(op_args.target)
+      elseif operation == "stash" then
+        success, output = GitTool.stash(op_args.message, op_args.include_untracked)
+      elseif operation == "apply_stash" then
+        success, output = GitTool.apply_stash(op_args.stash_ref)
+      elseif operation == "reset" then
+        local validation_error =
+          validate_required_param("commit_hash", op_args.commit_hash, "Commit hash is required for reset")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
+      elseif operation == "gitignore_add" then
+        local rules = op_args.gitignore_rules or op_args.gitignore_rule
+        if not rules then
+          return { status = "error", data = "No rule(s) specified for .gitignore add" }
+        end
+        success, output = GitTool.add_gitignore_rule(rules)
+      elseif operation == "gitignore_remove" then
+        local rules = op_args.gitignore_rules or op_args.gitignore_rule
+        if not rules then
+          return { status = "error", data = "No rule(s) specified for .gitignore remove" }
+        end
+        success, output = GitTool.remove_gitignore_rule(rules)
+      elseif operation == "cherry_pick" then
+        local validation_error = validate_required_param(
+          "cherry_pick_commit_hash",
+          op_args.cherry_pick_commit_hash,
+          "Commit hash is required for cherry-pick"
+        )
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
+      elseif operation == "revert" then
+        local validation_error = validate_required_param(
+          "revert_commit_hash",
+          op_args.revert_commit_hash,
+          "Commit hash is required for revert"
+        )
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.revert(op_args.revert_commit_hash)
+      elseif operation == "create_tag" then
+        local validation_error = validate_required_param("tag_name", op_args.tag_name, "Tag name is required")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
+      elseif operation == "delete_tag" then
+        local validation_error =
+          validate_required_param("tag_name", op_args.tag_name, "Tag name is required for deletion")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
+      elseif operation == "merge" then
+        local validation_error = validate_required_param("branch", op_args.branch, "Branch to merge is required")
+        if validation_error then
+          return validation_error
+        end
+        success, output = GitTool.merge(op_args.branch)
+      else
+        return { status = "error", data = "Unknown Git edit operation: " .. operation }
+      end
 
-        -- Return success with instruction for AI to use the diff tool
-        return {
-          status = "success",
-          data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@git_read diff --staged` tool to see the changes and then create an appropriate commit message.",
-        }
-      end
-      success, output = GitTool.commit(message, op_args.amend)
-    elseif operation == "create_branch" then
-      if not op_args.branch_name then
-        return { status = "error", data = "Branch name is required" }
-      end
-      success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
-    elseif operation == "checkout" then
-      if not op_args.target then
-        return { status = "error", data = "Target branch or commit is required" }
-      end
-      success, output = GitTool.checkout(op_args.target)
-    elseif operation == "stash" then
-      success, output = GitTool.stash(op_args.message, op_args.include_untracked)
-    elseif operation == "apply_stash" then
-      success, output = GitTool.apply_stash(op_args.stash_ref)
-    elseif operation == "reset" then
-      if not op_args.commit_hash then
-        return { status = "error", data = "Commit hash is required for reset" }
-      end
-      success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
-    elseif operation == "gitignore_add" then
-      local rules = op_args.gitignore_rules or op_args.gitignore_rule
-      if not rules then
-        return { status = "error", data = "No rule(s) specified for .gitignore add" }
-      end
-      success, output = GitTool.add_gitignore_rule(rules)
-    elseif operation == "gitignore_remove" then
-      local rules = op_args.gitignore_rules or op_args.gitignore_rule
-      if not rules then
-        return { status = "error", data = "No rule(s) specified for .gitignore remove" }
-      end
-      success, output = GitTool.remove_gitignore_rule(rules)
-    elseif operation == "cherry_pick" then
-      if not op_args.cherry_pick_commit_hash then
-        return { status = "error", data = "Commit hash is required for cherry-pick" }
-      end
-      success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
-    elseif operation == "revert" then
-      if not op_args.revert_commit_hash then
-        return { status = "error", data = "Commit hash is required for revert" }
-      end
-      success, output = GitTool.revert(op_args.revert_commit_hash)
-    elseif operation == "create_tag" then
-      if not op_args.tag_name then
-        return { status = "error", data = "Tag name is required" }
-      end
-      success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
-    elseif operation == "delete_tag" then
-      if not op_args.tag_name then
-        return { status = "error", data = "Tag name is required for deletion" }
-      end
-      success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
-    elseif operation == "merge" then
-      if not op_args.branch then
-        return { status = "error", data = "Branch to merge is required" }
-      end
-      success, output = GitTool.merge(op_args.branch)
-    else
-      return { status = "error", data = "Unknown Git edit operation: " .. operation }
+      return { success = success, output = output }
+    end)
+
+    -- Handle unexpected execution errors
+    if not ok then
+      local error_msg = "Git edit operation failed unexpectedly: " .. tostring(result)
+      return { status = "error", data = error_msg }
     end
 
+    -- Check if this is an early return case
+    if result.status then
+      return result
+    end
+
+    local success, output = result.success, result.output
+
+    -- Ensure proper response even if operation fails
     if success then
       return { status = "success", data = output }
     else
-      return { status = "error", data = output }
+      return { status = "error", data = output or "Git operation failed without specific error message" }
     end
   end,
 }
