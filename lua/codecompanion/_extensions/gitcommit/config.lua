@@ -23,6 +23,7 @@ M.default_opts = {
     keymap = "<leader>gc",
     auto_generate = true,
     auto_generate_delay = 200,
+    skip_auto_generate_on_amend = true, -- Skip auto-generation during git commit --amend
   },
   add_slash_command = true,
   add_git_tool = true,
