@@ -50,6 +50,7 @@ return Extension
 ```
 
 The extension system uses a module loader that resolves extensions from:
+
 1. Runtime path: `codecompanion._extensions.extension_name`
 2. Local callbacks in configuration
 3. Direct module paths
@@ -85,7 +86,7 @@ function Extension.setup(opts)
     default_option = "value",
     keymap = "gx",
   }, opts or {})
-  
+
   -- Initialize your extension here
   -- Add keymaps, commands, etc.
 end
@@ -95,7 +96,7 @@ Extension.exports = {
   get_status = function()
     return "Extension is running"
   end,
-  
+
   custom_action = function()
     vim.notify("Custom action executed!")
   end,
@@ -114,7 +115,7 @@ Extensions can add custom keymaps to chat buffers:
 function Extension.setup(opts)
   local config = require("codecompanion.config")
   local chat_keymaps = config.strategies.chat.keymaps
-  
+
   -- Add a new keymap
   chat_keymaps.custom_action = {
     modes = {
@@ -125,7 +126,7 @@ function Extension.setup(opts)
     callback = function(chat)
       -- Access to the current chat object
       vim.notify("Custom action for chat: " .. chat.id)
-      
+
       -- You can:
       -- - Manipulate chat messages: chat.messages
       -- - Access chat context: chat.context
@@ -133,12 +134,12 @@ function Extension.setup(opts)
       -- - Trigger submissions: chat:submit()
       -- - Access UI methods: chat.ui:method()
     end,
-    
+
     -- Optional: Conditional display
     condition = function()
       return vim.fn.has("nvim-0.10") == 1
     end,
-    
+
     -- Optional: Hide from help/options
     hide = false,
   }
@@ -153,7 +154,7 @@ Add custom slash commands that users can type in chat:
 function Extension.setup(opts)
   local config = require("codecompanion.config")
   local slash_commands = config.strategies.chat.slash_commands
-  
+
   slash_commands.custom = {
     description = "Execute custom slash command",
     opts = {
@@ -178,13 +179,13 @@ end
 function SlashCommand:execute()
   -- Implementation
   local chat = self.Chat
-  
+
   -- Add content to chat
   chat:add_message({
     role = "user",
     content = "Custom slash command output"
   })
-  
+
   -- Trigger chat submission
   chat:submit()
 end
@@ -200,7 +201,7 @@ Create tools that can be used in agent workflows:
 function Extension.setup(opts)
   local config = require("codecompanion.config")
   local tools = config.strategies.chat.tools
-  
+
   -- Add individual tool
   tools.custom_tool = {
     callback = "strategies.chat.agents.tools.custom_tool",
@@ -219,7 +220,7 @@ function Extension.setup(opts)
       requires_approval = false,
     },
   }
-  
+
   -- Add tool group
   tools.groups.custom_group = {
     description = "Custom tool group",
@@ -246,10 +247,10 @@ end
 
 function Tool:execute(action)
   log:debug("Executing custom tool with action: %s", action)
-  
+
   -- Perform your custom action
   local result = "Tool executed successfully with action: " .. action
-  
+
   return {
     status = "success",
     output = result,
@@ -267,7 +268,7 @@ Add variables that can be used in chat with `#variable_name`:
 function Extension.setup(opts)
   local config = require("codecompanion.config")
   local variables = config.strategies.chat.variables
-  
+
   variables.custom_var = {
     callback = "strategies.chat.variables.custom_var",
     description = "Custom variable description",
@@ -306,7 +307,7 @@ Add custom actions to the action palette:
 ```lua
 function Extension.setup(opts)
   local actions = require("codecompanion.actions")
-  
+
   -- Register new action
   actions.register({
     name = "Custom Action",
@@ -339,7 +340,7 @@ Extensions can hook into various chat events:
 ```lua
 function Extension.setup(opts)
   local config = require("codecompanion.config")
-  
+
   -- Hook into chat events
   vim.api.nvim_create_autocmd("User", {
     pattern = "CodeCompanionChatAdapter",
@@ -348,9 +349,9 @@ function Extension.setup(opts)
       vim.notify("Adapter changed to: " .. data.adapter.name)
     end,
   })
-  
+
   vim.api.nvim_create_autocmd("User", {
-    pattern = "CodeCompanionChatModel", 
+    pattern = "CodeCompanionChatModel",
     callback = function(event)
       local data = event.data
       vim.notify("Model changed to: " .. data.model)
@@ -372,10 +373,10 @@ local history_file = vim.fn.stdpath("data") .. "/codecompanion_history.json"
 local function load_history()
   local file = io.open(history_file, "r")
   if not file then return {} end
-  
+
   local content = file:read("*all")
   file:close()
-  
+
   local ok, data = pcall(vim.json.decode, content)
   return ok and data or {}
 end
@@ -383,7 +384,7 @@ end
 local function save_history(history)
   local file = io.open(history_file, "w")
   if not file then return end
-  
+
   file:write(vim.json.encode(history))
   file:close()
 end
@@ -394,22 +395,22 @@ function Extension.setup(opts)
     keymap = "gh",
     auto_save = true,
   }, opts or {})
-  
+
   local codecompanion_config = require("codecompanion.config")
   local chat_keymaps = codecompanion_config.strategies.chat.keymaps
-  
+
   -- Add keymap to open history
   chat_keymaps.open_history = {
     modes = { n = config.keymap },
     description = "Open chat history",
     callback = function(chat)
       local history = load_history()
-      
+
       if vim.tbl_isempty(history) then
         vim.notify("No chat history found", vim.log.levels.INFO)
         return
       end
-      
+
       vim.ui.select(history, {
         prompt = "Select chat from history:",
         format_item = function(item)
@@ -423,14 +424,14 @@ function Extension.setup(opts)
       end)
     end,
   }
-  
+
   -- Auto-save chats if enabled
   if config.auto_save then
     vim.api.nvim_create_autocmd("User", {
       pattern = "CodeCompanionChatSaved",
       callback = function(event)
         local history = load_history()
-        
+
         table.insert(history, 1, {
           id = event.data.chat.id,
           title = event.data.chat.title or "Untitled Chat",
@@ -438,12 +439,12 @@ function Extension.setup(opts)
           messages = event.data.chat.messages,
           adapter = event.data.chat.adapter.name,
         })
-        
+
         -- Keep only max_history entries
         if #history > config.max_history then
           history = vim.list_slice(history, 1, config.max_history)
         end
-        
+
         save_history(history)
       end,
     })
@@ -464,7 +465,7 @@ return Extension
 
 ### Example 2: Code Review Extension
 
-```lua
+````lua
 ---@class CodeCompanion.Extension.CodeReview
 local Extension = {}
 
@@ -473,11 +474,11 @@ function Extension.setup(opts)
     keymap = "gr",
     review_style = "detailed", -- "detailed" or "quick"
   }, opts or {})
-  
+
   local codecompanion_config = require("codecompanion.config")
   local chat_keymaps = codecompanion_config.strategies.chat.keymaps
   local actions = require("codecompanion.actions")
-  
+
   -- Add review keymap
   chat_keymaps.code_review = {
     modes = { n = config.keymap },
@@ -486,14 +487,14 @@ function Extension.setup(opts)
       -- Get selected text or current buffer
       local mode = vim.fn.mode()
       local content = ""
-      
+
       if mode:match("^[vV]") then
         -- Visual selection
         local start_pos = vim.fn.getpos("v")
         local end_pos = vim.fn.getpos(".")
         content = table.concat(
           vim.api.nvim_buf_get_text(
-            0, start_pos[2]-1, start_pos[3]-1, 
+            0, start_pos[2]-1, start_pos[3]-1,
             end_pos[2]-1, end_pos[3], {}
           ), "\n"
         )
@@ -501,7 +502,7 @@ function Extension.setup(opts)
         -- Entire buffer
         content = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
       end
-      
+
       local review_prompt = config.review_style == "detailed" and
         "Please provide a detailed code review including:\n" ..
         "1. Code quality and best practices\n" ..
@@ -511,16 +512,16 @@ function Extension.setup(opts)
         "Code to review:\n```\n" .. content .. "\n```"
       or
         "Please provide a quick code review with key issues and suggestions:\n```\n" .. content .. "\n```"
-      
+
       chat:add_message({
         role = "user",
         content = review_prompt,
       })
-      
+
       chat:submit()
     end,
   }
-  
+
   -- Register action for action palette
   actions.register({
     name = "Code Review",
@@ -554,7 +555,7 @@ Extension.exports = {
 }
 
 return Extension
-```
+````
 
 ### Example 3: External Service Integration
 
@@ -567,11 +568,11 @@ local curl = require("plenary.curl")
 local function make_jira_request(endpoint, method, data)
   local base_url = vim.env.JIRA_BASE_URL
   local token = vim.env.JIRA_API_TOKEN
-  
+
   if not base_url or not token then
     error("JIRA_BASE_URL and JIRA_API_TOKEN environment variables must be set")
   end
-  
+
   local response = curl.request({
     url = base_url .. endpoint,
     method = method or "GET",
@@ -581,11 +582,11 @@ local function make_jira_request(endpoint, method, data)
     },
     body = data and vim.json.encode(data) or nil,
   })
-  
+
   if response.status ~= 200 then
     error("JIRA API request failed: " .. response.status)
   end
-  
+
   return vim.json.decode(response.body)
 end
 
@@ -594,11 +595,11 @@ function Extension.setup(opts)
     keymap = "gj",
     project_key = nil,
   }, opts or {})
-  
+
   local codecompanion_config = require("codecompanion.config")
   local chat_keymaps = codecompanion_config.strategies.chat.keymaps
   local slash_commands = codecompanion_config.strategies.chat.slash_commands
-  
+
   -- Add JIRA keymap
   chat_keymaps.jira_search = {
     modes = { n = config.keymap },
@@ -606,14 +607,14 @@ function Extension.setup(opts)
     callback = function(chat)
       vim.ui.input({ prompt = "Enter JIRA search query: " }, function(query)
         if not query then return end
-        
+
         local issues = make_jira_request("/search?jql=" .. vim.uri_encode(query))
-        
+
         if #issues.issues == 0 then
           vim.notify("No JIRA issues found", vim.log.levels.INFO)
           return
         end
-        
+
         vim.ui.select(issues.issues, {
           prompt = "Select JIRA issue:",
           format_item = function(issue)
@@ -628,19 +629,19 @@ function Extension.setup(opts)
               selected.fields.description or "No description",
               selected.fields.status.name
             )
-            
+
             chat:add_message({
-              role = "user", 
+              role = "user",
               content = "Please help me with this JIRA issue:\n\n" .. issue_info,
             })
-            
+
             chat:submit()
           end
         end)
       end)
     end,
   }
-  
+
   -- Add JIRA slash command
   slash_commands.jira = {
     description = "Fetch JIRA issue information",
@@ -661,11 +662,11 @@ Extension.exports = {
   search_issues = function(query)
     return make_jira_request("/search?jql=" .. vim.uri_encode(query))
   end,
-  
+
   get_issue = function(issue_key)
     return make_jira_request("/issue/" .. issue_key)
   end,
-  
+
   create_issue = function(project_key, summary, description)
     return make_jira_request("/issue", "POST", {
       fields = {
@@ -763,12 +764,12 @@ function Extension.setup(opts)
     keymap = "gx",
     timeout = 5000,
   }, opts or {})
-  
+
   -- Validate configuration
   if not config.enabled then
     return
   end
-  
+
   if type(config.keymap) ~= "string" then
     error("Extension keymap must be a string")
   end
@@ -782,7 +783,7 @@ function Extension.setup(opts)
   local ok, result = pcall(function()
     -- Extension initialization
   end)
-  
+
   if not ok then
     vim.notify("Extension failed to initialize: " .. result, vim.log.levels.ERROR)
     return
@@ -795,7 +796,7 @@ chat_keymaps.action = {
     local ok, err = pcall(function()
       -- Action implementation
     end)
-    
+
     if not ok then
       vim.notify("Action failed: " .. err, vim.log.levels.ERROR)
     end
@@ -828,10 +829,10 @@ chat_keymaps.my_extension_action = {
 
 ---@class MyExtensionOpts
 ---@field enabled? boolean Enable the extension (default: true)
----@field keymap? string Keymap for main action (default: "gx") 
+---@field keymap? string Keymap for main action (default: "gx")
 ---@field timeout? number Timeout in milliseconds (default: 5000)
 
----@class MyExtensionExports  
+---@class MyExtensionExports
 ---@field get_status fun(): string Get extension status
 ---@field custom_action fun(): nil Execute custom action
 ```
@@ -842,14 +843,14 @@ chat_keymaps.my_extension_action = {
 -- In your extension tests
 describe("MyExtension", function()
   local extension = require("codecompanion._extensions.my_extension")
-  
+
   it("should setup correctly", function()
     local config = { keymap = "gx" }
     assert.has_no.errors(function()
       extension.setup(config)
     end)
   end)
-  
+
   it("should export functions", function()
     assert.is_not_nil(extension.exports.get_status)
     assert.equals("function", type(extension.exports.get_status))
@@ -862,6 +863,7 @@ end)
 ### Core APIs
 
 #### Chat Object
+
 ```lua
 chat.id              -- Unique chat identifier
 chat.bufnr           -- Chat buffer number
@@ -882,6 +884,7 @@ chat:add_message(msg) -- Add message to chat
 ```
 
 #### Configuration Access
+
 ```lua
 local config = require("codecompanion.config")
 
@@ -896,6 +899,7 @@ config.adapters                     -- Available adapters
 ```
 
 #### Utility Functions
+
 ```lua
 local util = require("codecompanion.utils")
 local log = require("codecompanion.utils.log")
@@ -938,3 +942,4 @@ extensions.manager.extension_name.function_name()
 ```
 
 This guide provides a comprehensive foundation for creating powerful CodeCompanion extensions. Start with simple examples and gradually build more complex functionality as needed.
+

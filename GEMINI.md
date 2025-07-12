@@ -77,3 +77,4 @@ Key configurable options include LLM adapter and model, supported languages, fil
 ## License:
 
 MIT License
+

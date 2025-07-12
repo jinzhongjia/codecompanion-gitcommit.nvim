@@ -23,51 +23,63 @@ Best practices:
 ## Detailed Specifications
 
 ### 1. Function Description Section
+
 **Requirements**:
+
 - **Length**: 20-50 characters
 - **Format**: Start with verb, one sentence explaining core functionality
 - **Tone**: Concise and clear, no modifiers
 
 **Correct Examples**:
+
 - ✅ "Execute system shell commands"
 - ✅ "Read text file contents"
 - ✅ "Send notification messages to user"
 - ✅ "Navigate to specified URL in browser"
 
 **Incorrect Examples**:
+
 - ❌ "This powerful tool can help you execute various complex system command operations"
 - ❌ "Utility tool for file reading"
 
 ### 2. When to Use Section
+
 **Requirements**:
+
 - **Quantity**: 2-4 scenarios
 - **Beginning**: Consistently start with "When"
 - **Specificity**: Clear trigger conditions, avoid vague expressions
 
 **Correct Examples**:
+
 - ✅ "When installing software packages"
 - ✅ "When running automation scripts"
 - ✅ "When checking system status"
 - ✅ "When batch processing file operations"
 
 **Incorrect Examples**:
+
 - ❌ "When system-related operations are needed"
 - ❌ "May be used in certain situations"
 - ❌ "Depends on user requirements"
 
 ### 3. Best Practices Section
+
 **Requirements**:
+
 - **Quantity**: 2-6 guidelines
 - **Beginning**: Use verbs like "Must", "Avoid", "Use", "Ensure"
 - **Actionability**: Specific executable guidance principles
 
 **Correct Examples**:
+
 - ✅ "Must avoid commands requiring interactive confirmation"
 - ✅ "Use -y parameter for automatic confirmation"
 - ✅ "Avoid operations that take too long to execute"
 - ✅ "Ensure command syntax is correct before execution"
 
 **Incorrect Examples**:
+
 - ❌ "Use with caution"
 - ❌ "Pay attention to security issues"
 - ❌ "Recommend careful operation"
@@ -77,6 +89,7 @@ Best practices:
 ## Application Examples
 
 ### Example 1: Shell Execution Tool
+
 ```
 Execute commands in shell session
 
@@ -94,6 +107,7 @@ Best practices:
 ```
 
 ### Example 2: File Reading Tool
+
 ```
 Read text content of specified files
 
@@ -109,6 +123,7 @@ Best practices:
 ```
 
 ### Example 3: Message Notification Tool
+
 ```
 Send information notifications to user
 
@@ -128,6 +143,7 @@ Best practices:
 ## Quality Check Standards
 
 ### ✅ Qualification Standards
+
 - [ ] Function description within 50 characters
 - [ ] "When to use" includes 2-4 clear scenarios
 - [ ] "Best practices" provides specific operational advice
@@ -135,6 +151,7 @@ Best practices:
 - [ ] Structure is complete with no missing parts
 
 ### ❌ Common Issues
+
 - Function description too long or vague
 - Use case descriptions too broad
 - Best practices lack actionability
@@ -148,20 +165,25 @@ Best practices:
 This specification applies to any document format:
 
 **Markdown Format**:
+
 ```markdown
 ## Tool Name
+
 Function description text
 
 ### When to use
+
 - Scenario 1
 - Scenario 2
 
 ### Best practices
+
 - Guideline 1
 - Guideline 2
 ```
 
 **Plain Text Format**:
+
 ```
 Tool Name: Function description
 
@@ -175,6 +197,7 @@ Best practices:
 ```
 
 **JSON Format**:
+
 ```json
 {
   "description": "Function description",
@@ -186,3 +209,4 @@ Best practices:
 ---
 
 **Core Principle: Easy to understand, easy to learn, easy to use correctly**
+
