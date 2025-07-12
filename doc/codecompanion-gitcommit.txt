@@ -85,6 +85,7 @@ Add this extension to your CodeCompanion configuration:
 	          keymap = "<leader>gc",       -- Keymap for generating commit messages
 	          auto_generate = true,        -- Auto-generate on buffer enter
 	          auto_generate_delay = 200,   -- Auto-generation delay (ms)
+	          skip_auto_generate_on_amend = true, -- Skip auto-generation during git commit --amend
 	        },
 	        
 	        -- Feature toggles
@@ -94,6 +95,9 @@ Add this extension to your CodeCompanion configuration:
 	        enable_git_edit = true,       -- Enable write-access Git operations
 	        enable_git_bot = true,        -- Enable @git_bot tool group
 	        add_git_commands = true,      -- Add :CodeCompanionGitCommit commands
+	        git_tool_auto_submit_errors = false,    -- Auto-submit errors to LLM
+	        git_tool_auto_submit_success = true,    -- Auto-submit success to LLM
+	        gitcommit_select_count = 100, -- Number of commits shown in /gitcommit
 	      }
 	    }
 	  }
@@ -160,6 +164,9 @@ Read-only operations (@git_read):			*git_read*
 • tags - List all tags
 • gitignore_get - Get .gitignore content
 • gitignore_check - Check if a file is ignored
+• stash_list - List all stashes
+• diff_commits - Compare two commits
+• help - Show help information
 
 Write operations (@git_edit):				*git_edit*
 
@@ -243,7 +250,7 @@ Safety features:
 	When enabled, automatically submits git tool error messages back to
 	the LLM for analysis.
 
-*git_tool_auto_submit_success*			Type: boolean, Default: false
+*git_tool_auto_submit_success*			Type: boolean, Default: true
 	When enabled, automatically submits git tool success messages back to
 	the LLM to continue the workflow.
 
@@ -261,9 +268,13 @@ Buffer configuration:
 *buffer.auto_generate_delay*			Type: number, Default: 200
 	The delay in milliseconds before triggering automatic generation.
 
+*buffer.skip_auto_generate_on_amend*		Type: boolean, Default: true
+	Skip auto-generation during git commit --amend operations.
+
 ==============================================================================
 8. LICENSE					*codecompanion-gitcommit-license*
 
 MIT License
 
+==============================================================================
 vim:tw=78:ts=8:ft=help:norl:
