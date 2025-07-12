@@ -26,23 +26,23 @@ return {
 
   -- Buffer configuration
   buffer = {
-    enabled = true,                 -- Enable buffer integration
-    keymap = "<leader>gc",          -- Keymap
-    auto_generate = true,           -- Auto-generate
-    auto_generate_delay = 200,      -- Auto-generation delay (ms)
+    enabled = true, -- Enable buffer integration
+    keymap = "<leader>gc", -- Keymap
+    auto_generate = true, -- Auto-generate
+    auto_generate_delay = 200, -- Auto-generation delay (ms)
     skip_auto_generate_on_amend = true, -- Skip auto-generation during git commit --amend
   },
 
   -- Feature toggles
-  add_slash_command = true,         -- Enable slash command in chat buffer
-  add_git_tool = true,             -- Add @git_read and @git_edit tools to CodeCompanion
-  enable_git_read = true,          -- Enable read-only Git operations
-  enable_git_edit = true,          -- Enable write-access Git operations
-  enable_git_bot = true,           -- Enable @git_bot tool group (requires both read/write enabled)
-  add_git_commands = true,         -- Add :CodeCompanionGitCommit commands
+  add_slash_command = true, -- Enable slash command in chat buffer
+  add_git_tool = true, -- Add @git_read and @git_edit tools to CodeCompanion
+  enable_git_read = true, -- Enable read-only Git operations
+  enable_git_edit = true, -- Enable write-access Git operations
+  enable_git_bot = true, -- Enable @git_bot tool group (requires both read/write enabled)
+  add_git_commands = true, -- Add :CodeCompanionGitCommit commands
 
   -- Git tool configuration
-  git_tool_auto_submit_errors = false,   -- Don't auto-submit errors to LLM
-  git_tool_auto_submit_success = true,   -- Auto-submit success to LLM
-  gitcommit_select_count = 100,          -- Number of recent commits for /gitcommit slash command
+  git_tool_auto_submit_errors = false, -- Don't auto-submit errors to LLM
+  git_tool_auto_submit_success = true, -- Auto-submit success to LLM
+  gitcommit_select_count = 100, -- Number of recent commits for /gitcommit slash command
 }

@@ -32,20 +32,20 @@ function Buffer.setup(opts)
       Buffer._setup_gitcommit_keymap(event.buf)
 
       if config.auto_generate then
-         -- Auto-generation autocommand triggers once when entering gitcommit window
-         -- This avoids race conditions with plugins like neogit that manage multiple windows
-         -- Skip auto-generation during git amend to preserve user's intent to modify existing commit
+        -- Auto-generation autocommand triggers once when entering gitcommit window
+        -- This avoids race conditions with plugins like neogit that manage multiple windows
+        -- Skip auto-generation during git amend to preserve user's intent to modify existing commit
         vim.api.nvim_create_autocmd("WinEnter", {
           buffer = event.buf,
           once = true,
           callback = function(args)
-             -- Defer execution to ensure other plugins (like neogit) have finished UI setup
+            -- Defer execution to ensure other plugins (like neogit) have finished UI setup
             vim.defer_fn(function()
               if not vim.api.nvim_buf_is_valid(args.buf) then
                 return
               end
 
-               -- Check if buffer already has a commit message
+              -- Check if buffer already has a commit message
               local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
               local has_message = false
               for _, line in ipairs(lines) do
@@ -55,13 +55,13 @@ function Buffer.setup(opts)
                 end
               end
 
-               -- Skip auto-generation in the following cases:
-               -- 1. Buffer already has a commit message
-               -- 2. We are in a git amend operation (user may want to keep existing message)
-               local should_skip_amend = config.skip_auto_generate_on_amend and Git.is_amending()
-               if not has_message and not should_skip_amend then
-                 Buffer._generate_and_insert_commit_message(args.buf)
-               end
+              -- Skip auto-generation in the following cases:
+              -- 1. Buffer already has a commit message
+              -- 2. We are in a git amend operation (user may want to keep existing message)
+              local should_skip_amend = config.skip_auto_generate_on_amend and Git.is_amending()
+              if not has_message and not should_skip_amend then
+                Buffer._generate_and_insert_commit_message(args.buf)
+              end
             end, config.auto_generate_delay)
           end,
           desc = "Auto-generate GitCommit message",

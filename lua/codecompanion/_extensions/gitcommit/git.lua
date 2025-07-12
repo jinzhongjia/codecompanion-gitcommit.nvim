@@ -133,57 +133,57 @@ function Git.is_amending()
       return false
     end
 
-     -- Check if we're in an amend scenario by examining the COMMIT_EDITMSG content
-     -- During amend, git pre-populates COMMIT_EDITMSG with the previous commit message
-     local git_dir = vim.trim(vim.fn.system("git rev-parse --git-dir"))
-     if vim.v.shell_error ~= 0 then
-       return false
-     end
- 
-     -- Use platform-appropriate path separator
-     local path_sep = package.config:sub(1, 1)
-     local commit_editmsg = git_dir .. path_sep .. "COMMIT_EDITMSG"
-     local stat = vim.uv.fs_stat(commit_editmsg)
-     if not stat then
-       return false
-     end
- 
-     -- Additional check: verify HEAD commit exists (not initial commit)
-     local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
-     vim.fn.system("git rev-parse --verify HEAD" .. redirect)
-     if vim.v.shell_error ~= 0 then
-       return false
-     end
- 
-     -- Read COMMIT_EDITMSG content and check if it contains a previous commit message
-     -- During amend, git pre-populates this file with the previous commit message
-     local fd = vim.uv.fs_open(commit_editmsg, "r", 438)
-     if not fd then
-       return false
-     end
- 
-     local content = vim.uv.fs_read(fd, stat.size, 0)
-     vim.uv.fs_close(fd)
-     
-     if not content then
-       return false
-     end
- 
-     -- Check if there's non-comment content in COMMIT_EDITMSG
-     -- During amend, this indicates we're editing an existing commit
-     local lines = vim.split(content, "\n")
-     local has_existing_message = false
-     for _, line in ipairs(lines) do
-       local trimmed = vim.trim(line)
-       -- Skip empty lines and comment lines (starting with #)
-       if trimmed ~= "" and not trimmed:match("^#") then
-         has_existing_message = true
-         break
-       end
-     end
- 
-     -- If COMMIT_EDITMSG has existing content and HEAD exists, likely an amend
-     return has_existing_message
+    -- Check if we're in an amend scenario by examining the COMMIT_EDITMSG content
+    -- During amend, git pre-populates COMMIT_EDITMSG with the previous commit message
+    local git_dir = vim.trim(vim.fn.system("git rev-parse --git-dir"))
+    if vim.v.shell_error ~= 0 then
+      return false
+    end
+
+    -- Use platform-appropriate path separator
+    local path_sep = package.config:sub(1, 1)
+    local commit_editmsg = git_dir .. path_sep .. "COMMIT_EDITMSG"
+    local stat = vim.uv.fs_stat(commit_editmsg)
+    if not stat then
+      return false
+    end
+
+    -- Additional check: verify HEAD commit exists (not initial commit)
+    local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
+    vim.fn.system("git rev-parse --verify HEAD" .. redirect)
+    if vim.v.shell_error ~= 0 then
+      return false
+    end
+
+    -- Read COMMIT_EDITMSG content and check if it contains a previous commit message
+    -- During amend, git pre-populates this file with the previous commit message
+    local fd = vim.uv.fs_open(commit_editmsg, "r", 438)
+    if not fd then
+      return false
+    end
+
+    local content = vim.uv.fs_read(fd, stat.size, 0)
+    vim.uv.fs_close(fd)
+
+    if not content then
+      return false
+    end
+
+    -- Check if there's non-comment content in COMMIT_EDITMSG
+    -- During amend, this indicates we're editing an existing commit
+    local lines = vim.split(content, "\n")
+    local has_existing_message = false
+    for _, line in ipairs(lines) do
+      local trimmed = vim.trim(line)
+      -- Skip empty lines and comment lines (starting with #)
+      if trimmed ~= "" and not trimmed:match("^#") then
+        has_existing_message = true
+        break
+      end
+    end
+
+    -- If COMMIT_EDITMSG has existing content and HEAD exists, likely an amend
+    return has_existing_message
   end)
 
   return ok and result or false

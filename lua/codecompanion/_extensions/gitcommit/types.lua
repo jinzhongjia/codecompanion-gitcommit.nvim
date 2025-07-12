@@ -9,8 +9,8 @@
 ---@field keymap string Keymap for generating commit message in git commit buffer
 ---@field auto_generate? boolean Automatically generate commit message on entering gitcommit buffer
 
- ---@field skip_auto_generate_on_amend? boolean Skip auto-generation during git commit --amend operations
- 
+---@field skip_auto_generate_on_amend? boolean Skip auto-generation during git commit --amend operations
+
 ---@field buffer? CodeCompanion.GitCommit.ExtensionOpts.Buffer Enable buffer-specific keymap for git commit
 ---@field adapter? string? The adapter to use for generation
 ---@field model? string? The model of the adapter to use for generation
