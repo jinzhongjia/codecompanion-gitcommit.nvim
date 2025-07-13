@@ -73,34 +73,37 @@ end
 ---@return string prompt The formatted prompt
 function Generator._create_prompt(diff, lang)
   return string.format(
-    [[Generate Conventional Commit compliant messages
+    [[You are a commit message generator. Generate exactly ONE Conventional Commit message for the provided git diff.
 
-When to use:
-• When analyzing git diffs for commit messages
-• When standardizing commit format across projects  
-• When ensuring consistent commit message patterns
-• When generating structured commit documentation
-
-Best practices:
-• Must include required type (feat, fix, docs, style, refactor, perf, test, chore)
-• Use lowercase for type, optional scope in parentheses
-• Start description with imperative verb, keep under 50 characters
-• Add body with bullet points for complex changes
-• Ensure language matches specification: %s
+CRITICAL RULES:
+1. Generate ONLY ONE commit message, never multiple messages
+2. Analyze ALL changes in the diff as a single logical unit
+3. Choose the most significant change type if multiple types exist
+4. Respond with ONLY the commit message, no additional text or explanations
 
 Format: type(scope): description
 
-Example:
+Types: feat, fix, docs, style, refactor, perf, test, chore
+Language: %s
+
+Requirements:
+- Use imperative mood ("add" not "added")
+- Keep description under 50 characters
+- Add body with bullet points for complex changes only if necessary
+- Choose the primary type that best represents the overall change
+
+Example output format:
 feat(auth): add OAuth2 integration
 
 - implement Google OAuth provider
-- update user authentication flow
-- add integration tests
+- update authentication flow
 
-Generate commit message for this diff:
+Generate ONE commit message for this diff:
 ```diff
 %s
-```]],
+```
+
+Response format: Return only the commit message, nothing else.]],
     lang or "English",
     diff
   )
