@@ -73,37 +73,49 @@ end
 ---@return string prompt The formatted prompt
 function Generator._create_prompt(diff, lang)
   return string.format(
-    [[You are a commit message generator. Generate exactly ONE Conventional Commit message for the provided git diff.
+    [[You are a commit message generator. Generate exactly ONE complete Conventional Commit message for the provided git diff.
 
-CRITICAL RULES:
-1. Generate ONLY ONE commit message, never multiple messages
-2. Analyze ALL changes in the diff as a single logical unit
-3. Choose the most significant change type if multiple types exist
-4. Respond with ONLY the commit message, no additional text or explanations
+CRITICAL FORMAT REQUIREMENTS:
+1. MUST generate exactly ONE commit message, never multiple messages
+2. MUST include a title line and at least one bullet point description
+3. MUST analyze ALL changes in the diff as a single logical unit
+4. MUST respond with ONLY the commit message, no explanations or extra text
 
-Format: type(scope): description
+MANDATORY FORMAT:
+type(scope): brief description
+
+- detailed description point 1
+- detailed description point 2 (if needed)
+- detailed description point 3 (if needed)
 
 Types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
-Requirements:
-- Use imperative mood ("add" not "added")
-- Keep description under 50 characters
-- Add body with bullet points for complex changes only if necessary
+RULES:
+- Title: Use imperative mood ("add" not "added"), keep under 50 characters
+- Body: At least ONE bullet point describing the changes
+- For large diffs: Focus on the most significant changes, group related changes
 - Choose the primary type that best represents the overall change
+- Even with extensive changes, generate only ONE unified commit message
 
-Example output format:
+REQUIRED EXAMPLES:
 feat(auth): add OAuth2 integration
 
 - implement Google OAuth provider
-- update authentication flow
+- update user authentication flow
+- add integration tests
 
-Generate ONE commit message for this diff:
+fix(api): resolve data validation issues
+
+- fix null pointer exceptions in user data
+- improve input validation for API endpoints
+
+Generate ONE complete commit message for this diff:
 ```diff
 %s
 ```
 
-Response format: Return only the commit message, nothing else.]],
+Return ONLY the commit message in the exact format shown above.]],
     lang or "English",
     diff
   )
