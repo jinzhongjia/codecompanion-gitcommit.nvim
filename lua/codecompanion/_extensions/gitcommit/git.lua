@@ -4,11 +4,11 @@ local Git = {}
 -- Store configuration
 local config = {}
 
----Setup Git module with configuration
----@param opts? table Configuration options
 function Git.setup(opts)
   config = vim.tbl_deep_extend("force", {
     exclude_files = {},
+    use_commit_history = true,
+    commit_history_count = 10,
   }, opts or {})
 end
 
@@ -340,6 +340,54 @@ function Git.commit_changes(message)
   end
 
   return success
+end
+
+---Get recent commit messages for context
+---@param count? number Number of recent commits to retrieve (default: 10)
+---@return string[]|nil commit_messages Array of commit messages or nil on error
+function Git.get_commit_history(count)
+  count = count or 10
+  
+  -- Use pcall to safely execute git operations
+  local ok, result = pcall(function()
+    if not Git.is_repository() then
+      return nil
+    end
+
+    -- Get recent commit messages using git log
+    -- Use --pretty=format to get just the commit message
+    local cmd = string.format("git log --pretty=format:%%s --no-merges -%d", count)
+    local output = vim.fn.system(cmd)
+    
+    if vim.v.shell_error ~= 0 then
+      return nil
+    end
+
+    -- Split output into lines and filter out empty lines
+    local lines = vim.split(output, "\n")
+    local commit_messages = {}
+    
+    for _, line in ipairs(lines) do
+      local trimmed = trim(line)
+      if trimmed ~= "" then
+        table.insert(commit_messages, trimmed)
+      end
+    end
+    
+    return commit_messages
+  end)
+
+  if not ok then
+    return nil
+  end
+
+  return result
+end
+
+---Get current configuration
+---@return table config Current configuration
+function Git.get_config()
+  return vim.deepcopy(config)
 end
 
 return Git

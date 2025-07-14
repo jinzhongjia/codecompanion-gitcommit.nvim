@@ -114,8 +114,16 @@ function Buffer._generate_and_insert_commit_message(bufnr)
 
   Langs.select_lang(function(lang)
     vim.notify("Generating commit message...", vim.log.levels.INFO)
+    
+    -- Get commit history if enabled
+    local commit_history = nil
+    local git_config = Git.get_config and Git.get_config() or {}
+    if git_config.use_commit_history then
+      commit_history = Git.get_commit_history(git_config.commit_history_count)
+    end
+    
     -- Generate commit message using LLM
-    Generator.generate_commit_message(diff, lang, function(result, error)
+    Generator.generate_commit_message(diff, lang, commit_history, function(result, error)
       if error then
         vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
         return

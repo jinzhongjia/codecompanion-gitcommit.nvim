@@ -34,6 +34,9 @@ M.default_opts = {
   git_tool_auto_submit_errors = false,
   git_tool_auto_submit_success = true,
   gitcommit_select_count = 100,
+  -- History commit context configuration
+  use_commit_history = true, -- Enable using commit history as context
+  commit_history_count = 10, -- Number of recent commits to include as context
 }
 
 return M

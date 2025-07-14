@@ -32,8 +32,16 @@ function M.generate_commit_message()
 
   Langs.select_lang(function(lang)
     vim.notify("Generating commit message...", vim.log.levels.INFO)
+    
+    -- Get commit history if enabled
+    local commit_history = nil
+    local git_config = Git.get_config and Git.get_config() or {}
+    if git_config.use_commit_history then
+      commit_history = Git.get_commit_history(git_config.commit_history_count)
+    end
+    
     -- Generate commit message using LLM
-    Generator.generate_commit_message(diff, lang, function(result, error)
+    Generator.generate_commit_message(diff, lang, commit_history, function(result, error)
       if error then
         vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
         return
@@ -268,7 +276,11 @@ return {
   setup = function(opts)
     opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
 
-    Git.setup({ exclude_files = opts.exclude_files })
+    Git.setup({ 
+      exclude_files = opts.exclude_files,
+      use_commit_history = opts.use_commit_history,
+      commit_history_count = opts.commit_history_count,
+    })
     Generator.setup(opts.adapter, opts.model)
     Buffer.setup(opts.buffer)
     Langs.setup(opts.languages)
@@ -294,8 +306,15 @@ return {
         return callback(nil, "No staged changes found. Please stage your changes first.")
       end
 
+      -- Get commit history if enabled
+      local commit_history = nil
+      local git_config = Git.get_config and Git.get_config() or {}
+      if git_config.use_commit_history then
+        commit_history = Git.get_commit_history(git_config.commit_history_count)
+      end
+
       -- Generate commit message
-      Generator.generate_commit_message(diff, lang, callback)
+      Generator.generate_commit_message(diff, lang, commit_history, callback)
     end,
 
     ---Check if current directory is in a git repository
