@@ -64,18 +64,19 @@ end
 
 ---Create prompt for commit message generation
 ---@param diff string The git diff to include in prompt
- ---@param commit_history? string[] Array of recent commit messages for context (optional)
- function Generator._create_prompt(diff, lang, commit_history)
-   -- Build the history context section
-   local history_context = ""
-   if commit_history and #commit_history > 0 then
-     history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
-     for i, commit_msg in ipairs(commit_history) do
-       history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
-     end
-     history_context = history_context .. "\nAnalyze the above commit history to understand the project's commit style, tone, and format patterns. Use this as guidance to maintain consistency.\n"
-   end
- 
+---@param commit_history? string[] Array of recent commit messages for context (optional)
+function Generator._create_prompt(diff, lang, commit_history)
+  -- Build the history context section
+  local history_context = ""
+  if commit_history and #commit_history > 0 then
+    history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
+    for i, commit_msg in ipairs(commit_history) do
+      history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
+    end
+    history_context = history_context
+      .. "\nAnalyze the above commit history to understand the project's commit style, tone, and format patterns. Use this as guidance to maintain consistency.\n"
+  end
+
   return string.format(
     [[You are a commit message generator. Generate exactly ONE complete Conventional Commit message for the provided git diff.%s
 

@@ -347,7 +347,7 @@ end
 ---@return string[]|nil commit_messages Array of commit messages or nil on error
 function Git.get_commit_history(count)
   count = count or 10
-  
+
   -- Use pcall to safely execute git operations
   local ok, result = pcall(function()
     if not Git.is_repository() then
@@ -358,7 +358,7 @@ function Git.get_commit_history(count)
     -- Use --pretty=format to get just the commit message
     local cmd = string.format("git log --pretty=format:%%s --no-merges -%d", count)
     local output = vim.fn.system(cmd)
-    
+
     if vim.v.shell_error ~= 0 then
       return nil
     end
@@ -366,14 +366,14 @@ function Git.get_commit_history(count)
     -- Split output into lines and filter out empty lines
     local lines = vim.split(output, "\n")
     local commit_messages = {}
-    
+
     for _, line in ipairs(lines) do
       local trimmed = trim(line)
       if trimmed ~= "" then
         table.insert(commit_messages, trimmed)
       end
     end
-    
+
     return commit_messages
   end)
 

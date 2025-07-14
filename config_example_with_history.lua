@@ -5,7 +5,7 @@ require("codecompanion").setup({
     openai = function()
       return require("codecompanion.adapters").use("openai", {
         env = {
-          api_key = "your_api_key_here"
+          api_key = "your_api_key_here",
         },
       })
     end,
@@ -17,11 +17,11 @@ require("codecompanion").setup({
       adapter = "openai",
       model = "gpt-4-turbo-preview",
       languages = { "English", "Chinese" },
-      
+
       -- NEW: History commit context configuration
-      use_commit_history = true,        -- Enable using commit history as context
-      commit_history_count = 15,        -- Use 15 recent commits for context (default: 10)
-      
+      use_commit_history = true, -- Enable using commit history as context
+      commit_history_count = 15, -- Use 15 recent commits for context (default: 10)
+
       -- Existing configuration options
       buffer = {
         enabled = true,
@@ -30,7 +30,7 @@ require("codecompanion").setup({
         auto_generate_delay = 200,
         skip_auto_generate_on_amend = true,
       },
-      
+
       exclude_files = {
         "*.pb.go",
         "*.min.js",
@@ -41,13 +41,13 @@ require("codecompanion").setup({
         "build/*",
         "node_modules/*",
       },
-      
+
       add_git_tool = true,
       enable_git_read = true,
       enable_git_edit = true,
       enable_git_bot = true,
       git_tool_auto_submit_success = true,
-    })
+    }),
   },
 })
 

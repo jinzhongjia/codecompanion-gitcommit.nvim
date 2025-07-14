@@ -53,7 +53,7 @@
 ---@field get_staged_diff fun(): string|nil -- Get git diff for staged changes
 ---@field commit_changes fun(message: string): boolean -- Commit changes with the provided message
 
- ---@field generate_commit_message fun(diff: string,lang: string?, commit_history: string[]?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
+---@field generate_commit_message fun(diff: string,lang: string?, commit_history: string[]?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
 
 ---@class CodeCompanion.GitCommit.UI
 ---@field show_commit_message fun(message: string, on_commit: fun(message: string): boolean): nil -- Show commit message in a floating window with interactive options
