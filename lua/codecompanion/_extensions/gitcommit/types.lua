@@ -1,7 +1,5 @@
 ---@field use_commit_history? boolean Enable using commit history as context (default: true)
----@field commit_history_count? number Number of recent commits to include as context (default: 10)
 
----@field exports CodeCompanion.GitCommit.Exports
 
 ---@class CodeCompanion.GitCommit.ExtensionOpts.Buffer
 ---@field enabled boolean Enable buffer-specific keymap for git commit
@@ -53,7 +51,10 @@
 ---@field get_staged_diff fun(): string|nil -- Get git diff for staged changes
 ---@field commit_changes fun(message: string): boolean -- Commit changes with the provided message
 
----@field generate_commit_message fun(diff: string,lang: string?, commit_history: string[]?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
+---@field get_commit_history fun(count?: number): string[]|nil -- Get recent commit messages for context
+
+---@class CodeCompanion.GitCommit.Generator
+---@field generate_commit_message fun(diff: string, lang: string?, commit_history: string[]?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
 
 ---@class CodeCompanion.GitCommit.UI
 ---@field show_commit_message fun(message: string, on_commit: fun(message: string): boolean): nil -- Show commit message in a floating window with interactive options
