@@ -10,6 +10,8 @@ A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit
 - 🌍 **Multi-language Support** - Generate commit messages in multiple languages
 - 📝 **Smart Buffer Integration** - Auto-generate commit messages in gitcommit buffers with configurable keymaps
 - 📋 **File Filtering** - Support glob patterns to exclude files from diff analysis
+- 📚 **Commit History Context** - Use recent commit history to maintain consistent styling and patterns
+- 🔌 **Programmatic API** - Full API for external integrations and custom workflows
 - ⚡ **Async Operations** - Non-blocking Git operations with proper error handling
 
 ## 📦 Installation
@@ -53,6 +55,10 @@ require("codecompanion").setup({
         git_tool_auto_submit_errors = false,    -- Auto-submit errors to LLM
         git_tool_auto_submit_success = true,    -- Auto-submit success to LLM
         gitcommit_select_count = 100,     -- Number of commits shown in /gitcommit
+        
+        -- Commit history context (optional)
+        use_commit_history = true,         -- Enable commit history context
+        commit_history_count = 10,         -- Number of recent commits for context
       }
     }
   }
@@ -170,6 +176,8 @@ opts = {
   gitcommit_select_count = 100,             -- Commits shown in /gitcommit
   git_tool_auto_submit_errors = false,      -- Auto-submit errors to LLM
   git_tool_auto_submit_success = true,      -- Auto-submit success to LLM
+  use_commit_history = true,                -- Enable commit history context
+  commit_history_count = 10,                -- Number of recent commits for context
   buffer = {
     enabled = true,                         -- Enable buffer integration
     keymap = "<leader>gc",                 -- Keymap
@@ -181,6 +189,38 @@ opts = {
 ```
 
 </details>
+
+## 🔌 Programmatic API
+
+The extension provides a comprehensive API for external integrations:
+
+```lua
+local gitcommit = require("codecompanion._extensions.gitcommit")
+
+-- Generate commit message programmatically
+gitcommit.exports.generate("English", function(result, error)
+  if result then
+    print("Generated:", result)
+  else
+    print("Error:", error)
+  end
+end)
+
+-- Check if in git repository
+if gitcommit.exports.is_git_repo() then
+  print("In git repository")
+end
+
+-- Get git status
+local status = gitcommit.exports.git_tool.status()
+print("Git status:", status)
+
+-- Stage files
+gitcommit.exports.git_tool.stage({"file1.txt", "file2.txt"})
+
+-- Create and checkout branch
+gitcommit.exports.git_tool.create_branch("feature/new-feature", true)
+```
 
 ## 📚 Documentation
 
