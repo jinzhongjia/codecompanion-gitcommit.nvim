@@ -64,9 +64,9 @@ end
 
 ---Create prompt for commit message generation
 ---@param diff string The git diff to include in prompt
----@param commit_history? string[] Array of recent commit messages for context (optional)
+---@param commit_history? string[] Recent commit messages for context (optional)
 function Generator._create_prompt(diff, lang, commit_history)
-  -- Build the history context section
+  -- Build history context section
   local history_context = ""
   if commit_history and #commit_history > 0 then
     history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
@@ -74,7 +74,7 @@ function Generator._create_prompt(diff, lang, commit_history)
       history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
     end
     history_context = history_context
-      .. "\nAnalyze the above commit history to understand the project's commit style, tone, and format patterns. Use this as guidance to maintain consistency.\n"
+      .. "\nAnalyze commit history to understand project style, tone, and format patterns. Use this for consistency.\n"
   end
 
   return string.format(
@@ -127,7 +127,7 @@ Return ONLY the commit message in the exact format shown above.]],
 end
 
 ---Handle LLM response
----@param err table|nil Error from request
+---@param err table|nil Request error
 ---@param data table|nil Response data
 ---@param adapter table The adapter used
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
@@ -138,12 +138,12 @@ function Generator._handle_response(err, data, adapter, callback)
     return callback(nil, error_msg)
   end
 
-  -- Check for empty or invalid data
+  -- Check for empty/invalid data
   if not data then
     return callback(nil, "No response received from LLM")
   end
 
-  -- Process successful response
+  -- Process response
   if data then
     local result = adapter.handlers.chat_output(adapter, data)
     if result and result.status then
