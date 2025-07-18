@@ -16,7 +16,8 @@ CONTENTS						*codecompanion-gitcommit-contents*
 5. Commands					|codecompanion-gitcommit-commands|
 6. Git Tools					|codecompanion-gitcommit-git-tools|
 7. Configuration				|codecompanion-gitcommit-config|
-8. License					|codecompanion-gitcommit-license|
+8. Programmatic API				|codecompanion-gitcommit-api|
+9. License					|codecompanion-gitcommit-license|
 
 ==============================================================================
 1. INTRODUCTION					*codecompanion-gitcommit-intro*
@@ -41,6 +42,7 @@ chat buffers.
 • Multi-language support for commit messages
 • Support for regular commits and amend commits
 • Smart diff analysis with file filtering capabilities
+• Commit history context for consistent styling and patterns
 
 🛠️ Git Tool Integration
 • @git_read tool - 15 read-only Git operations (status, log, diff, etc.)
@@ -271,8 +273,68 @@ Buffer configuration:
 *buffer.skip_auto_generate_on_amend*		Type: boolean, Default: true
 	Skip auto-generation during git commit --amend operations.
 
+*use_commit_history*			Type: boolean, Default: true
+	When enabled, includes recent commit messages as context for the AI
+	to maintain consistency in commit style and patterns.
+
+*commit_history_count*			Type: number, Default: 10
+	Number of recent commits to include as context when use_commit_history
+	is enabled.
+
 ==============================================================================
-8. LICENSE					*codecompanion-gitcommit-license*
+8. PROGRAMMATIC API				*codecompanion-gitcommit-api*
+
+The extension provides a programmatic API for external integrations:
+
+*gitcommit.exports.generate(lang, callback)*
+	Generate commit message programmatically
+	Parameters:
+	• lang (string|nil): Language to generate commit message in (optional)
+	• callback (function): Callback function with signature (result, error)
+
+*gitcommit.exports.is_git_repo()*
+	Check if current directory is in a git repository
+	Returns: boolean
+
+*gitcommit.exports.get_staged_diff()*
+	Get staged changes diff
+	Returns: string|nil
+
+*gitcommit.exports.commit_changes(message)*
+	Commit changes with provided message
+	Parameters:
+	• message (string): Commit message
+	Returns: boolean
+
+*gitcommit.exports.git_tool*
+	Access to git tool functions including status, log, diff, branches,
+	stage, unstage, create_branch, checkout, stash operations, reset,
+	contributors, search_commits, merge, and more.
+
+Example usage: >
+	local gitcommit = require("codecompanion._extensions.gitcommit")
+	
+	-- Generate commit message
+	gitcommit.exports.generate("English", function(result, error)
+	  if result then
+	    print("Generated:", result)
+	  else
+	    print("Error:", error)
+	  end
+	end)
+	
+	-- Check if in git repo
+	if gitcommit.exports.is_git_repo() then
+	  print("In git repository")
+	end
+	
+	-- Get git status
+	local status = gitcommit.exports.git_tool.status()
+	print("Git status:", status)
+<
+
+==============================================================================
+9. LICENSE					*codecompanion-gitcommit-license*
 
 MIT License
 

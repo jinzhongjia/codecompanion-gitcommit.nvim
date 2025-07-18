@@ -2,7 +2,7 @@
 local UI = {}
 
 ---Copy text to system clipboard
----@param text string The text to copy
+---@param text string Text to copy
 local function copy_to_clipboard(text)
   vim.fn.setreg("+", text)
   if vim.fn.has("clipboard") == 1 then
@@ -10,8 +10,8 @@ local function copy_to_clipboard(text)
   end
 end
 
----Show commit message in a floating window with interactive options
----@param message string The commit message to display
+---Show commit message in floating window with interactive options
+---@param message string Commit message to display
 ---@param on_commit fun(message: string): boolean Callback for commit action
 function UI.show_commit_message(message, on_commit)
   -- Prepare window content
@@ -31,9 +31,9 @@ function UI.show_commit_message(message, on_commit)
   UI._setup_keymaps(buf, win, message, on_commit)
 end
 
----Prepare content for the floating window
----@param message string The commit message
----@return table content The formatted content lines
+---Prepare content for floating window
+---@param message string Commit message
+---@return table content Formatted content lines
 function UI._prepare_content(message)
   local content = {
     "# Generated Commit Message",
@@ -63,8 +63,8 @@ function UI._prepare_content(message)
 end
 
 ---Calculate window dimensions based on content
----@param content table The content lines
----@return number width, number height The calculated dimensions
+---@param content table Content lines
+---@return number width, number height Calculated dimensions
 function UI._calculate_dimensions(content)
   local max_line_length = 0
   for _, line in ipairs(content) do
@@ -78,10 +78,10 @@ function UI._calculate_dimensions(content)
 end
 
 ---Create floating window
----@param buf number The buffer number
+---@param buf number Buffer number
 ---@param width number Window width
 ---@param height number Window height
----@return number win The window handle
+---@return number win Window handle
 function UI._create_window(buf, width, height)
   return vim.api.nvim_open_win(buf, true, {
     relative = "editor",
@@ -97,8 +97,8 @@ function UI._create_window(buf, width, height)
 end
 
 ---Setup buffer content and options
----@param buf number The buffer number
----@param content table The content lines
+---@param buf number Buffer number
+---@param content table Content lines
 function UI._setup_buffer(buf, content)
   -- Set content
   vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
@@ -110,10 +110,10 @@ function UI._setup_buffer(buf, content)
   vim.api.nvim_set_option_value("syntax", "on", { buf = buf })
 end
 
----Setup keymaps for the floating window
----@param buf number The buffer number
----@param win number The window handle
----@param message string The commit message
+---Setup keymaps for floating window
+---@param buf number Buffer number
+---@param win number Window handle
+---@param message string Commit message
 ---@param on_commit fun(message: string): boolean Callback for commit action
 function UI._setup_keymaps(buf, win, message, on_commit)
   local opts = { buffer = buf, nowait = true, silent = true }
