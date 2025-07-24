@@ -113,6 +113,11 @@ function Buffer._generate_and_insert_commit_message(bufnr)
   end
 
   Langs.select_lang(function(lang)
+    -- Check if user cancelled language selection
+    if lang == nil then
+      return
+    end
+    
     vim.notify("Generating commit message...", vim.log.levels.INFO)
 
     -- Get commit history for context
