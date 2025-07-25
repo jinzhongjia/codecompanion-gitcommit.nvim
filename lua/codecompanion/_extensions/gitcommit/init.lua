@@ -9,15 +9,15 @@ local Config = require("codecompanion._extensions.gitcommit.config")
 
 local M = {}
 
----Generate and display commit message using AI
+---Generate commit message using AI
 function M.generate_commit_message()
-  -- Check if we're in a git repository
+  -- Check git repository
   if not Git.is_repository() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  -- Get relevant changes (staged or amend)
+  -- Get changes for commit
   local diff, context = Git.get_contextual_diff()
   if not diff then
     local msg
@@ -31,16 +31,29 @@ function M.generate_commit_message()
   end
 
   Langs.select_lang(function(lang)
+    -- Check if user cancelled language selection
+    if lang == nil then
+      return
+    end
+
     vim.notify("Generating commit message...", vim.log.levels.INFO)
-    -- Generate commit message using LLM
-    Generator.generate_commit_message(diff, lang, function(result, error)
+
+    -- Get commit history for context
+    local commit_history = nil
+    local git_config = Git.get_config()
+    if git_config.use_commit_history then
+      commit_history = Git.get_commit_history(git_config.commit_history_count)
+    end
+
+    -- Generate commit message
+    Generator.generate_commit_message(diff, lang, commit_history, function(result, error)
       if error then
         vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
         return
       end
 
       if result then
-        -- Show interactive UI with commit options
+        -- Show commit UI
         UI.show_commit_message(result, function(message)
           return Git.commit_changes(message)
         end)
@@ -268,7 +281,11 @@ return {
   setup = function(opts)
     opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
 
-    Git.setup({ exclude_files = opts.exclude_files })
+    Git.setup({
+      exclude_files = opts.exclude_files,
+      use_commit_history = opts.use_commit_history,
+      commit_history_count = opts.commit_history_count,
+    })
     Generator.setup(opts.adapter, opts.model)
     Buffer.setup(opts.buffer)
     Langs.setup(opts.languages)
@@ -294,8 +311,15 @@ return {
         return callback(nil, "No staged changes found. Please stage your changes first.")
       end
 
+      -- Get commit history if enabled
+      local commit_history = nil
+      local git_config = Git.get_config and Git.get_config() or {}
+      if git_config.use_commit_history then
+        commit_history = Git.get_commit_history(git_config.commit_history_count)
+      end
+
       -- Generate commit message
-      Generator.generate_commit_message(diff, lang, callback)
+      Generator.generate_commit_message(diff, lang, commit_history, callback)
     end,
 
     ---Check if current directory is in a git repository

@@ -27,13 +27,8 @@ function Generator.setup(adapter, model)
     error("Invalid adapter specified: " .. tostring(_adapter))
   end
 end
-
----Generate commit message using LLM
----
----@param diff string The git diff to analyze
----@param lang? string The language to generate the commit message in (optional)
----@param callback fun(result: string|nil, error: string|nil) Callback function
-function Generator.generate_commit_message(diff, lang, callback)
+---@param commit_history? string[] Array of recent commit messages for context (optional)
+function Generator.generate_commit_message(diff, lang, commit_history, callback)
   -- Setup adapter
   local adapter = codecompanion_adapter.resolve(_adapter)
   if not adapter then
@@ -49,7 +44,7 @@ function Generator.generate_commit_message(diff, lang, callback)
   })
 
   -- Create prompt for LLM
-  local prompt = Generator._create_prompt(diff, lang)
+  local prompt = Generator._create_prompt(diff, lang, commit_history)
 
   local payload = {
     messages = adapter:map_roles({
@@ -69,11 +64,21 @@ end
 
 ---Create prompt for commit message generation
 ---@param diff string The git diff to include in prompt
----@param lang? string The generate language (optional, not used in this implementation)
----@return string prompt The formatted prompt
-function Generator._create_prompt(diff, lang)
+---@param commit_history? string[] Recent commit messages for context (optional)
+function Generator._create_prompt(diff, lang, commit_history)
+  -- Build history context section
+  local history_context = ""
+  if commit_history and #commit_history > 0 then
+    history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
+    for i, commit_msg in ipairs(commit_history) do
+      history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
+    end
+    history_context = history_context
+      .. "\nAnalyze commit history to understand project style, tone, and format patterns. Use this for consistency.\n"
+  end
+
   return string.format(
-    [[You are a commit message generator. Generate exactly ONE complete Conventional Commit message for the provided git diff.
+    [[You are a commit message generator. Generate exactly ONE complete Conventional Commit message for the provided git diff.%s
 
 CRITICAL FORMAT REQUIREMENTS:
 1. MUST generate exactly ONE commit message, never multiple messages
@@ -95,8 +100,7 @@ RULES:
 - Title: Use imperative mood ("add" not "added"), keep under 50 characters
 - Body: At least ONE bullet point describing the changes
 - For large diffs: Focus on the most significant changes, group related changes
-- Choose the primary type that best represents the overall change
-- Even with extensive changes, generate only ONE unified commit message
+ - If commit history is provided, follow the established patterns and style from recent commits
 
 REQUIRED EXAMPLES:
 feat(auth): add OAuth2 integration
@@ -116,13 +120,14 @@ Generate ONE complete commit message for this diff:
 ```
 
 Return ONLY the commit message in the exact format shown above.]],
+    history_context,
     lang or "English",
     diff
   )
 end
 
 ---Handle LLM response
----@param err table|nil Error from request
+---@param err table|nil Request error
 ---@param data table|nil Response data
 ---@param adapter table The adapter used
 ---@param callback fun(result: string|nil, error: string|nil) Callback function
@@ -133,12 +138,12 @@ function Generator._handle_response(err, data, adapter, callback)
     return callback(nil, error_msg)
   end
 
-  -- Check for empty or invalid data
+  -- Check for empty/invalid data
   if not data then
     return callback(nil, "No response received from LLM")
   end
 
-  -- Process successful response
+  -- Process response
   if data then
     local result = adapter.handlers.chat_output(adapter, data)
     if result and result.status then

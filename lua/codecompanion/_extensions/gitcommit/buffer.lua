@@ -17,7 +17,7 @@ local default_config = {
 local config = {}
 
 ---Setup buffer keymaps for gitcommit filetype
----@param opts? CodeCompanion.GitCommit.ExtensionOpts.Buffer Configuration options
+---@param opts? CodeCompanion.GitCommit.ExtensionOpts.Buffer Config options
 function Buffer.setup(opts)
   config = vim.tbl_deep_extend("force", default_config, opts or {})
 
@@ -25,27 +25,27 @@ function Buffer.setup(opts)
     return
   end
 
-  -- Create autocommand for gitcommit filetype
+  -- Create autocommand for gitcommit
   vim.api.nvim_create_autocmd("FileType", {
     pattern = "gitcommit",
     callback = function(event)
       Buffer._setup_gitcommit_keymap(event.buf)
 
       if config.auto_generate then
-        -- Auto-generation autocommand triggers once when entering gitcommit window
-        -- This avoids race conditions with plugins like neogit that manage multiple windows
-        -- Skip auto-generation during git amend to preserve user's intent to modify existing commit
+        -- Auto-generation triggers once when entering gitcommit window
+        -- Avoids race conditions with plugins like neogit
+        -- Skip auto-generation during git amend to preserve user intent
         vim.api.nvim_create_autocmd("WinEnter", {
           buffer = event.buf,
           once = true,
           callback = function(args)
-            -- Defer execution to ensure other plugins (like neogit) have finished UI setup
+            -- Defer execution to ensure other plugins finish UI setup
             vim.defer_fn(function()
               if not vim.api.nvim_buf_is_valid(args.buf) then
                 return
               end
 
-              -- Check if buffer already has a commit message
+              -- Check if buffer already has commit message
               local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
               local has_message = false
               for _, line in ipairs(lines) do
@@ -55,9 +55,9 @@ function Buffer.setup(opts)
                 end
               end
 
-              -- Skip auto-generation in the following cases:
-              -- 1. Buffer already has a commit message
-              -- 2. We are in a git amend operation (user may want to keep existing message)
+              -- Skip auto-generation if:
+              -- 1. Buffer already has commit message
+              -- 2. In git amend operation (user may want to keep existing message)
               local should_skip_amend = config.skip_auto_generate_on_amend and Git.is_amending()
               if not has_message and not should_skip_amend then
                 Buffer._generate_and_insert_commit_message(args.buf)
@@ -72,10 +72,10 @@ function Buffer.setup(opts)
   })
 end
 
----Setup keymap for specific gitcommit buffer
+---Setup keymap for gitcommit buffer
 ---@param bufnr number Buffer number
 function Buffer._setup_gitcommit_keymap(bufnr)
-  -- Only set keymap if buffer is modifiable and in gitcommit filetype
+  -- Only set keymap if buffer is valid
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
@@ -93,13 +93,13 @@ end
 ---Generate commit message and insert into gitcommit buffer
 ---@param bufnr number Buffer number
 function Buffer._generate_and_insert_commit_message(bufnr)
-  -- Check if we're in a git repository
+  -- Check git repository
   if not Git.is_repository() then
     vim.notify("Not in a git repository", vim.log.levels.ERROR)
     return
   end
 
-  -- Get relevant changes (staged or amend)
+  -- Get changes for commit
   local diff, context = Git.get_contextual_diff()
   if not diff then
     local msg
@@ -113,9 +113,22 @@ function Buffer._generate_and_insert_commit_message(bufnr)
   end
 
   Langs.select_lang(function(lang)
+    -- Check if user cancelled language selection
+    if lang == nil then
+      return
+    end
+
     vim.notify("Generating commit message...", vim.log.levels.INFO)
-    -- Generate commit message using LLM
-    Generator.generate_commit_message(diff, lang, function(result, error)
+
+    -- Get commit history for context
+    local commit_history = nil
+    local git_config = Git.get_config and Git.get_config() or {}
+    if git_config.use_commit_history then
+      commit_history = Git.get_commit_history(git_config.commit_history_count)
+    end
+
+    -- Generate commit message
+    Generator.generate_commit_message(diff, lang, commit_history, function(result, error)
       if error then
         vim.notify("Failed to generate commit message: " .. error, vim.log.levels.ERROR)
         return
@@ -142,15 +155,15 @@ function Buffer._insert_commit_message(bufnr, message)
   -- Get current buffer content
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-  -- Find the first line that doesn't start with # (comment)
-  -- This is where we'll insert the commit message
+  -- Find first line that doesn't start with # (comment)
+  -- This is where we'll insert commit message
   local insert_line = 0
   for i, line in ipairs(lines) do
     if not line:match("^%s*#") and vim.trim(line) == "" then
       insert_line = i - 1
       break
     elseif not line:match("^%s*#") and vim.trim(line) ~= "" then
-      -- Found non-comment, non-empty line, insert before it
+      -- Found non-comment, non-empty line, insert before
       insert_line = i - 1
       break
     end
@@ -159,7 +172,7 @@ function Buffer._insert_commit_message(bufnr, message)
   -- Split message into lines
   local message_lines = vim.split(message, "\n")
 
-  -- Remove existing commit message if present (before first comment line)
+  -- Remove existing commit message if present
   local first_comment_line = nil
   for i, line in ipairs(lines) do
     if line:match("^%s*#") then
@@ -169,29 +182,29 @@ function Buffer._insert_commit_message(bufnr, message)
   end
 
   if first_comment_line then
-    -- Remove non-comment lines before the first comment
+    -- Remove non-comment lines before first comment
     local non_comment_lines = {}
     for i = 1, first_comment_line do
       if not lines[i]:match("^%s*#") and vim.trim(lines[i]) ~= "" then
-        -- This is a non-comment line, it might be an existing commit message
+        -- This is non-comment line, might be existing commit message
       else
         table.insert(non_comment_lines, lines[i])
       end
     end
 
-    -- Clear the buffer and insert new content
+    -- Clear buffer and insert new content
     vim.api.nvim_buf_set_lines(bufnr, 0, first_comment_line, false, {})
   end
 
-  -- Insert the new commit message at the beginning
+  -- Insert new commit message at beginning
   vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, message_lines)
 
-  -- Add an empty line after the commit message if it doesn't end with one
+  -- Add empty line after commit message if needed
   if #message_lines > 0 and message_lines[#message_lines] ~= "" then
     vim.api.nvim_buf_set_lines(bufnr, #message_lines, #message_lines, false, { "" })
   end
 
-  -- Move cursor to the beginning of the commit message
+  -- Move cursor to beginning of commit message
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
 
   vim.notify("Commit message generated and inserted!", vim.log.levels.INFO)

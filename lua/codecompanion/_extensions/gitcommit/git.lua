@@ -9,17 +9,19 @@ local config = {}
 function Git.setup(opts)
   config = vim.tbl_deep_extend("force", {
     exclude_files = {},
+    use_commit_history = true,
+    commit_history_count = 10,
   }, opts or {})
 end
 
--- Utility function to trim whitespace
+-- Trim whitespace from string
 ---@param s string The string to trim
 ---@return string trimmed_string
 local function trim(s)
   return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
 
----Filter diff content to exclude specified file patterns
+---Filter diff content to exclude file patterns
 ---@param diff_content string The original diff content
 ---@return string filtered_diff The filtered diff content
 function Git._filter_diff(diff_content)
@@ -76,7 +78,7 @@ function Git._filter_diff(diff_content)
   return table.concat(filtered_lines, "\n")
 end
 
----Check if file should be excluded based on patterns
+---Check if file should be excluded by patterns
 ---@param filepath string The file path to check
 ---@return boolean should_exclude True if file should be excluded
 function Git._should_exclude_file(filepath)
@@ -96,7 +98,7 @@ function Git._should_exclude_file(filepath)
 end
 
 function Git.is_repository()
-  -- First check for .git directory in current and parent directories
+  -- Check for .git directory in current and parent directories
   local function check_git_dir(path)
     local sep = package.config:sub(1, 1)
     local git_path = path .. sep .. ".git"
@@ -104,17 +106,17 @@ function Git.is_repository()
     return stat ~= nil
   end
 
-  -- Search from current directory upwards
+  -- Search from current directory up
   local current_dir = vim.fn.getcwd()
   while current_dir do
     if check_git_dir(current_dir) then
       return true
     end
 
-    -- Move to parent directory
+    -- Move to parent
     local parent = vim.fn.fnamemodify(current_dir, ":h")
     if parent == current_dir then
-      -- Reached root directory
+      -- Reached root
       break
     end
     current_dir = parent
@@ -127,20 +129,20 @@ function Git.is_repository()
 end
 
 function Git.is_amending()
-  -- Use pcall to safely execute git operations
+  -- Safe git operations
   local ok, result = pcall(function()
     if not Git.is_repository() then
       return false
     end
 
-    -- Check if we're in an amend scenario by examining the COMMIT_EDITMSG content
-    -- During amend, git pre-populates COMMIT_EDITMSG with the previous commit message
+    -- Check for amend scenario by examining COMMIT_EDITMSG
+    -- During amend, git pre-populates COMMIT_EDITMSG with previous commit
     local git_dir = vim.trim(vim.fn.system("git rev-parse --git-dir"))
     if vim.v.shell_error ~= 0 then
       return false
     end
 
-    -- Use platform-appropriate path separator
+    -- Use platform-appropriate separator
     local path_sep = package.config:sub(1, 1)
     local commit_editmsg = git_dir .. path_sep .. "COMMIT_EDITMSG"
     local stat = vim.uv.fs_stat(commit_editmsg)
@@ -148,15 +150,15 @@ function Git.is_amending()
       return false
     end
 
-    -- Additional check: verify HEAD commit exists (not initial commit)
+    -- Verify HEAD commit exists (not initial commit)
     local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
     vim.fn.system("git rev-parse --verify HEAD" .. redirect)
     if vim.v.shell_error ~= 0 then
       return false
     end
 
-    -- Read COMMIT_EDITMSG content and check if it contains a previous commit message
-    -- During amend, git pre-populates this file with the previous commit message
+    -- Read COMMIT_EDITMSG content
+    -- During amend, git pre-populates this file with previous commit
     local fd = vim.uv.fs_open(commit_editmsg, "r", 438)
     if not fd then
       return false
@@ -169,20 +171,20 @@ function Git.is_amending()
       return false
     end
 
-    -- Check if there's non-comment content in COMMIT_EDITMSG
-    -- During amend, this indicates we're editing an existing commit
+    -- Check for non-comment content in COMMIT_EDITMSG
+    -- During amend, this indicates editing existing commit
     local lines = vim.split(content, "\n")
     local has_existing_message = false
     for _, line in ipairs(lines) do
       local trimmed = vim.trim(line)
-      -- Skip empty lines and comment lines (starting with #)
+      -- Skip empty lines and comments (starting with #)
       if trimmed ~= "" and not trimmed:match("^#") then
         has_existing_message = true
         break
       end
     end
 
-    -- If COMMIT_EDITMSG has existing content and HEAD exists, likely an amend
+    -- If COMMIT_EDITMSG has content and HEAD exists, likely amend
     return has_existing_message
   end)
 
@@ -190,26 +192,26 @@ function Git.is_amending()
 end
 
 function Git.get_staged_diff()
-  -- Use pcall to safely execute git operations
+  -- Safe git operations
   local ok, result = pcall(function()
     if not Git.is_repository() then
       return nil
     end
 
-    -- First try to get staged changes
+    -- Try to get staged changes
     local staged_diff = vim.fn.system("git diff --no-ext-diff --staged")
     if vim.v.shell_error == 0 and vim.trim(staged_diff) ~= "" then
       return Git._filter_diff(staged_diff)
     end
 
-    -- If no staged changes and we're in amend mode, get the last commit's changes
+    -- If no staged changes and in amend mode, get last commit changes
     if Git.is_amending() then
       local last_commit_diff = vim.fn.system("git diff --no-ext-diff HEAD~1")
       if vim.v.shell_error == 0 and vim.trim(last_commit_diff) ~= "" then
         return Git._filter_diff(last_commit_diff)
       end
 
-      -- Fallback: if HEAD~1 doesn't exist (initial commit), show all files
+      -- Fallback for initial commit: show all files
       local show_diff = vim.fn.system("git show --no-ext-diff --format= HEAD")
       if vim.v.shell_error == 0 and vim.trim(show_diff) ~= "" then
         return Git._filter_diff(show_diff)
@@ -226,13 +228,13 @@ end
 ---@return string|nil diff The diff content or nil if no changes
 ---@return string|nil context The context describing the diff type
 function Git.get_contextual_diff()
-  -- Use pcall to safely execute git operations
+  -- Safe git operations
   local ok, result = pcall(function()
     if not Git.is_repository() then
       return nil, "not_in_repo"
     end
 
-    -- Check for staged changes first
+    -- Check for staged changes
     local staged_diff = vim.fn.system("git diff --no-ext-diff --staged")
     if vim.v.shell_error == 0 and trim(staged_diff) ~= "" then
       local filtered_diff = Git._filter_diff(staged_diff)
@@ -253,7 +255,7 @@ function Git.get_contextual_diff()
         end
       end
 
-      -- Fallback: if HEAD~1 doesn't exist (initial commit), show all files
+      -- Fallback for initial commit: show all files
       local show_diff = vim.fn.system("git show --no-ext-diff --format= HEAD")
       if vim.v.shell_error == 0 and trim(show_diff) ~= "" then
         local filtered_diff = Git._filter_diff(show_diff)
@@ -284,14 +286,14 @@ function Git.get_contextual_diff()
 end
 
 function Git.commit_changes(message)
-  -- Use pcall to safely execute git operations
+  -- Safe git operations
   local ok, success = pcall(function()
     if not Git.is_repository() then
       vim.notify("Not in a git repository", vim.log.levels.ERROR)
       return false
     end
 
-    -- Check if there are changes to commit
+    -- Check for changes to commit
     local diff, context = Git.get_contextual_diff()
     if not diff then
       if context == "no_changes" then
@@ -309,7 +311,7 @@ function Git.commit_changes(message)
       return false
     end
 
-    -- Pass commit message directly through stdin without temporary files
+    -- Pass commit message via stdin
     local cmd
     if Git.is_amending() then
       cmd = "git commit --amend -F -"
@@ -340,6 +342,54 @@ function Git.commit_changes(message)
   end
 
   return success
+end
+
+---Get recent commit messages for context
+---@param count? number Number of recent commits to retrieve (default: 10)
+---@return string[]|nil commit_messages Array of commit messages or nil on error
+function Git.get_commit_history(count)
+  count = count or 10
+
+  -- Safe git operations
+  local ok, result = pcall(function()
+    if not Git.is_repository() then
+      return nil
+    end
+
+    -- Get recent commit messages with git log
+    -- Use --pretty=format to get just commit messages
+    local cmd = string.format("git log --pretty=format:%%s --no-merges -%d", count)
+    local output = vim.fn.system(cmd)
+
+    if vim.v.shell_error ~= 0 then
+      return nil
+    end
+
+    -- Split output into lines and filter empty lines
+    local lines = vim.split(output, "\n")
+    local commit_messages = {}
+
+    for _, line in ipairs(lines) do
+      local trimmed = trim(line)
+      if trimmed ~= "" then
+        table.insert(commit_messages, trimmed)
+      end
+    end
+
+    return commit_messages
+  end)
+
+  if not ok then
+    return nil
+  end
+
+  return result
+end
+
+---Get current configuration
+---@return table config Current configuration
+function Git.get_config()
+  return vim.deepcopy(config)
 end
 
 return Git

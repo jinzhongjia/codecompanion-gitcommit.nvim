@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "CodeCompanion GitCommit Extension",
+  "version": "1.0.0",
+  "system_prompt": "You are helping with a Neovim plugin that extends CodeCompanion to provide AI-powered Git commit message generation following Conventional Commits specification. The plugin integrates deeply with Git workflows and provides comprehensive tooling for repository management through LLM-powered chat interfaces.",
+  "vars": {
+    "project_name": "codecompanion-gitcommit.nvim",
+    "main_module": "codecompanion._extensions.gitcommit"
+  },
+  "groups": [
+    {
+      "name": "core_extension",
+      "system_prompt": "This group contains the core extension entry point and configuration. Focus on the main initialization logic, extension setup, command registration, and overall architecture of how the plugin integrates with CodeCompanion.",
+      "data": [
+        "main_init",
+        "extension_config",
+        "type_definitions"
+      ]
+    },
+    {
+      "name": "git_operations",
+      "system_prompt": "This group handles all Git repository operations including diff analysis, commit execution, repository validation, and file filtering. Focus on Git command execution, repository state management, and the core Git integration logic.",
+      "data": [
+        "git_core",
+        "git_buffer_integration"
+      ]
+    },
+    {
+      "name": "ai_generation",
+      "system_prompt": "This group manages the AI-powered commit message generation using LLM adapters. Focus on prompt engineering, LLM communication, response handling, and the generation workflow for creating Conventional Commits compliant messages.",
+      "data": [
+        "message_generator",
+        "language_selection"
+      ]
+    },
+    {
+      "name": "user_interface",
+      "system_prompt": "This group handles user interaction components including buffer integration for gitcommit buffers, floating window displays, and user interface elements. Focus on user experience, interactive elements, and visual presentation.",
+      "data": [
+        "buffer_management",
+        "ui_components"
+      ]
+    },
+    {
+      "name": "git_tools",
+      "system_prompt": "This group provides comprehensive Git tooling for CodeCompanion chat integration, including read-only operations, write operations, and the Git bot assistant. Focus on tool schemas, command execution, safety mechanisms, and chat integration.",
+      "data": [
+        "git_tools_core",
+        "git_read_tool",
+        "git_edit_tool"
+      ]
+    },
+    {
+      "name": "documentation_and_examples",
+      "system_prompt": "This group contains project documentation, usage examples, and configuration templates. Focus on user guidance, feature documentation, and setup instructions.",
+      "data": [
+        "readme_docs",
+        "config_examples",
+        "help_documentation"
+      ]
+    }
+  ],
+  "data": {
+    "main_init": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/init.lua",
+      "description": "Main extension entry point with setup function, command registration, tool integration, and programmatic API exports"
+    },
+    "extension_config": {
+      "type": "file", 
+      "path": "lua/codecompanion/_extensions/gitcommit/config.lua",
+      "description": "Extension configuration management with default options and validation"
+    },
+    "type_definitions": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/types.lua", 
+      "description": "TypeScript-style type annotations and interface definitions for the extension"
+    },
+    "git_core": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/git.lua",
+      "description": "Core Git operations including repository validation, diff analysis, commit execution, and file filtering logic"
+    },
+    "git_buffer_integration": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/buffer.lua", 
+      "description": "Git commit buffer integration with automatic message generation and keymap setup"
+    },
+    "message_generator": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/generator.lua",
+      "description": "AI-powered commit message generation using CodeCompanion's LLM adapters with prompt engineering and response handling"
+    },
+    "language_selection": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/langs.lua",
+      "description": "Multi-language support for commit message generation with language selection UI"
+    },
+    "buffer_management": {
+      "type": "file", 
+      "path": "lua/codecompanion/_extensions/gitcommit/buffer.lua",
+      "description": "Git commit buffer integration and automatic commit message insertion"
+    },
+    "ui_components": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/ui.lua",
+      "description": "Floating window UI for displaying commit messages with interactive options (copy, commit, edit)"
+    },
+    "git_tools_core": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/tools/git.lua",
+      "description": "Core Git tool utilities and shared functionality for read/write operations"
+    },
+    "git_read_tool": {
+      "type": "file", 
+      "path": "lua/codecompanion/_extensions/gitcommit/tools/git_read.lua",
+      "description": "Read-only Git operations tool for CodeCompanion chat (status, log, diff, blame, etc.)"
+    },
+    "git_edit_tool": {
+      "type": "file",
+      "path": "lua/codecompanion/_extensions/gitcommit/tools/git_edit.lua", 
+      "description": "Write-access Git operations tool for CodeCompanion chat (stage, commit, branch management, etc.)"
+    },
+    "readme_docs": {
+      "type": "file",
+      "path": "README.md",
+      "description": "Main project documentation with features, installation, usage, and API reference"
+    },
+    "config_examples": {
+      "type": "file",
+      "path": "config_example.lua",
+      "description": "Basic configuration example for the extension setup"
+    },
+    "help_documentation": {
+      "type": "file",
+      "path": "doc/codecompanion-gitcommit.txt",
+      "description": "Vim help documentation for the extension"
+    }
+  }
+}
