@@ -40,7 +40,7 @@ function M.generate_commit_message()
 
     -- Get commit history for context
     local commit_history = nil
-    local git_config = Git.get_config and Git.get_config() or {}
+    local git_config = Git.get_config()
     if git_config.use_commit_history then
       commit_history = Git.get_commit_history(git_config.commit_history_count)
     end

@@ -4,6 +4,8 @@ local Git = {}
 -- Store configuration
 local config = {}
 
+---Setup Git module with configuration
+---@param opts? table Configuration options
 function Git.setup(opts)
   config = vim.tbl_deep_extend("force", {
     exclude_files = {},
