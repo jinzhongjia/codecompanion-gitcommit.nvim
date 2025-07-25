@@ -1,4 +1,4 @@
-*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Jan 02
+*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Jul 25
 
 CODECOMPANION GITCOMMIT EXTENSION			*codecompanion-gitcommit*
 
@@ -100,6 +100,10 @@ Add this extension to your CodeCompanion configuration:
 	        git_tool_auto_submit_errors = false,    -- Auto-submit errors to LLM
 	        git_tool_auto_submit_success = true,    -- Auto-submit success to LLM
 	        gitcommit_select_count = 100, -- Number of commits shown in /gitcommit
+	        
+	        -- Commit history context (optional)
+	        use_commit_history = true,    -- Enable commit history context
+	        commit_history_count = 10,    -- Number of recent commits for context
 	      }
 	    }
 	  }
