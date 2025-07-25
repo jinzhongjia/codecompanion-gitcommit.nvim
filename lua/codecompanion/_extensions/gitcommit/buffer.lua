@@ -117,7 +117,7 @@ function Buffer._generate_and_insert_commit_message(bufnr)
     if lang == nil then
       return
     end
-    
+
     vim.notify("Generating commit message...", vim.log.levels.INFO)
 
     -- Get commit history for context
