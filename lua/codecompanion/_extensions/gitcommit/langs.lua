@@ -17,6 +17,12 @@ function M.select_lang(callback)
     return
   end
 
+  -- If only one language is configured, use it directly
+  if #_langs == 1 then
+    callback(_langs[1])
+    return
+  end
+
   vim.ui.select(_langs, {
     prompt = "Select language:",
     format_item = function(item)
