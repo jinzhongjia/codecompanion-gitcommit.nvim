@@ -782,8 +782,8 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   local llm_msg = ""
 
   if format == "markdown" then
-    release_notes = "# Release Notes: " .. from_tag .. " → " .. to_tag .. "\n\n"
-    release_notes = release_notes .. "## Changes (" .. #commits .. " commits)\n\n"
+    local parts = { "# Release Notes: " .. from_tag .. " → " .. to_tag .. "\n\n" }
+    table.insert(parts, "## Changes (" .. #commits .. " commits)\n\n")
 
     -- Group commits by type (conventional commits)
     local features = {}
@@ -807,29 +807,29 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
     -- Add features
     if #features > 0 then
-      release_notes = release_notes .. "### ✨ New Features\n\n"
+      table.insert(parts, "### ✨ New Features\n\n")
       for _, commit in ipairs(features) do
-        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+        table.insert(parts, "- " .. commit.subject .. " (" .. commit.hash .. ")\n")
       end
-      release_notes = release_notes .. "\n"
+      table.insert(parts, "\n")
     end
 
     -- Add fixes
     if #fixes > 0 then
-      release_notes = release_notes .. "### 🐛 Bug Fixes\n\n"
+      table.insert(parts, "### 🐛 Bug Fixes\n\n")
       for _, commit in ipairs(fixes) do
-        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+        table.insert(parts, "- " .. commit.subject .. " (" .. commit.hash .. ")\n")
       end
-      release_notes = release_notes .. "\n"
+      table.insert(parts, "\n")
     end
 
     -- Add other changes
     if #others > 0 then
-      release_notes = release_notes .. "### 📝 Other Changes\n\n"
+      table.insert(parts, "### 📝 Other Changes\n\n")
       for _, commit in ipairs(others) do
-        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+        table.insert(parts, "- " .. commit.subject .. " (" .. commit.hash .. ")\n")
       end
-      release_notes = release_notes .. "\n"
+      table.insert(parts, "\n")
     end
 
     -- Add contributors
@@ -841,7 +841,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       contributors[commit.author] = contributors[commit.author] + 1
     end
 
-    release_notes = release_notes .. "### 👥 Contributors\n\n"
+    table.insert(parts, "### 👥 Contributors\n\n")
     local sorted_authors = {}
     for author in pairs(contributors) do
       table.insert(sorted_authors, author)
@@ -853,14 +853,16 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       return contributors[a] > contributors[b]
     end)
     for _, author in ipairs(sorted_authors) do
-      release_notes = release_notes .. "- " .. author .. " (" .. contributors[author] .. " commits)\n"
+      table.insert(parts, "- " .. author .. " (" .. contributors[author] .. " commits)\n")
     end
+    release_notes = table.concat(parts)
   elseif format == "plain" then
-    release_notes = "Release Notes: " .. from_tag .. " → " .. to_tag .. "\n"
-    release_notes = release_notes .. "Changes (" .. #commits .. " commits):\n\n"
+    local parts = { "Release Notes: " .. from_tag .. " → " .. to_tag .. "\n" }
+    table.insert(parts, "Changes (" .. #commits .. " commits):\n\n")
     for _, commit in ipairs(commits) do
-      release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. " by " .. commit.author .. ")\n"
+      table.insert(parts, "- " .. commit.subject .. " (" .. commit.hash .. " by " .. commit.author .. ")\n")
     end
+    release_notes = table.concat(parts)
   elseif format == "json" then
     local json_data = {
       from_tag = from_tag,
