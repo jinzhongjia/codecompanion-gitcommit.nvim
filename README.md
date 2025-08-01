@@ -105,7 +105,7 @@ Use Git tools in CodeCompanion chat:
 ```
 @{git_edit} stage --files ["src/main.lua", "README.md"]
 @{git_edit} unstage --files ["src/main.lua"]
-@{git_edit} commit --commit_message "feat: add new feature"
+@{git_edit} commit --commit_message "feat(api): add new feature"
 @{git_edit} commit                              # Auto-generate AI commit message
 @{git_edit} create_branch --branch_name "feature/new-ui" --checkout true
 @{git_edit} checkout --target "main"
@@ -149,7 +149,7 @@ Use a comprehensive Git assistant that combines read and write operations:
 @{git_read} status                              # Check repository status
 @{git_edit} stage --files ["file1.txt", "file2.txt"]  # Stage files
 /gitcommit                                    # Select commit and insert its content for reference
-@{git_edit} commit --commit_message "feat: add new feature"  # Commit
+@{git_edit} commit --commit_message "feat(api): add new feature"  # Commit
 @{git_edit} push --remote "origin" --branch "main"     # Push changes
 @{git_read} generate_release_notes              # Generate release notes between latest tags
 ```
@@ -231,14 +231,14 @@ gitcommit.exports.git_tool.stage({"file1.txt", "file2.txt"})
 -- Create and checkout branch
 gitcommit.exports.git_tool.create_branch("feature/new-feature", true)
 
--- Generate release notes
+-- Generate release notes between specific tags (with all parameters)
 local success, notes, user_msg, llm_msg = gitcommit.exports.git_tool.generate_release_notes("v1.0.0", "v1.1.0", "markdown")
 if success then
   print("Release notes:", notes)
 end
 
--- Generate release notes between specific tags
-local success, notes = gitcommit.exports.git_tool.generate_release_notes("v1.0.0", "v1.1.0", "markdown")
+-- Generate release notes (auto-detect latest two tags)
+local success, notes = gitcommit.exports.git_tool.generate_release_notes()
 ```
 
 ## 📚 Documentation

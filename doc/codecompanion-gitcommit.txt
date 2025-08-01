@@ -138,7 +138,7 @@ Use Git tools in CodeCompanion chat: >
 	@{git_read} status                    # Check repository status
 	@{git_edit} stage --files ["file.txt"]  # Stage files
 	/gitcommit                          # Generate commit message
-	@{git_edit} commit --commit_message "feat: add feature"  # Commit
+	@{git_edit} commit --commit_message "feat(api): add feature"  # Commit
 	@{git_edit} push --remote "origin" --branch "main"      # Push
 	@{git_read} generate_release_notes                      # Generate release notes
 <
@@ -201,7 +201,7 @@ Examples: >
 	@{git_read} log --count 5
 	@{git_edit} stage --files ["src/main.lua"]
 	@{git_edit} create_branch --branch_name "feature/new"
-	@{git_edit} commit --commit_message "feat: add new feature"
+	@{git_edit} commit --commit_message "feat(api): add new feature"
 	@{git_bot} Please help me create a new branch and commit current changes
 <
 
@@ -218,10 +218,12 @@ Usage examples: >
 
 Features:
 • Automatic tag detection (uses latest and second-latest if not specified)
-• Conventional Commits categorization (features, fixes, other changes)
+• Enhanced Conventional Commits support (supports scope format like "feat(api):")
+• Smart commit categorization (features, fixes, other changes)
 • Multiple output formats: markdown (default), plain, json
-• Contributors listing with commit counts
-• Chronological commit ordering
+• Contributors listing with commit counts (sorted by contribution)
+• Secure parameter handling with proper escaping
+• Performance optimized string operations
 
 Safety features:
 • Read-only operations require no confirmation
