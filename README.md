@@ -232,7 +232,7 @@ gitcommit.exports.git_tool.stage({"file1.txt", "file2.txt"})
 gitcommit.exports.git_tool.create_branch("feature/new-feature", true)
 
 -- Generate release notes
-local success, notes, user_msg, llm_msg = gitcommit.exports.git_tool.generate_release_notes()
+local success, notes, user_msg, llm_msg = gitcommit.exports.git_tool.generate_release_notes("v1.0.0", "v1.1.0", "markdown")
 if success then
   print("Release notes:", notes)
 end
