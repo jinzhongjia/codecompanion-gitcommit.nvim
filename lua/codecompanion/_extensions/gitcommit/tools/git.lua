@@ -740,7 +740,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
   -- Get commit range between tags
   local range = from_tag .. ".." .. to_tag
-  local commit_cmd = "git log --pretty=format:'%h|%s|%an|%ad' --date=short " .. range
+  local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. vim.fn.shellescape(range)
   local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
 
   if not success_commits or vim.v.shell_error ~= 0 then
@@ -758,13 +758,13 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   -- Parse commits
   local commits = {}
   for line in commits_output:gmatch("[^\r\n]+") do
-    local hash, subject, author, date = line:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
-    if hash and subject then
+    local parts = vim.split(line, "\x01")
+    if #parts == 4 then
       table.insert(commits, {
-        hash = hash,
-        subject = subject,
-        author = author,
-        date = date,
+        hash = parts[1],
+        subject = parts[2],
+        author = parts[3],
+        date = parts[4],
       })
     end
   end
