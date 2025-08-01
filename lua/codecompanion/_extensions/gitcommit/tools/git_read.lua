@@ -196,7 +196,8 @@ GitRead.cmds = {
       elseif operation == "tags" then
         success, output, user_msg, llm_msg = GitTool.get_tags()
       elseif operation == "generate_release_notes" then
-        success, output, user_msg, llm_msg = GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
+        success, output, user_msg, llm_msg =
+          GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then
