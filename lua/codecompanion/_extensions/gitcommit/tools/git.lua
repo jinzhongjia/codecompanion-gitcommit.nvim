@@ -837,8 +837,19 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     end
     
     release_notes = release_notes .. "### 👥 Contributors\n\n"
-    for author, count in pairs(contributors) do
-      release_notes = release_notes .. "- " .. author .. " (" .. count .. " commits)\n"
+    local sorted_authors = {}
+    for author in pairs(contributors) do
+      table.insert(sorted_authors, author)
+    end
+    table.sort(sorted_authors, function(a, b)
+      if contributors[a] == contributors[b] then
+        return a < b
+      end
+      return contributors[a] > contributors[b]
+    end)
+    for _, author in ipairs(sorted_authors) do
+      release_notes = release_notes .. "- " .. author .. " (" .. contributors[author] .. " commits)\n"
+    end
     end
     
   elseif format == "plain" then
