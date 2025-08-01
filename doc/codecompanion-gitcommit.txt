@@ -28,7 +28,7 @@ Conventional Commits specification. It integrates seamlessly with
 CodeCompanion's LLM adapters to analyze your staged changes and create
 appropriate commit messages.
 
-The extension provides comprehensive Git operations through @{git_read} (15
+The extension provides comprehensive Git operations through @{git_read} (16
 operations), @{git_edit} (17 operations), and @{git_bot} tools, offering a
 natural language interface for Git workflow management within CodeCompanion
 chat buffers.
@@ -45,7 +45,7 @@ chat buffers.
 • Commit history context for consistent styling and patterns
 
 🛠️ Git Tool Integration
-• @{git_read} tool - 15 read-only Git operations (status, log, diff, etc.)
+• @{git_read} tool - 16 read-only Git operations (status, log, diff, release notes, etc.)
 • @{git_edit} tool - 17 write-access Git operations (stage, commit, push, etc.)
 • @{git_bot} tool - Comprehensive Git assistant combining all operations
 • Natural language interface for Git workflow control
@@ -140,6 +140,7 @@ Use Git tools in CodeCompanion chat: >
 	/gitcommit                          # Generate commit message
 	@{git_edit} commit --commit_message "feat: add feature"  # Commit
 	@{git_edit} push --remote "origin" --branch "main"      # Push
+	@{git_read} generate_release_notes                      # Generate release notes
 <
 
 ==============================================================================
@@ -168,6 +169,7 @@ Read-only operations (@{git_read}):			*git_read*
 • contributors - Show contributors
 • search_commits - Search commit messages
 • tags - List all tags
+• generate_release_notes - Generate release notes between tags
 • gitignore_get - Get .gitignore content
 • gitignore_check - Check if a file is ignored
 • stash_list - List all stashes
@@ -202,6 +204,24 @@ Examples: >
 	@{git_edit} commit --commit_message "feat: add new feature"
 	@{git_bot} Please help me create a new branch and commit current changes
 <
+
+Release Notes Generation:				*release_notes*
+
+The generate_release_notes operation creates formatted release notes between two Git tags by analyzing commit messages. It supports multiple output formats and automatically categorizes commits using Conventional Commits specification.
+
+Usage examples: >
+	@{git_read} generate_release_notes
+	@{git_read} generate_release_notes --from_tag "v1.0.0" --to_tag "v1.1.0"
+	@{git_read} generate_release_notes --release_format "plain"
+	@{git_read} generate_release_notes --release_format "json"
+<
+
+Features:
+• Automatic tag detection (uses latest and second-latest if not specified)
+• Conventional Commits categorization (features, fixes, other changes)
+• Multiple output formats: markdown (default), plain, json
+• Contributors listing with commit counts
+• Chronological commit ordering
 
 Safety features:
 • Read-only operations require no confirmation

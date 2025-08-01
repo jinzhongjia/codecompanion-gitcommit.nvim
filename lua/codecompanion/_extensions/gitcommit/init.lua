@@ -481,6 +481,19 @@ return {
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.merge(branch)
       end,
+
+      ---Generate release notes between tags
+      ---@param from_tag? string Starting tag (if not provided, uses second latest tag)
+      ---@param to_tag? string Ending tag (if not provided, uses latest tag)
+      ---@param format? string Format for release notes (markdown, plain, json)
+      ---@return boolean success
+      ---@return string output
+      ---@return string user_msg
+      ---@return string llm_msg
+      generate_release_notes = function(from_tag, to_tag, format)
+        local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+        return GitTool.generate_release_notes(from_tag, to_tag, format)
+      end,
     },
   },
 }

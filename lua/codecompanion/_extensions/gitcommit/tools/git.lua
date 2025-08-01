@@ -689,5 +689,186 @@ function GitTool.merge(branch)
   end
 end
 
+--- Generate release notes between two tags
+---@param from_tag string|nil Starting tag (if not provided, uses second latest tag)
+---@param to_tag string|nil Ending tag (if not provided, uses latest tag)
+---@param format string|nil Format for release notes (markdown, plain, json)
+---@return boolean success
+---@return string output
+---@return string user_msg
+---@return string llm_msg
+function GitTool.generate_release_notes(from_tag, to_tag, format)
+  format = format or "markdown"
+  
+  -- Get all tags sorted by version
+  local success, tags_output = pcall(vim.fn.system, "git tag --sort=-version:refname")
+  if not success or vim.v.shell_error ~= 0 then
+    local msg = "Failed to get git tags: " .. (tags_output or "unknown error")
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    return false, msg, user_msg, llm_msg
+  end
+  
+  local tags = {}
+  for tag in tags_output:gmatch("[^\r\n]+") do
+    if tag ~= "" then
+      table.insert(tags, tag)
+    end
+  end
+  
+  if #tags < 1 then
+    local msg = "No tags found in repository"
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    return false, msg, user_msg, llm_msg
+  end
+  
+  -- Determine tag range
+  if not to_tag then
+    to_tag = tags[1] -- Latest tag
+  end
+  
+  if not from_tag then
+    if #tags < 2 then
+      local msg = "Cannot generate release notes: only one tag found. Please specify from_tag parameter."
+      local user_msg = msg
+      local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+      return false, msg, user_msg, llm_msg
+    end
+    from_tag = tags[2] -- Second latest tag
+  end
+  
+  -- Get commit range between tags
+  local range = from_tag .. ".." .. to_tag
+  local commit_cmd = "git log --pretty=format:'%h|%s|%an|%ad' --date=short " .. range
+  local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
+  
+  if not success_commits or vim.v.shell_error ~= 0 then
+    local msg = "Failed to get commits between " .. from_tag .. " and " .. to_tag .. ": " .. (commits_output or "unknown error")
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    return false, msg, user_msg, llm_msg
+  end
+  
+  -- Parse commits
+  local commits = {}
+  for line in commits_output:gmatch("[^\r\n]+") do
+    local hash, subject, author, date = line:match("([^|]+)|([^|]+)|([^|]+)|([^|]+)")
+    if hash and subject then
+      table.insert(commits, {
+        hash = hash,
+        subject = subject,
+        author = author,
+        date = date
+      })
+    end
+  end
+  
+  if #commits == 0 then
+    local msg = "No commits found between " .. from_tag .. " and " .. to_tag
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>success: " .. msg .. "</gitReleaseNotes>"
+    return true, msg, user_msg, llm_msg
+  end
+  
+  -- Generate release notes based on format
+  local release_notes = ""
+  local user_msg = ""
+  local llm_msg = ""
+  
+  if format == "markdown" then
+    release_notes = "# Release Notes: " .. from_tag .. " → " .. to_tag .. "\n\n"
+    release_notes = release_notes .. "## Changes (" .. #commits .. " commits)\n\n"
+    
+    -- Group commits by type (conventional commits)
+    local features = {}
+    local fixes = {}
+    local others = {}
+    
+    for _, commit in ipairs(commits) do
+      local type_match = commit.subject:match("^(%w+):")
+      if type_match then
+        if type_match == "feat" or type_match == "feature" then
+          table.insert(features, commit)
+        elseif type_match == "fix" or type_match == "bugfix" then
+          table.insert(fixes, commit)
+        else
+          table.insert(others, commit)
+        end
+      else
+        table.insert(others, commit)
+      end
+    end
+    
+    -- Add features
+    if #features > 0 then
+      release_notes = release_notes .. "### ✨ New Features\n\n"
+      for _, commit in ipairs(features) do
+        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+      end
+      release_notes = release_notes .. "\n"
+    end
+    
+    -- Add fixes
+    if #fixes > 0 then
+      release_notes = release_notes .. "### 🐛 Bug Fixes\n\n"
+      for _, commit in ipairs(fixes) do
+        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+      end
+      release_notes = release_notes .. "\n"
+    end
+    
+    -- Add other changes
+    if #others > 0 then
+      release_notes = release_notes .. "### 📝 Other Changes\n\n"
+      for _, commit in ipairs(others) do
+        release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. ")\n"
+      end
+      release_notes = release_notes .. "\n"
+    end
+    
+    -- Add contributors
+    local contributors = {}
+    for _, commit in ipairs(commits) do
+      if not contributors[commit.author] then
+        contributors[commit.author] = 0
+      end
+      contributors[commit.author] = contributors[commit.author] + 1
+    end
+    
+    release_notes = release_notes .. "### 👥 Contributors\n\n"
+    for author, count in pairs(contributors) do
+      release_notes = release_notes .. "- " .. author .. " (" .. count .. " commits)\n"
+    end
+    
+  elseif format == "plain" then
+    release_notes = "Release Notes: " .. from_tag .. " → " .. to_tag .. "\n"
+    release_notes = release_notes .. "Changes (" .. #commits .. " commits):\n\n"
+    for _, commit in ipairs(commits) do
+      release_notes = release_notes .. "- " .. commit.subject .. " (" .. commit.hash .. " by " .. commit.author .. ")\n"
+    end
+    
+  elseif format == "json" then
+    local json_data = {
+      from_tag = from_tag,
+      to_tag = to_tag,
+      total_commits = #commits,
+      commits = commits
+    }
+    release_notes = vim.fn.json_encode(json_data)
+    
+  else
+    local msg = "Unsupported format: " .. format .. ". Supported formats: markdown, plain, json"
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    return false, msg, user_msg, llm_msg
+  end
+  
+  user_msg = "Generated release notes for " .. from_tag .. " → " .. to_tag .. " (" .. #commits .. " commits)"
+  llm_msg = "<gitReleaseNotes>success: " .. user_msg .. "\n\n" .. release_notes .. "</gitReleaseNotes>"
+  
+  return true, release_notes, user_msg, llm_msg
+end
+
 M.GitTool = GitTool
 return M
