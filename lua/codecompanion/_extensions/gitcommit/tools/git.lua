@@ -791,7 +791,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     local others = {}
 
     for _, commit in ipairs(commits) do
-      local type_match = commit.subject:match("^(%w+):")
+      local type_match = commit.subject:match("^(%w+)%(.*%):") or commit.subject:match("^(%w+):")
       if type_match then
         if type_match == "feat" or type_match == "feature" then
           table.insert(features, commit)
