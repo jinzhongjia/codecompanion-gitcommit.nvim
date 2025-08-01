@@ -692,7 +692,7 @@ end
 --- Generate release notes between two tags
 ---@param from_tag string|nil Starting tag (if not provided, uses second latest tag)
 ---@param to_tag string|nil Ending tag (if not provided, uses latest tag)
----@param format string|nil Format for release notes (markdown, plain, json)
+---@param format string|nil Format (markdown, plain, json)
 ---@return boolean success
 ---@return string output
 ---@return string user_msg
@@ -740,7 +740,14 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
   -- Get commit range between tags
   local range = from_tag .. ".." .. to_tag
-  local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. vim.fn.shellescape(range)
+  local escaped_range = vim.fn.shellescape(range)
+  if not escaped_range or escaped_range == "" then
+    local msg = "Failed to escape tag range: " .. range
+    local user_msg = msg
+    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    return false, msg, user_msg, llm_msg
+  end
+  local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. escaped_range
   local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
 
   if not success_commits or vim.v.shell_error ~= 0 then
