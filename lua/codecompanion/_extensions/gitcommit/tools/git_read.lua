@@ -29,6 +29,7 @@ GitRead.schema = {
             "contributors",
             "search_commits",
             "tags",
+            "generate_release_notes",
             "help",
             "gitignore_get",
             "gitignore_check",
@@ -86,6 +87,19 @@ GitRead.schema = {
               type = "string",
               description = "File to check if ignored",
             },
+            from_tag = {
+              type = "string",
+              description = "Starting tag for release notes generation (if not provided, uses second latest tag)",
+            },
+            to_tag = {
+              type = "string",
+              description = "Ending tag for release notes generation (if not provided, uses latest tag)",
+            },
+            release_format = {
+              type = "string",
+              description = "Format for release notes (markdown, plain, json)",
+              default = "markdown",
+            },
           },
           additionalProperties = false,
         },
@@ -111,7 +125,7 @@ Best practices:
 • Avoid operations that modify repository state
 • Ensure operation args match expected parameters
 
-Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, gitignore_get, gitignore_check, help]]
+Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, generate_release_notes, gitignore_get, gitignore_check, help]]
 
 -- Helper function to validate required parameters
 local function validate_required_param(param_name, param_value, error_msg)
@@ -135,7 +149,7 @@ GitRead.cmds = {
 
     if operation == "help" then
       local help_text =
-        "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• tags: List all tags\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
+        "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• tags: List all tags\n• generate_release_notes: Generate release notes between tags\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
       return { status = "success", data = help_text }
     end
 
@@ -181,6 +195,8 @@ GitRead.cmds = {
         success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
       elseif operation == "tags" then
         success, output, user_msg, llm_msg = GitTool.get_tags()
+      elseif operation == "generate_release_notes" then
+        success, output, user_msg, llm_msg = GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then

@@ -5,7 +5,7 @@ A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit
 ## ✨ Features
 
 - 🤖 **AI Commit Generation** - Generate Conventional Commits compliant messages using CodeCompanion's LLM adapters
-- 🛠️ **Git Tool Integration** - Execute Git operations through `@{git_read}` (15 read operations) and `@{git_edit}` (17 write operations) tools in chat
+- 🛠️ **Git Tool Integration** - Execute Git operations through `@{git_read}` (16 read operations) and `@{git_edit}` (17 write operations) tools in chat
 - 🤖 **Git Assistant** - Intelligent Git workflow assistance via `@{git_bot}` combining read/write operations
 - 🌍 **Multi-language Support** - Generate commit messages in multiple languages
 - 📝 **Smart Buffer Integration** - Auto-generate commit messages in gitcommit buffers with configurable keymaps
@@ -87,6 +87,8 @@ Use Git tools in CodeCompanion chat:
 @{git_read} branch                              # List all branches
 @{git_read} contributors --count 10             # Show top 10 contributors
 @{git_read} tags                                # List all tags
+@{git_read} generate_release_notes              # Generate release notes between latest tags
+@{git_read} generate_release_notes --from_tag "v1.0.0" --to_tag "v1.1.0"  # Generate release notes between specific tags
 @{git_read} gitignore_get                       # Get .gitignore content
 @{git_read} gitignore_check --gitignore_file "file.txt"  # Check if file is ignored
 @{git_read} show --commit_hash "abc123"         # Show commit details
@@ -149,6 +151,14 @@ Use a comprehensive Git assistant that combines read and write operations:
 /gitcommit                                    # Select commit and insert its content for reference
 @{git_edit} commit --commit_message "feat: add new feature"  # Commit
 @{git_edit} push --remote "origin" --branch "main"     # Push changes
+@{git_read} generate_release_notes              # Generate release notes between latest tags
+```
+
+**4. Generate Release Notes:**
+```
+@{git_read} generate_release_notes                    # Auto-detect latest and previous tag
+@{git_read} generate_release_notes --from_tag "v1.0.0" --to_tag "v1.1.0"  # Specific tags
+@{git_read} generate_release_notes --release_format "json"              # JSON format output
 ```
 
 ## ⚙️ Configuration Options
@@ -220,6 +230,15 @@ gitcommit.exports.git_tool.stage({"file1.txt", "file2.txt"})
 
 -- Create and checkout branch
 gitcommit.exports.git_tool.create_branch("feature/new-feature", true)
+
+-- Generate release notes
+local success, notes, user_msg, llm_msg = gitcommit.exports.git_tool.generate_release_notes()
+if success then
+  print("Release notes:", notes)
+end
+
+-- Generate release notes between specific tags
+local success, notes = gitcommit.exports.git_tool.generate_release_notes("v1.0.0", "v1.1.0", "markdown")
 ```
 
 ## 📚 Documentation
