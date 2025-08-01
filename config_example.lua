@@ -35,10 +35,10 @@ return {
 
   -- Feature toggles
   add_slash_command = true, -- Enable slash command in chat buffer
-  add_git_tool = true, -- Add @git_read and @git_edit tools to CodeCompanion
+  add_git_tool = true, -- Add @{git_read} and @{git_edit} tools to CodeCompanion
   enable_git_read = true, -- Enable read-only Git operations
   enable_git_edit = true, -- Enable write-access Git operations
-  enable_git_bot = true, -- Enable @git_bot tool group (requires both read/write enabled)
+  enable_git_bot = true, -- Enable @{git_bot} tool group (requires both read/write enabled)
   add_git_commands = true, -- Add :CodeCompanionGitCommit commands
 
   -- Git tool configuration

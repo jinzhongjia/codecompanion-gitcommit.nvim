@@ -28,8 +28,8 @@ Conventional Commits specification. It integrates seamlessly with
 CodeCompanion's LLM adapters to analyze your staged changes and create
 appropriate commit messages.
 
-The extension provides comprehensive Git operations through @git_read (15
-operations), @git_edit (16 operations), and @git_bot tools, offering a
+The extension provides comprehensive Git operations through @{git_read} (15
+operations), @{git_edit} (17 operations), and @{git_bot} tools, offering a
 natural language interface for Git workflow management within CodeCompanion
 chat buffers.
 
@@ -45,9 +45,9 @@ chat buffers.
 • Commit history context for consistent styling and patterns
 
 🛠️ Git Tool Integration
-• @git_read tool - 15 read-only Git operations (status, log, diff, etc.)
-• @git_edit tool - 16 write-access Git operations (stage, commit, push, etc.)
-• @git_bot tool - Comprehensive Git assistant combining all operations
+• @{git_read} tool - 15 read-only Git operations (status, log, diff, etc.)
+• @{git_edit} tool - 17 write-access Git operations (stage, commit, push, etc.)
+• @{git_bot} tool - Comprehensive Git assistant combining all operations
 • Natural language interface for Git workflow control
 • Async operations with proper error handling
 • Safety confirmations for destructive operations
@@ -92,10 +92,10 @@ Add this extension to your CodeCompanion configuration:
 	        
 	        -- Feature toggles
 	        add_slash_command = true,      -- Add /gitcommit slash command
-	        add_git_tool = true,          -- Add @git_read and @git_edit tools
+	        add_git_tool = true,          -- Add @{git_read} and @{git_edit} tools
 	        enable_git_read = true,       -- Enable read-only Git operations
 	        enable_git_edit = true,       -- Enable write-access Git operations
-	        enable_git_bot = true,        -- Enable @git_bot tool group
+	        enable_git_bot = true,        -- Enable @{git_bot} tool group
 	        add_git_commands = true,      -- Add :CodeCompanionGitCommit commands
 	        git_tool_auto_submit_errors = false,    -- Auto-submit errors to LLM
 	        git_tool_auto_submit_success = true,    -- Auto-submit success to LLM
@@ -135,11 +135,11 @@ GitCommit Buffer Integration:
 Chat-based Git Workflow:
 
 Use Git tools in CodeCompanion chat: >
-	@git_read status                    # Check repository status
-	@git_edit stage --files ["file.txt"]  # Stage files
+	@{git_read} status                    # Check repository status
+	@{git_edit} stage --files ["file.txt"]  # Stage files
 	/gitcommit                          # Generate commit message
-	@git_edit commit --commit_message "feat: add feature"  # Commit
-	@git_edit push --remote "origin" --branch "main"      # Push
+	@{git_edit} commit --commit_message "feat: add feature"  # Commit
+	@{git_edit} push --remote "origin" --branch "main"      # Push
 <
 
 ==============================================================================
@@ -156,7 +156,7 @@ Use Git tools in CodeCompanion chat: >
 
 Use Git tools in CodeCompanion chat:
 
-Read-only operations (@git_read):			*git_read*
+Read-only operations (@{git_read}):			*git_read*
 
 • status - Show repository status
 • log - Show commit history
@@ -174,7 +174,7 @@ Read-only operations (@git_read):			*git_read*
 • diff_commits - Compare two commits
 • help - Show help information
 
-Write operations (@git_edit):				*git_edit*
+Write operations (@{git_edit}):				*git_edit*
 
 • stage/unstage - Stage/unstage files
 • commit - Commit changes (can auto-generate AI commit message)
@@ -189,18 +189,18 @@ Write operations (@git_edit):				*git_edit*
 • create_tag/delete_tag - Tag management
 • merge - Merge branches
 
-Git bot (@git_bot):				*git_bot*
+Git bot (@{git_bot}):				*git_bot*
 
 Comprehensive Git assistant that combines read and write operations to provide
 intelligent Git workflow assistance.
 
 Examples: >
-	@git_read status
-	@git_read log --count 5
-	@git_edit stage --files ["src/main.lua"]
-	@git_edit create_branch --branch_name "feature/new"
-	@git_edit commit --commit_message "feat: add new feature"
-	@git_bot Please help me create a new branch and commit current changes
+	@{git_read} status
+	@{git_read} log --count 5
+	@{git_edit} stage --files ["src/main.lua"]
+	@{git_edit} create_branch --branch_name "feature/new"
+	@{git_edit} commit --commit_message "feat: add new feature"
+	@{git_bot} Please help me create a new branch and commit current changes
 <
 
 Safety features:
@@ -234,16 +234,16 @@ Safety features:
 	When enabled, adds /gitcommit slash command to CodeCompanion chat buffers.
 
 *add_git_tool*					Type: boolean, Default: true
-	When enabled, adds @git_read and @git_edit tools to CodeCompanion chat buffers.
+	When enabled, adds @{git_read} and @{git_edit} tools to CodeCompanion chat buffers.
 
 *enable_git_read*				Type: boolean, Default: true
-	Enable read-only Git operations (@git_read tool).
+	Enable read-only Git operations (@{git_read} tool).
 
 *enable_git_edit*				Type: boolean, Default: true
-	Enable write-access Git operations (@git_edit tool).
+	Enable write-access Git operations (@{git_edit} tool).
 
 *enable_git_bot*				Type: boolean, Default: true
-	Enable @git_bot tool group. Only takes effect when both enable_git_read 
+	Enable @{git_bot} tool group. Only takes effect when both enable_git_read 
 	and enable_git_edit are true.
 
 *add_git_commands*				Type: boolean, Default: true

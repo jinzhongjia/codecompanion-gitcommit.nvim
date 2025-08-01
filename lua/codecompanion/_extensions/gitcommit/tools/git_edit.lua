@@ -249,7 +249,7 @@ Available write-access Git operations:
           -- Return success with instruction for AI to use the diff tool
           return {
             status = "success",
-            data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@git_read diff --staged` tool to see the changes and then create an appropriate commit message.",
+            data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@{git_read} diff --staged` tool to see the changes and then create an appropriate commit message.",
           }
         end
         success, output = GitTool.commit(message, op_args.amend)
