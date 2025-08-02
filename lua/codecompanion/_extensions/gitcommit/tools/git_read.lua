@@ -155,7 +155,7 @@ GitRead.cmds = {
 
     local success, output, user_msg, llm_msg
 
-    -- 通过 pcall 安全执行操作，确保始终有响应
+    -- Safely execute operations through pcall to ensure there's always a response
     local ok, result = pcall(function()
       if operation == "status" then
         success, output, user_msg, llm_msg = GitTool.get_status()

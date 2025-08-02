@@ -1,6 +1,5 @@
----@field use_commit_history? boolean Enable using commit history as context (default: true)
+---@field push fun(remote?: string, branch?: string, force?: boolean, set_upstream?: boolean, tags?: boolean, tag_name?: string): boolean, string
 
----@class CodeCompanion.GitCommit.ExtensionOpts.Buffer
 ---@field enabled boolean Enable buffer-specific keymap for git commit
 ---@field keymap string Keymap for generating commit message in git commit buffer
 ---@field auto_generate? boolean Automatically generate commit message on entering gitcommit buffer
