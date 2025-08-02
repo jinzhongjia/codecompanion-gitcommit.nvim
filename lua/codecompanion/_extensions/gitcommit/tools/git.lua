@@ -489,13 +489,17 @@ end
 ---@param remote? string The name of the remote to push to (e.g., origin)
 ---@param branch? string The name of the branch to push (defaults to current branch)
 ---@param force? boolean Force push (DANGEROUS: overwrites remote history)
+---@param set_upstream? boolean Set the upstream branch for the current local branch
 ---@param tags? boolean Push all tags
----@param tag_name? string The name of a single tag to push
+---@param tag_name? string The name of a single tag to push (takes priority over tags parameter)
 ---@return boolean success, string output
-function GitTool.push(remote, branch, force, tags, tag_name)
+function GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
   local cmd = "git push"
   if force then
     cmd = cmd .. " --force"
+  end
+  if set_upstream then
+    cmd = cmd .. " --set-upstream"
   end
 
   -- Handle tag pushing - single tag takes priority over all tags

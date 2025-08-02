@@ -482,6 +482,18 @@ return {
         return GitTool.merge(branch)
       end,
 
+      ---Push changes to remote repository
+      ---@param remote? string The remote to push to (e.g., origin)
+      ---@param branch? string The branch to push (defaults to current branch)
+      ---@param force? boolean Force push (DANGEROUS)
+      ---@param set_upstream? boolean Set upstream branch (default: true for auto-linking)
+      ---@param tags? boolean Push all tags
+      ---@param tag_name? string Single tag to push
+      push = function(remote, branch, force, set_upstream, tags, tag_name)
+        local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+        return GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
+      end,
+
       ---Generate release notes between tags
       ---@param from_tag? string Starting tag (if not provided, uses second latest tag)
       ---@param to_tag? string Ending tag (if not provided, uses latest tag)
