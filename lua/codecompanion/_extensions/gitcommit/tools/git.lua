@@ -497,18 +497,30 @@ function GitTool.push(remote, branch, force, tags, tag_name)
   if force then
     cmd = cmd .. " --force"
   end
-  if remote then
-    cmd = cmd .. " " .. vim.fn.shellescape(remote)
-  end
-  if branch then
-    cmd = cmd .. " " .. vim.fn.shellescape(branch)
-  end
-  if tags then
-    cmd = cmd .. " --tags"
-  end
-  if tag_name then
+
+  -- Handle tag pushing - single tag takes priority over all tags
+  if tag_name and vim.trim(tag_name) ~= "" then
+    -- Push single tag: git push origin tag_name
+    if remote then
+      cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    end
     cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
+  elseif tags then
+    -- Push all tags: git push origin --tags
+    if remote then
+      cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    end
+    cmd = cmd .. " --tags"
+  else
+    -- Regular branch push: git push origin branch
+    if remote then
+      cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    end
+    if branch then
+      cmd = cmd .. " " .. vim.fn.shellescape(branch)
+    end
   end
+
   return execute_git_command(cmd)
 end
 
@@ -528,18 +540,28 @@ function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name,
   if set_upstream then
     table.insert(cmd, "--set-upstream")
   end
-  if tags then
-    table.insert(cmd, "--tags")
-  end
-  if tag_name then
-    table.insert(cmd, "tag")
+
+  -- Handle tag pushing - single tag takes priority over all tags
+  if tag_name and vim.trim(tag_name) ~= "" then
+    -- Push single tag: git push origin tag_name
+    if remote then
+      table.insert(cmd, remote)
+    end
     table.insert(cmd, tag_name)
-  end
-  if remote then
-    table.insert(cmd, remote)
-  end
-  if branch then
-    table.insert(cmd, branch)
+  elseif tags then
+    -- Push all tags: git push origin --tags
+    if remote then
+      table.insert(cmd, remote)
+    end
+    table.insert(cmd, "--tags")
+  else
+    -- Regular branch push with optional upstream setting
+    if remote then
+      table.insert(cmd, remote)
+    end
+    if branch then
+      table.insert(cmd, branch)
+    end
   end
 
   local stdout_lines = {}
