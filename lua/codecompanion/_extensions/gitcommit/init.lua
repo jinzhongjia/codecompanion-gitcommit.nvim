@@ -161,12 +161,12 @@ local function setup_slash_commands(opts)
         stdout:close()
         stderr:close()
         if code == 0 then
-          chat:add_reference({
+          chat:add_context({
             role = "user",
             content = string.format("Selected commit (%s) full content:\n```\n%s\n```", choice.hash, output),
           }, "git", "<git_commit>")
         else
-          chat:add_reference(
+          chat:add_context(
             { role = "user", content = "Error: Failed to get commit content.\n" .. error_output },
             "git",
             "<git_error>"
@@ -230,11 +230,11 @@ local function setup_slash_commands(opts)
             end
           end
           if #items == 0 then
-            return chat:add_reference({ role = "user", content = "No commits found." }, "git", "<git_error>")
+            return chat:add_context({ role = "user", content = "No commits found." }, "git", "<git_error>")
           end
           select_commit(chat, items)
         else
-          chat:add_reference(
+          chat:add_context(
             { role = "user", content = "Error: Failed to get git log\n" .. error_output },
             "git",
             "<git_error>"
@@ -266,7 +266,7 @@ local function setup_slash_commands(opts)
     description = "Select a commit and insert its full content (message + diff)",
     callback = function(chat)
       if not Git.is_repository() then
-        return chat:add_reference({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
+        return chat:add_context({ role = "user", content = "Error: Not in a git repository" }, "git", "<git_error>")
       end
       get_commit_list(chat, opts)
     end,
