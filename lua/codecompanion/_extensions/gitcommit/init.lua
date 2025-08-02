@@ -230,7 +230,7 @@ local function setup_slash_commands(opts)
             end
           end
           if #items == 0 then
-            return chat:add_context({ role = "user", content = "No commits found." }, "git", "<git_error>")
+            return chat:add_context({ role = "user", content = "Error: No commits found." }, "git", "<git_error>")
           end
           select_commit(chat, items)
         else
