@@ -3,7 +3,7 @@
 OS := $(shell uname -s 2>/dev/null || echo Windows_NT)
 
 # Default output path for the downloaded doc
-DOC_OUT := doc/codecompanion.txt
+DOC_OUT := codecompanion.txt
 
 # Windows (PowerShell 7) target
 ifeq ($(OS),Windows_NT)
@@ -20,7 +20,6 @@ WGET := $(shell command -v wget 2>/dev/null)
 URL := https://github.com/olimorris/codecompanion.nvim/raw/refs/heads/main/doc/codecompanion.txt
 
 doc:
-	@mkdir -p doc
 ifeq ($(CURL),)
 ifeq ($(WGET),)
 	@echo "Error: need curl or wget to download on non-Windows" && exit 1
