@@ -22,31 +22,19 @@ end
 function GitTool.get_gitignore()
   local path = get_gitignore_path()
   if not path then
-    local msg = ".gitignore not found (not in a git repo)"
-    local user_msg = msg
-    local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
-    return false, msg, user_msg, llm_msg
+    return false, ".gitignore not found (not in a git repo)"
   end
   local stat = vim.uv.fs_stat(path)
   if not stat then
-    local msg = "" -- treat as empty if not exists
-    local user_msg = ".gitignore is empty"
-    local llm_msg = "<gitIgnoreTool>success: .gitignore is empty</gitIgnoreTool>"
-    return true, msg, user_msg, llm_msg
+    return true, "" -- treat as empty if not exists
   end
   local fd = vim.uv.fs_open(path, "r", 438)
   if not fd then
-    local msg = "Failed to open .gitignore for reading"
-    local user_msg = msg
-    local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
-    return false, msg, user_msg, llm_msg
+    return false, "Failed to open .gitignore for reading"
   end
   local data = vim.uv.fs_read(fd, stat.size, 0)
   vim.uv.fs_close(fd)
-  local msg = data or ""
-  local user_msg = ".gitignore content:\n" .. (data or "(empty)")
-  local llm_msg = "<gitIgnoreTool>success:\n" .. (data or "(empty)") .. "</gitIgnoreTool>"
-  return true, msg, user_msg, llm_msg
+  return true, data or ""
 end
 
 --- Add rule(s) to .gitignore (no duplicates)
@@ -142,24 +130,16 @@ end
 --- Check if a file is ignored by .gitignore
 function GitTool.is_ignored(file)
   if not file or file == "" then
-    local msg = "No file specified"
-    local user_msg = msg
-    local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
-    return false, msg, user_msg, llm_msg
+    return false, "No file specified"
   end
   local ok, result = pcall(function()
     return vim.fn.system({ "git", "check-ignore", file })
   end)
   if not ok or vim.v.shell_error ~= 0 then
-    local msg = "File is not ignored or not in a git repo"
-    local user_msg = msg
-    local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
-    return false, msg, user_msg, llm_msg
+    return false, "File is not ignored or not in a git repo"
   end
   local trimmed = vim.trim(result)
-  local user_msg = string.format("File '%s' is ignored by .gitignore", file)
-  local llm_msg = string.format("<gitIgnoreCheckTool>success: %s is ignored</gitIgnoreCheckTool>", file)
-  return true, trimmed, user_msg, llm_msg
+  return true, string.format("File '%s' is ignored by .gitignore", file)
 end
 
 local function is_git_repo()
@@ -194,33 +174,8 @@ local function execute_git_command(cmd)
   return success, output
 end
 
--- Helper function to format git tool responses consistently
-local function format_git_response(tool_name, success, output, empty_msg)
-  local user_msg, llm_msg
-  local tag = "git" .. tool_name:gsub("^%l", string.upper) .. "Tool"
-
-  if success then
-    if output and vim.trim(output) ~= "" then
-      local msg = string.format("git %s tool execute successfully\n```\n%s\n```", tool_name, output)
-      user_msg = msg
-      llm_msg = string.format("<%s>%s</%s>", tag, msg, tag)
-    else
-      user_msg =
-        string.format("git %s tool execute successfully%s", tool_name, empty_msg and (" - " .. empty_msg) or "")
-      llm_msg = string.format("<%s>success%s</%s>", tag, empty_msg and (": " .. empty_msg) or "", tag)
-    end
-  else
-    user_msg = string.format("git %s tool execute failed: %s", tool_name, output or "unknown error")
-    llm_msg = string.format("<%s>fail: %s</%s>", tag, output or "unknown error", tag)
-  end
-
-  return user_msg, llm_msg
-end
-
 function GitTool.get_status()
-  local success, output = execute_git_command("git status --porcelain")
-  local user_msg, llm_msg = format_git_response("status", success, output, "no changes found")
-  return success, output, user_msg, llm_msg
+  return execute_git_command("git status --porcelain")
 end
 
 function GitTool.get_log(count, format)
@@ -236,9 +191,7 @@ function GitTool.get_log(count, format)
   }
   local format_option = format_map[format] or "--oneline"
   local cmd = string.format("git log -%d %s", count, format_option)
-  local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg = format_git_response("log", success, output, "no commits found")
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 function GitTool.get_diff(staged, file)
@@ -249,32 +202,21 @@ function GitTool.get_diff(staged, file)
   if file then
     cmd = cmd .. " " .. vim.fn.shellescape(file)
   end
-  local success, output = execute_git_command(cmd)
-  local diff_type = staged and "staged" or "unstaged"
-  local empty_msg = "no " .. diff_type .. " changes found"
-  local user_msg, llm_msg = format_git_response("diff", success, output, empty_msg)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 ---Get current branch name
----@return boolean success, string branch_name
-
+---@return boolean success, string output
 function GitTool.get_current_branch()
-  local success, output = execute_git_command("git branch --show-current")
-  local user_msg, llm_msg = format_git_response("branch", success, output, "no current branch (possibly detached HEAD)")
-  return success, output, user_msg, llm_msg
+  return execute_git_command("git branch --show-current")
 end
 
 ---Get all branches (local and remote)
 ---@param remote_only? boolean Show only remote branches
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.get_branches(remote_only)
   local cmd = remote_only and "git branch -r" or "git branch -a"
-  local success, output = execute_git_command(cmd)
-  local branch_type = remote_only and "remote branches" or "branches"
-  local empty_msg = "no " .. branch_type .. " found"
-  local user_msg, llm_msg = format_git_response("branch", success, output, empty_msg)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 function GitTool.stage_files(files)
@@ -361,29 +303,25 @@ function GitTool.checkout(target)
 end
 
 ---Get remote information
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.get_remotes()
-  local success, output = execute_git_command("git remote -v")
-  local user_msg, llm_msg = format_git_response("remote", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command("git remote -v")
 end
 
 ---Show commit details
 ---@param commit_hash? string Commit hash (default: HEAD)
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.show_commit(commit_hash)
   commit_hash = commit_hash or "HEAD"
   local cmd = "git show " .. vim.fn.shellescape(commit_hash)
-  local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg = format_git_response("show", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 ---Get blame information for a file
 ---@param file_path string Path to the file
 ---@param line_start? number Start line number
 ---@param line_end? number End line number
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.get_blame(file_path, line_start, line_end)
   local cmd = "git blame " .. vim.fn.shellescape(file_path)
   if line_start and line_end then
@@ -391,9 +329,7 @@ function GitTool.get_blame(file_path, line_start, line_end)
   elseif line_start then
     cmd = cmd .. " -L " .. line_start .. ",+10"
   end
-  local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg = format_git_response("blame", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 ---Stash changes
@@ -415,11 +351,9 @@ function GitTool.stash(message, include_untracked)
 end
 
 ---List stashes
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.list_stashes()
-  local success, output = execute_git_command("git stash list")
-  local user_msg, llm_msg = format_git_response("stash", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command("git stash list")
 end
 
 ---Apply stash
@@ -445,21 +379,19 @@ end
 ---@param commit1 string First commit
 ---@param commit2? string Second commit (default: HEAD)
 ---@param file_path? string Specific file path
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.diff_commits(commit1, commit2, file_path)
   commit2 = commit2 or "HEAD"
   local cmd = string.format("git diff %s %s", vim.fn.shellescape(commit1), vim.fn.shellescape(commit2))
   if file_path then
     cmd = cmd .. " -- " .. vim.fn.shellescape(file_path)
   end
-  local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg = format_git_response("diff_commits", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 ---Get contributors/authors
 ---@param count? number Number of top contributors to show
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.get_contributors(count)
   count = count or 10
   local head_cmd
@@ -468,21 +400,17 @@ function GitTool.get_contributors(count)
   else
     head_cmd = string.format("git shortlog -sn | head -%d", count)
   end
-  local success, output = execute_git_command(head_cmd)
-  local user_msg, llm_msg = format_git_response("contributors", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(head_cmd)
 end
 
 ---Search commits by message
 ---@param pattern string Search pattern
 ---@param count? number Maximum number of results
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.search_commits(pattern, count)
   count = count or 20
   local cmd = string.format("git log --grep=%s --oneline -%d", vim.fn.shellescape(pattern), count)
-  local success, output = execute_git_command(cmd)
-  local user_msg, llm_msg = format_git_response("search_commits", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command(cmd)
 end
 
 ---Push changes to a remote repository
@@ -642,11 +570,9 @@ function GitTool.revert(commit_hash)
 end
 
 ---Get all tags
----@return boolean success, string output, string user_msg, string llm_msg
+---@return boolean success, string output
 function GitTool.get_tags()
-  local success, output = execute_git_command("git tag")
-  local user_msg, llm_msg = format_git_response("tag", success, output)
-  return success, output, user_msg, llm_msg
+  return execute_git_command("git tag")
 end
 
 ---Create a new tag
@@ -721,18 +647,13 @@ end
 ---@param format string|nil Format (markdown, plain, json)
 ---@return boolean success
 ---@return string output
----@return string user_msg
----@return string llm_msg
 function GitTool.generate_release_notes(from_tag, to_tag, format)
   format = format or "markdown"
 
   -- Get all tags sorted by version
   local success, tags_output = pcall(vim.fn.system, "git tag --sort=-version:refname")
   if not success or vim.v.shell_error ~= 0 then
-    local msg = "Failed to get git tags: " .. (tags_output or "unknown error")
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
+    return false, "Failed to get git tags: " .. (tags_output or "unknown error")
   end
 
   local tags = {}
@@ -743,10 +664,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   end
 
   if #tags < 1 then
-    local msg = "No tags found in repository"
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
+    return false, "No tags found in repository"
   end
 
   -- Determine tag range
@@ -756,10 +674,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
   if not from_tag then
     if #tags < 2 then
-      local msg = "Cannot generate release notes: only one tag found. Please specify from_tag parameter."
-      local user_msg = msg
-      local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-      return false, msg, user_msg, llm_msg
+      return false, "Cannot generate release notes: only one tag found. Please specify from_tag parameter."
     end
     from_tag = tags[2] -- Second latest tag
   end
@@ -768,24 +683,14 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   local range = from_tag .. ".." .. to_tag
   local escaped_range = vim.fn.shellescape(range)
   if not escaped_range or escaped_range == "" then
-    local msg = "Failed to escape tag range: " .. range
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
+    return false, "Failed to escape tag range: " .. range
   end
   local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. escaped_range
   local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
 
   if not success_commits or vim.v.shell_error ~= 0 then
-    local msg = "Failed to get commits between "
-      .. from_tag
-      .. " and "
-      .. to_tag
-      .. ": "
-      .. (commits_output or "unknown error")
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
+    return false,
+      "Failed to get commits between " .. from_tag .. " and " .. to_tag .. ": " .. (commits_output or "unknown error")
   end
 
   -- Parse commits
@@ -803,16 +708,11 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   end
 
   if #commits == 0 then
-    local msg = "No commits found between " .. from_tag .. " and " .. to_tag
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>success: " .. msg .. "</gitReleaseNotes>"
-    return true, msg, user_msg, llm_msg
+    return true, "No commits found between " .. from_tag .. " and " .. to_tag
   end
 
   -- Generate release notes based on format
   local release_notes = ""
-  local user_msg = ""
-  local llm_msg = ""
 
   if format == "markdown" then
     local parts = { "# Release Notes: " .. from_tag .. " → " .. to_tag .. "\n\n" }
@@ -905,16 +805,10 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     }
     release_notes = vim.fn.json_encode(json_data)
   else
-    local msg = "Unsupported format: " .. format .. ". Supported formats: markdown, plain, json"
-    local user_msg = msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
+    return false, "Unsupported format: " .. format .. ". Supported formats: markdown, plain, json"
   end
 
-  user_msg = "Generated release notes for " .. from_tag .. " → " .. to_tag .. " (" .. #commits .. " commits)"
-  llm_msg = "<gitReleaseNotes>success: " .. user_msg .. "\n\n" .. release_notes .. "</gitReleaseNotes>"
-
-  return true, release_notes, user_msg, llm_msg
+  return true, release_notes
 end
 
 M.GitTool = GitTool

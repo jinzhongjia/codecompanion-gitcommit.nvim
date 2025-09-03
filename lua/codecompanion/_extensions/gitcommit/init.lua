@@ -9,6 +9,165 @@ local Config = require("codecompanion._extensions.gitcommit.config")
 
 local M = {}
 
+---Validate configuration options
+---@param opts table Configuration options to validate
+---@return table validated_opts Validated and sanitized options
+local function validate_config(opts)
+  local codecompanion_adapter = require("codecompanion.adapters")
+  local codecompanion_config = require("codecompanion.config")
+
+  -- Validate adapter
+  if opts.adapter then
+    local adapter = codecompanion_adapter.resolve(opts.adapter)
+    if not adapter then
+      vim.notify(
+        string.format("[CodeCompanion GitCommit] Invalid adapter '%s', using default", opts.adapter),
+        vim.log.levels.WARN
+      )
+      opts.adapter = nil
+    end
+  end
+
+  -- Validate model if adapter is specified
+  if opts.adapter and opts.model then
+    local adapter = codecompanion_adapter.resolve(opts.adapter)
+    if adapter and adapter.schema and adapter.schema.model and adapter.schema.model.choices then
+      local valid_model = false
+      local choices = adapter.schema.model.choices
+
+      -- Check if model is in choices
+      for _, choice in ipairs(choices) do
+        if type(choice) == "string" and choice == opts.model then
+          valid_model = true
+          break
+        elseif type(choice) == "table" and choice[1] == opts.model then
+          valid_model = true
+          break
+        end
+      end
+
+      if not valid_model then
+        vim.notify(
+          string.format(
+            "[CodeCompanion GitCommit] Model '%s' may not be available for adapter '%s'",
+            opts.model,
+            opts.adapter
+          ),
+          vim.log.levels.WARN
+        )
+      end
+    end
+  end
+
+  -- Validate languages
+  if opts.languages then
+    if type(opts.languages) ~= "table" then
+      vim.notify("[CodeCompanion GitCommit] Invalid languages configuration, using defaults", vim.log.levels.WARN)
+      opts.languages = Config.default_opts.languages
+    elseif #opts.languages == 0 then
+      vim.notify("[CodeCompanion GitCommit] No languages configured, using English", vim.log.levels.WARN)
+      opts.languages = { "English" }
+    else
+      -- Ensure all language entries are strings
+      local valid_languages = {}
+      for _, lang in ipairs(opts.languages) do
+        if type(lang) == "string" and lang ~= "" then
+          table.insert(valid_languages, lang)
+        end
+      end
+      if #valid_languages == 0 then
+        valid_languages = { "English" }
+      end
+      opts.languages = valid_languages
+    end
+  end
+
+  -- Validate exclude_files patterns
+  if opts.exclude_files then
+    if type(opts.exclude_files) ~= "table" then
+      vim.notify("[CodeCompanion GitCommit] Invalid exclude_files configuration, using defaults", vim.log.levels.WARN)
+      opts.exclude_files = Config.default_opts.exclude_files
+    else
+      -- Ensure all patterns are strings
+      local valid_patterns = {}
+      for _, pattern in ipairs(opts.exclude_files) do
+        if type(pattern) == "string" and pattern ~= "" then
+          table.insert(valid_patterns, pattern)
+        end
+      end
+      opts.exclude_files = valid_patterns
+    end
+  end
+
+  -- Validate buffer configuration
+  if opts.buffer then
+    if type(opts.buffer) ~= "table" then
+      opts.buffer = Config.default_opts.buffer
+    else
+      -- Validate buffer.enabled
+      if opts.buffer.enabled ~= nil and type(opts.buffer.enabled) ~= "boolean" then
+        opts.buffer.enabled = true
+      end
+
+      -- Validate buffer.keymap
+      if opts.buffer.keymap and type(opts.buffer.keymap) ~= "string" then
+        opts.buffer.keymap = Config.default_opts.buffer.keymap
+      end
+
+      -- Validate buffer.auto_generate
+      if opts.buffer.auto_generate ~= nil and type(opts.buffer.auto_generate) ~= "boolean" then
+        opts.buffer.auto_generate = false
+      end
+
+      -- Validate buffer.auto_generate_delay
+      if opts.buffer.auto_generate_delay then
+        if type(opts.buffer.auto_generate_delay) ~= "number" or opts.buffer.auto_generate_delay < 0 then
+          opts.buffer.auto_generate_delay = Config.default_opts.buffer.auto_generate_delay
+        end
+      end
+    end
+  end
+
+  -- Validate commit history configuration
+  if opts.use_commit_history ~= nil and type(opts.use_commit_history) ~= "boolean" then
+    opts.use_commit_history = Config.default_opts.use_commit_history
+  end
+
+  if opts.commit_history_count then
+    if type(opts.commit_history_count) ~= "number" or opts.commit_history_count < 1 then
+      opts.commit_history_count = Config.default_opts.commit_history_count
+    elseif opts.commit_history_count > 50 then
+      -- Limit to reasonable number to avoid performance issues
+      vim.notify("[CodeCompanion GitCommit] Limiting commit history count to 50", vim.log.levels.INFO)
+      opts.commit_history_count = 50
+    end
+  end
+
+  -- Validate tool configuration
+  if opts.add_git_tool ~= nil and type(opts.add_git_tool) ~= "boolean" then
+    opts.add_git_tool = Config.default_opts.add_git_tool
+  end
+
+  if opts.git_tool_auto_submit_errors ~= nil and type(opts.git_tool_auto_submit_errors) ~= "boolean" then
+    opts.git_tool_auto_submit_errors = Config.default_opts.git_tool_auto_submit_errors
+  end
+
+  if opts.git_tool_auto_submit_success ~= nil and type(opts.git_tool_auto_submit_success) ~= "boolean" then
+    opts.git_tool_auto_submit_success = Config.default_opts.git_tool_auto_submit_success
+  end
+
+  -- Validate gitcommit select count
+  if opts.gitcommit_select_count then
+    if type(opts.gitcommit_select_count) ~= "number" or opts.gitcommit_select_count < 1 then
+      opts.gitcommit_select_count = Config.default_opts.gitcommit_select_count
+    elseif opts.gitcommit_select_count > 500 then
+      opts.gitcommit_select_count = 500
+    end
+  end
+
+  return opts
+end
+
 ---Generate commit message using AI
 function M.generate_commit_message()
   -- Check git repository
@@ -279,7 +438,21 @@ end
 return {
   --- @param opts CodeCompanion.GitCommit.ExtensionOpts
   setup = function(opts)
+    -- Merge with defaults and validate
     opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
+    opts = validate_config(opts)
+
+    -- Log configuration status in debug mode
+    local log_available, log = pcall(require, "codecompanion.utils.log")
+    if log_available and log then
+      log:debug("[GitCommit Extension] Configuration validated successfully")
+      if opts.adapter then
+        log:debug(string.format("[GitCommit Extension] Using adapter: %s", opts.adapter))
+      end
+      if opts.model then
+        log:debug(string.format("[GitCommit Extension] Using model: %s", opts.model))
+      end
+    end
 
     Git.setup({
       exclude_files = opts.exclude_files,
@@ -337,6 +510,7 @@ return {
     ---Access to git tool functions
     git_tool = {
       ---Get git status
+      ---@return boolean success, string output
       status = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_status()
@@ -345,6 +519,7 @@ return {
       ---Get git log
       ---@param count? number Number of commits
       ---@param format? string Log format
+      ---@return boolean success, string output
       log = function(count, format)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_log(count, format)
@@ -353,12 +528,14 @@ return {
       ---Get git diff
       ---@param staged? boolean Show staged changes
       ---@param file? string Specific file
+      ---@return boolean success, string output
       diff = function(staged, file)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_diff(staged, file)
       end,
 
       ---Get current branch
+      ---@return boolean success, string output
       current_branch = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_current_branch()
@@ -366,6 +543,7 @@ return {
 
       ---Get all branches
       ---@param remote_only? boolean Show only remote branches
+      ---@return boolean success, string output
       branches = function(remote_only)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_branches(remote_only)
@@ -373,6 +551,7 @@ return {
 
       ---Stage files
       ---@param files string|table Files to stage
+      ---@return boolean success, string output
       stage = function(files)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.stage_files(files)
@@ -380,6 +559,7 @@ return {
 
       ---Unstage files
       ---@param files string|table Files to unstage
+      ---@return boolean success, string output
       unstage = function(files)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.unstage_files(files)
@@ -388,6 +568,7 @@ return {
       ---Create new branch
       ---@param branch_name string Name of new branch
       ---@param checkout? boolean Whether to checkout
+      ---@return boolean success, string output
       create_branch = function(branch_name, checkout)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.create_branch(branch_name, checkout)
@@ -395,12 +576,14 @@ return {
 
       ---Checkout branch or commit
       ---@param target string Branch or commit to checkout
+      ---@return boolean success, string output
       checkout = function(target)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.checkout(target)
       end,
 
       ---Get remotes
+      ---@return boolean success, string output
       remotes = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_remotes()
@@ -408,6 +591,7 @@ return {
 
       ---Show commit details
       ---@param commit_hash? string Commit hash
+      ---@return boolean success, string output
       show = function(commit_hash)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.show_commit(commit_hash)
@@ -417,6 +601,7 @@ return {
       ---@param file_path string File path
       ---@param line_start? number Start line
       ---@param line_end? number End line
+      ---@return boolean success, string output
       blame = function(file_path, line_start, line_end)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_blame(file_path, line_start, line_end)
@@ -425,12 +610,14 @@ return {
       ---Stash changes
       ---@param message? string Stash message
       ---@param include_untracked? boolean Include untracked files
+      ---@return boolean success, string output
       stash = function(message, include_untracked)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.stash(message, include_untracked)
       end,
 
       ---List stashes
+      ---@return boolean success, string output
       stash_list = function()
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.list_stashes()
@@ -438,6 +625,7 @@ return {
 
       ---Apply stash
       ---@param stash_ref? string Stash reference
+      ---@return boolean success, string output
       apply_stash = function(stash_ref)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.apply_stash(stash_ref)
@@ -446,6 +634,7 @@ return {
       ---Reset to commit
       ---@param commit_hash string Commit hash
       ---@param mode? string Reset mode (soft, mixed, hard)
+      ---@return boolean success, string output
       reset = function(commit_hash, mode)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.reset(commit_hash, mode)
@@ -455,6 +644,7 @@ return {
       ---@param commit1 string First commit
       ---@param commit2? string Second commit
       ---@param file_path? string Specific file
+      ---@return boolean success, string output
       diff_commits = function(commit1, commit2, file_path)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.diff_commits(commit1, commit2, file_path)
@@ -462,6 +652,7 @@ return {
 
       ---Get top contributors
       ---@param count? number Number of contributors
+      ---@return boolean success, string output
       contributors = function(count)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.get_contributors(count)
@@ -470,6 +661,7 @@ return {
       ---Search commits by message
       ---@param pattern string Search pattern
       ---@param count? number Max results
+      ---@return boolean success, string output
       search_commits = function(pattern, count)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.search_commits(pattern, count)
@@ -477,6 +669,7 @@ return {
 
       ---Merge a branch
       ---@param branch string The branch to merge
+      ---@return boolean success, string output
       merge = function(branch)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.merge(branch)
@@ -489,6 +682,7 @@ return {
       ---@param set_upstream? boolean Set upstream branch (default: true for auto-linking)
       ---@param tags? boolean Push all tags
       ---@param tag_name? string Single tag to push
+      ---@return boolean success, string output
       push = function(remote, branch, force, set_upstream, tags, tag_name)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
@@ -498,10 +692,7 @@ return {
       ---@param from_tag? string Starting tag (if not provided, uses second latest tag)
       ---@param to_tag? string Ending tag (if not provided, uses latest tag)
       ---@param format? string Format for release notes (markdown, plain, json)
-      ---@return boolean success
-      ---@return string output
-      ---@return string user_msg
-      ---@return string llm_msg
+      ---@return boolean success, string output
       generate_release_notes = function(from_tag, to_tag, format)
         local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
         return GitTool.generate_release_notes(from_tag, to_tag, format)

@@ -371,22 +371,71 @@ GitEdit.output = {
   success = function(self, agent, cmd, stdout)
     local chat = agent.chat
     local operation = self.args.operation
-    local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
-    return chat:add_tool_output(self, stdout[1], user_msg)
+    local output = stdout[1] or ""
+
+    -- Operation descriptions for user-friendly messages
+    local operation_descriptions = {
+      stage = "Files staged",
+      unstage = "Files unstaged",
+      commit = "Changes committed",
+      create_branch = "Branch created",
+      checkout = "Switched branch/commit",
+      stash = "Changes stashed",
+      apply_stash = "Stash applied",
+      reset = "Repository reset",
+      gitignore_add = "Rules added to .gitignore",
+      gitignore_remove = "Rules removed from .gitignore",
+      push = "Changes pushed",
+      cherry_pick = "Cherry-pick completed",
+      revert = "Revert completed",
+      create_tag = "Tag created",
+      delete_tag = "Tag deleted",
+      merge = "Merge completed",
+    }
+
+    local description = operation_descriptions[operation] or string.format("Git %s completed", operation)
+
+    -- Prepare messages
+    local llm_msg, user_msg
+
+    if output and vim.trim(output) ~= "" then
+      -- For LLM: include operation context with raw output
+      llm_msg = string.format("%s successfully. Output: %s", description, output)
+
+      -- For user: formatted message with visual feedback
+      if output:find("\n") then
+        user_msg = string.format("✅ %s successfully\n```\n%s\n```", description, output)
+      else
+        user_msg = string.format("✅ %s: %s", description, output)
+      end
+    else
+      -- Simple success messages
+      llm_msg = string.format("%s successfully", description)
+      user_msg = string.format("✅ %s successfully", description)
+    end
+
+    -- Send both messages
+    return chat:add_tool_output(self, llm_msg, user_msg)
   end,
+
   error = function(self, agent, cmd, stderr, stdout)
     local chat = agent.chat
     local operation = self.args.operation
-    local error_msg = stderr and stderr[1] or ("Git edit operation [%s] failed"):format(operation)
-    local user_msg = string.format("Git edit operation [%s] failed", operation)
-    return chat:add_tool_output(self, error_msg, user_msg)
+    local error_msg = stderr and stderr[1] or stdout and stdout[1] or "Unknown error"
+
+    -- For LLM: detailed error information
+    local llm_msg = string.format("Git %s operation failed with error: %s", operation, error_msg)
+
+    -- For user: friendly error message with visual indicator
+    local user_msg = string.format("❌ Git %s failed: %s", operation, error_msg)
+
+    -- Send both messages
+    return chat:add_tool_output(self, llm_msg, user_msg)
   end,
 }
 
 GitEdit.opts = {
-  requires_approval = function(self, agent)
-    return true
-  end,
+  requires_approval = true, -- Edit operations need approval by default
 }
 
 return GitEdit

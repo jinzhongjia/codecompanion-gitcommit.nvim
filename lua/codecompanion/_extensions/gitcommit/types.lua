@@ -1,5 +1,3 @@
----@field push fun(remote?: string, branch?: string, force?: boolean, set_upstream?: boolean, tags?: boolean, tag_name?: string): boolean, string
-
 ---@field enabled boolean Enable buffer-specific keymap for git commit
 ---@field keymap string Keymap for generating commit message in git commit buffer
 ---@field auto_generate? boolean Automatically generate commit message on entering gitcommit buffer
@@ -24,32 +22,35 @@
 ---@field git_tool CodeCompanion.GitCommit.GitTool.Exports
 
 ---@class CodeCompanion.GitCommit.GitTool.Exports
----@field status fun(): boolean, string
----@field log fun(count?: number, format?: string): boolean, string
----@field diff fun(staged?: boolean, file?: string): boolean, string
----@field current_branch fun(): boolean, string
----@field branches fun(remote_only?: boolean): boolean, string
----@field stage fun(files: string|table): boolean, string
----@field unstage fun(files: string|table): boolean, string
----@field create_branch fun(branch_name: string, checkout?: boolean): boolean, string
----@field checkout fun(target: string): boolean, string
----@field remotes fun(): boolean, string
----@field show fun(commit_hash?: string): boolean, string
----@field blame fun(file_path: string, line_start?: number, line_end?: number): boolean, string
----@field stash fun(message?: string, include_untracked?: boolean): boolean, string
----@field stash_list fun(): boolean, string
----@field apply_stash fun(stash_ref?: string): boolean, string
----@field reset fun(commit_hash: string, mode?: string): boolean, string
----@field diff_commits fun(commit1: string, commit2?: string, file_path?: string): boolean, string
----@field contributors fun(count?: number): boolean, string
----@field search_commits fun(pattern: string, count?: number): boolean, string
+---@field status fun(): boolean, string -- Get git status
+---@field log fun(count?: number, format?: string): boolean, string -- Get git log
+---@field diff fun(staged?: boolean, file?: string): boolean, string -- Get git diff
+---@field current_branch fun(): boolean, string -- Get current branch name
+---@field branches fun(remote_only?: boolean): boolean, string -- Get all branches
+---@field stage fun(files: string|table): boolean, string -- Stage files
+---@field unstage fun(files: string|table): boolean, string -- Unstage files
+---@field create_branch fun(branch_name: string, checkout?: boolean): boolean, string -- Create new branch
+---@field checkout fun(target: string): boolean, string -- Checkout branch or commit
+---@field remotes fun(): boolean, string -- Get remotes
+---@field show fun(commit_hash?: string): boolean, string -- Show commit details
+---@field blame fun(file_path: string, line_start?: number, line_end?: number): boolean, string -- Get blame for file
+---@field stash fun(message?: string, include_untracked?: boolean): boolean, string -- Stash changes
+---@field stash_list fun(): boolean, string -- List stashes
+---@field apply_stash fun(stash_ref?: string): boolean, string -- Apply stash
+---@field reset fun(commit_hash: string, mode?: string): boolean, string -- Reset to commit
+---@field diff_commits fun(commit1: string, commit2?: string, file_path?: string): boolean, string -- Compare commits
+---@field contributors fun(count?: number): boolean, string -- Get top contributors
+---@field search_commits fun(pattern: string, count?: number): boolean, string -- Search commits by message
+---@field merge fun(branch: string): boolean, string -- Merge a branch
+---@field push fun(remote?: string, branch?: string, force?: boolean, set_upstream?: boolean, tags?: boolean, tag_name?: string): boolean, string -- Push changes to remote
+---@field generate_release_notes fun(from_tag?: string, to_tag?: string, format?: string): boolean, string -- Generate release notes
 
 ---@class CodeCompanion.GitCommit.Git
 ---@field is_repository fun(): boolean -- Check if current directory is inside a git repository
 ---@field get_staged_diff fun(): string|nil -- Get git diff for staged changes
 ---@field commit_changes fun(message: string): boolean -- Commit changes with the provided message
-
 ---@field get_commit_history fun(count?: number): string[]|nil -- Get recent commit messages for context
+---@field get_config fun(): table -- Get current configuration
 
 ---@class CodeCompanion.GitCommit.Generator
 ---@field generate_commit_message fun(diff: string, lang: string?, commit_history: string[]?, callback: fun(result: string|nil, error: string|nil)): nil -- Generate commit message using LLM
