@@ -10,6 +10,7 @@ local default_config = {
   keymap = "<leader>gc",
   auto_generate = false,
   auto_generate_delay = 100, -- Default delay in ms
+  window_stability_delay = 300, -- Extra delay for window stability in ms
   skip_auto_generate_on_amend = true, -- Skip auto-generation during git commit --amend
 }
 
@@ -85,46 +86,29 @@ function Buffer.setup(opts)
               auto_generate_attempted = true
               Buffer._generate_and_insert_commit_message(bufnr)
             end
-          end, config.auto_generate_delay + 300) -- Extra delay for window stability
+          end, config.auto_generate_delay + config.window_stability_delay) -- Extra delay for window stability
+        end
+
+        -- Shared callback function for autocommands to reduce duplication
+        local autocmd_callback = function(args)
+          schedule_auto_generate(args.buf)
         end
 
         -- Multiple event triggers to ensure compatibility with different Git tools
         local autocmd_opts = {
           buffer = event.buf,
           desc = "Auto-generate GitCommit message",
+          callback = autocmd_callback,
         }
 
         -- Primary trigger: WinEnter (works with most tools)
-        vim.api.nvim_create_autocmd(
-          "WinEnter",
-          vim.tbl_extend("force", autocmd_opts, {
-            callback = function(args)
-              schedule_auto_generate(args.buf)
-            end,
-          })
-        )
+        vim.api.nvim_create_autocmd("WinEnter", autocmd_opts)
 
         -- Secondary trigger: BufWinEnter (works with Fugitive)
-        vim.api.nvim_create_autocmd(
-          "BufWinEnter",
-          vim.tbl_extend("force", autocmd_opts, {
-            once = true,
-            callback = function(args)
-              schedule_auto_generate(args.buf)
-            end,
-          })
-        )
+        vim.api.nvim_create_autocmd("BufWinEnter", autocmd_opts)
 
         -- Tertiary trigger: CursorMoved (fallback, with debouncing)
-        vim.api.nvim_create_autocmd(
-          "CursorMoved",
-          vim.tbl_extend("force", autocmd_opts, {
-            once = true,
-            callback = function(args)
-              schedule_auto_generate(args.buf)
-            end,
-          })
-        )
+        vim.api.nvim_create_autocmd("CursorMoved", autocmd_opts)
 
         -- Cleanup timer when buffer is deleted or unloaded
         vim.api.nvim_create_autocmd(
