@@ -32,40 +32,112 @@ function Buffer.setup(opts)
       Buffer._setup_gitcommit_keymap(event.buf)
 
       if config.auto_generate then
-        -- Auto-generation triggers once when entering gitcommit window
-        -- Avoids race conditions with plugins like neogit
-        -- Skip auto-generation during git amend to preserve user intent
-        vim.api.nvim_create_autocmd("WinEnter", {
+        -- Auto-generation with stable timing detection for different Git tools
+        local auto_generate_attempted = false
+        local pending_timer = nil
+
+        local function should_attempt_auto_generate(bufnr)
+          -- Don't attempt if we already successfully generated for this buffer
+          if auto_generate_attempted then
+            return false
+          end
+
+          -- Ensure buffer is valid
+          if not vim.api.nvim_buf_is_valid(bufnr) then
+            return false
+          end
+
+          -- Check if buffer already has commit message
+          local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+          local has_message = false
+          for _, line in ipairs(lines) do
+            if not line:match("^%s*#") and vim.trim(line) ~= "" then
+              has_message = true
+              break
+            end
+          end
+
+          -- Skip if buffer already has content
+          if has_message then
+            return false
+          end
+
+          -- Skip auto-generation during git amend operation
+          local should_skip_amend = config.skip_auto_generate_on_amend and Git.is_amending()
+          if should_skip_amend then
+            return false
+          end
+
+          return true
+        end
+
+        local function schedule_auto_generate(bufnr)
+          -- Cancel any pending timer to avoid multiple generations
+          if pending_timer then
+            pending_timer:stop()
+            pending_timer = nil
+          end
+
+          -- Schedule generation with extended delay for stability
+          pending_timer = vim.defer_fn(function()
+            pending_timer = nil
+            if should_attempt_auto_generate(bufnr) then
+              auto_generate_attempted = true
+              Buffer._generate_and_insert_commit_message(bufnr)
+            end
+          end, config.auto_generate_delay + 300) -- Extra delay for window stability
+        end
+
+        -- Multiple event triggers to ensure compatibility with different Git tools
+        local autocmd_opts = {
           buffer = event.buf,
-          once = true,
-          callback = function(args)
-            -- Defer execution to ensure other plugins finish UI setup
-            vim.defer_fn(function()
-              if not vim.api.nvim_buf_is_valid(args.buf) then
-                return
-              end
-
-              -- Check if buffer already has commit message
-              local lines = vim.api.nvim_buf_get_lines(args.buf, 0, -1, false)
-              local has_message = false
-              for _, line in ipairs(lines) do
-                if not line:match("^%s*#") and vim.trim(line) ~= "" then
-                  has_message = true
-                  break
-                end
-              end
-
-              -- Skip auto-generation if:
-              -- 1. Buffer already has commit message
-              -- 2. In git amend operation (user may want to keep existing message)
-              local should_skip_amend = config.skip_auto_generate_on_amend and Git.is_amending()
-              if not has_message and not should_skip_amend then
-                Buffer._generate_and_insert_commit_message(args.buf)
-              end
-            end, config.auto_generate_delay)
-          end,
           desc = "Auto-generate GitCommit message",
-        })
+        }
+
+        -- Primary trigger: WinEnter (works with most tools)
+        vim.api.nvim_create_autocmd(
+          "WinEnter",
+          vim.tbl_extend("force", autocmd_opts, {
+            callback = function(args)
+              schedule_auto_generate(args.buf)
+            end,
+          })
+        )
+
+        -- Secondary trigger: BufWinEnter (works with Fugitive)
+        vim.api.nvim_create_autocmd(
+          "BufWinEnter",
+          vim.tbl_extend("force", autocmd_opts, {
+            once = true,
+            callback = function(args)
+              schedule_auto_generate(args.buf)
+            end,
+          })
+        )
+
+        -- Tertiary trigger: CursorMoved (fallback, with debouncing)
+        vim.api.nvim_create_autocmd(
+          "CursorMoved",
+          vim.tbl_extend("force", autocmd_opts, {
+            once = true,
+            callback = function(args)
+              schedule_auto_generate(args.buf)
+            end,
+          })
+        )
+
+        -- Cleanup timer when buffer is deleted or unloaded
+        vim.api.nvim_create_autocmd(
+          { "BufDelete", "BufUnload" },
+          vim.tbl_extend("force", autocmd_opts, {
+            callback = function()
+              if pending_timer then
+                pending_timer:stop()
+                pending_timer = nil
+              end
+            end,
+          })
+        )
       end
     end,
     desc = "Setup GitCommit AI assistant",
