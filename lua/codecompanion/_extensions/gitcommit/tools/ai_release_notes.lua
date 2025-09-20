@@ -60,8 +60,21 @@ Output styles:
 
 -- Helper function to get commit details with diffs
 local function get_detailed_commits(from_ref, to_ref)
-  -- Get commit log with full details
-  local range = from_ref .. ".." .. to_ref
+  -- Build the range correctly
+  -- We want commits AFTER from_ref up to and including to_ref
+  -- Use ^..to_ref to include commits after from_ref (not including from_ref itself)
+  local range
+
+  -- Check if from_ref looks like a relative reference (e.g., HEAD~10)
+  if from_ref:match("^HEAD[~^]") then
+    -- For relative refs, use as-is
+    range = from_ref .. ".." .. (to_ref or "HEAD")
+  else
+    -- For tags/commits, use ^ to get commits AFTER the from_ref
+    -- This ensures we don't include the from_ref commit itself in the release notes
+    range = from_ref .. "^.." .. (to_ref or "HEAD")
+  end
+
   local escaped_range = vim.fn.shellescape(range)
 
   -- Get commits with more details
@@ -73,6 +86,11 @@ local function get_detailed_commits(from_ref, to_ref)
     return nil, "Failed to get commit history"
   end
 
+  -- Handle empty output
+  if not output or vim.trim(output) == "" then
+    return {}, nil
+  end
+
   local commits = {}
   for line in output:gmatch("[^\r\n]+") do
     local parts = vim.split(line, "|")
@@ -81,9 +99,13 @@ local function get_detailed_commits(from_ref, to_ref)
       local subject = parts[2]
       local body = parts[3] ~= "" and parts[3] or nil
 
-      -- Get diff stats for this commit
-      local diff_cmd = string.format("git diff --stat %s~1 %s", hash, hash)
-      local _, diff_stats = pcall(vim.fn.system, diff_cmd)
+      -- Get diff stats for this commit (safely handle first commit)
+      local diff_stats = nil
+      local diff_cmd = string.format("git diff-tree --stat --root %s", hash)
+      local diff_success, stats_output = pcall(vim.fn.system, diff_cmd)
+      if diff_success and vim.v.shell_error == 0 then
+        diff_stats = stats_output
+      end
 
       -- Parse conventional commit type
       local commit_type, scope = subject:match("^(%w+)%((.-)%):")
@@ -100,7 +122,7 @@ local function get_detailed_commits(from_ref, to_ref)
         date = parts[6],
         type = commit_type,
         scope = scope,
-        diff_stats = vim.v.shell_error == 0 and diff_stats or nil,
+        diff_stats = diff_stats,
       })
     end
   end
@@ -230,24 +252,52 @@ AIReleaseNotes.cmds = {
 
     -- Get tags if not specified
     if not to_tag or not from_tag then
+      -- Try to get tags sorted by version
       local success, tags_output = pcall(vim.fn.system, "git tag --sort=-version:refname")
-      if success and vim.v.shell_error == 0 then
+      if success and vim.v.shell_error == 0 and tags_output and vim.trim(tags_output) ~= "" then
         local tags = {}
         for tag in tags_output:gmatch("[^\r\n]+") do
-          if tag ~= "" then
-            table.insert(tags, tag)
+          local trimmed = vim.trim(tag)
+          if trimmed ~= "" then
+            table.insert(tags, trimmed)
           end
         end
 
+        -- Set to_tag if not specified
         if not to_tag then
-          to_tag = tags[1] or "HEAD"
+          if #tags > 0 then
+            to_tag = tags[1]  -- Use latest tag
+          else
+            to_tag = "HEAD"  -- No tags, use HEAD
+          end
         end
-        if not from_tag and #tags > 1 then
-          from_tag = tags[2]
-        elseif not from_tag then
-          -- Get the first commit if no previous tag
-          local first_commit = vim.fn.system("git rev-list --max-parents=0 HEAD"):gsub("\n", "")
-          from_tag = first_commit:sub(1, 8)
+
+        -- Set from_tag if not specified
+        if not from_tag then
+          if #tags > 1 then
+            from_tag = tags[2]  -- Use previous tag
+          elseif #tags == 1 then
+            -- Only one tag, get first commit as starting point
+            local first_commit_cmd = "git rev-list --max-parents=0 HEAD"
+            local fc_success, first_commit_output = pcall(vim.fn.system, first_commit_cmd)
+            if fc_success and vim.v.shell_error == 0 then
+              from_tag = vim.trim(first_commit_output):sub(1, 8)
+            else
+              -- Fallback to 10 commits ago
+              from_tag = "HEAD~10"
+            end
+          else
+            -- No tags at all, use HEAD~10 as a reasonable default
+            from_tag = "HEAD~10"
+          end
+        end
+      else
+        -- No tags or git command failed
+        if not to_tag then
+          to_tag = "HEAD"
+        end
+        if not from_tag then
+          from_tag = "HEAD~10"  -- Default to last 10 commits
         end
       end
     end

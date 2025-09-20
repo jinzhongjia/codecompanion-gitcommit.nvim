@@ -779,7 +779,8 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   end
 
   -- Get commit range between tags
-  local range = from_tag .. ".." .. to_tag
+  -- Use ^.. to get commits AFTER from_tag (excluding from_tag itself)
+  local range = from_tag .. "^.." .. to_tag
   local escaped_range = vim.fn.shellescape(range)
   if not escaped_range or escaped_range == "" then
     local msg = "Failed to escape tag range: " .. range
