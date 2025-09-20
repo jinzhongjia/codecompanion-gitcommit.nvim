@@ -23,28 +23,33 @@ function GitTool.get_gitignore()
   local path = get_gitignore_path()
   if not path then
     local msg = ".gitignore not found (not in a git repo)"
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
     return false, msg, user_msg, llm_msg
   end
   local stat = vim.uv.fs_stat(path)
   if not stat then
     local msg = "" -- treat as empty if not exists
-    local user_msg = ".gitignore is empty"
+    local user_msg = "ℹ .gitignore file does not exist (repository has no ignore rules)"
     local llm_msg = "<gitIgnoreTool>success: .gitignore is empty</gitIgnoreTool>"
     return true, msg, user_msg, llm_msg
   end
   local fd = vim.uv.fs_open(path, "r", 438)
   if not fd then
     local msg = "Failed to open .gitignore for reading"
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitIgnoreTool>fail: " .. msg .. "</gitIgnoreTool>"
     return false, msg, user_msg, llm_msg
   end
   local data = vim.uv.fs_read(fd, stat.size, 0)
   vim.uv.fs_close(fd)
   local msg = data or ""
-  local user_msg = ".gitignore content:\n" .. (data or "(empty)")
+  -- Format the output nicely for users
+  if data and vim.trim(data) ~= "" then
+    user_msg = "✓ .gitignore content:\n\n```gitignore\n" .. data .. "\n```"
+  else
+    user_msg = "ℹ .gitignore exists but is empty"
+  end
   local llm_msg = "<gitIgnoreTool>success:\n" .. (data or "(empty)") .. "</gitIgnoreTool>"
   return true, msg, user_msg, llm_msg
 end
@@ -143,7 +148,7 @@ end
 function GitTool.is_ignored(file)
   if not file or file == "" then
     local msg = "No file specified"
-    local user_msg = msg
+    local user_msg = "✗ " .. msg .. " for .gitignore check"
     local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
     return false, msg, user_msg, llm_msg
   end
@@ -152,12 +157,12 @@ function GitTool.is_ignored(file)
   end)
   if not ok or vim.v.shell_error ~= 0 then
     local msg = "File is not ignored or not in a git repo"
-    local user_msg = msg
+    local user_msg = string.format("ℹ File '%s' is NOT ignored by .gitignore", file)
     local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
     return false, msg, user_msg, llm_msg
   end
   local trimmed = vim.trim(result)
-  local user_msg = string.format("File '%s' is ignored by .gitignore", file)
+  local user_msg = string.format("✓ File '%s' IS ignored by .gitignore", file)
   local llm_msg = string.format("<gitIgnoreCheckTool>success: %s is ignored</gitIgnoreCheckTool>", file)
   return true, trimmed, user_msg, llm_msg
 end
@@ -201,17 +206,26 @@ local function format_git_response(tool_name, success, output, empty_msg)
 
   if success then
     if output and vim.trim(output) ~= "" then
-      local msg = string.format("git %s tool execute successfully\n```\n%s\n```", tool_name, output)
-      user_msg = msg
-      llm_msg = string.format("<%s>%s</%s>", tag, msg, tag)
+      -- Format user message with better visual structure
+      local formatted_output = vim.trim(output)
+      -- Add icons and better formatting for user messages
+      local icon = "✓"
+      user_msg = string.format("%s Git %s executed successfully:\n\n```\n%s\n```", icon, tool_name, formatted_output)
+      -- Keep llm_msg simple and structured
+      llm_msg = string.format("<%s>success:\n%s</%s>", tag, formatted_output, tag)
     else
-      user_msg =
-        string.format("git %s tool execute successfully%s", tool_name, empty_msg and (" - " .. empty_msg) or "")
-      llm_msg = string.format("<%s>success%s</%s>", tag, empty_msg and (": " .. empty_msg) or "", tag)
+      -- Handle empty results with more descriptive messaging
+      local icon = "ℹ"
+      local empty_text = empty_msg or ("No " .. tool_name .. " data available")
+      user_msg = string.format("%s Git %s: %s", icon, tool_name, empty_text)
+      llm_msg = string.format("<%s>success: %s</%s>", tag, empty_text, tag)
     end
   else
-    user_msg = string.format("git %s tool execute failed: %s", tool_name, output or "unknown error")
-    llm_msg = string.format("<%s>fail: %s</%s>", tag, output or "unknown error", tag)
+    -- Format error messages clearly
+    local icon = "✗"
+    local error_text = output or "Unknown error occurred"
+    user_msg = string.format("%s Git %s failed:\n%s", icon, tool_name, error_text)
+    llm_msg = string.format("<%s>fail: %s</%s>", tag, error_text, tag)
   end
 
   return user_msg, llm_msg
@@ -730,7 +744,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   local success, tags_output = pcall(vim.fn.system, "git tag --sort=-version:refname")
   if not success or vim.v.shell_error ~= 0 then
     local msg = "Failed to get git tags: " .. (tags_output or "unknown error")
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
@@ -744,7 +758,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
   if #tags < 1 then
     local msg = "No tags found in repository"
-    local user_msg = msg
+    local user_msg = "ℹ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
@@ -757,7 +771,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   if not from_tag then
     if #tags < 2 then
       local msg = "Cannot generate release notes: only one tag found. Please specify from_tag parameter."
-      local user_msg = msg
+      local user_msg = "ℹ " .. msg
       local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
       return false, msg, user_msg, llm_msg
     end
@@ -769,7 +783,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   local escaped_range = vim.fn.shellescape(range)
   if not escaped_range or escaped_range == "" then
     local msg = "Failed to escape tag range: " .. range
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
@@ -783,7 +797,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       .. to_tag
       .. ": "
       .. (commits_output or "unknown error")
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
@@ -804,7 +818,7 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
 
   if #commits == 0 then
     local msg = "No commits found between " .. from_tag .. " and " .. to_tag
-    local user_msg = msg
+    local user_msg = "ℹ " .. msg
     local llm_msg = "<gitReleaseNotes>success: " .. msg .. "</gitReleaseNotes>"
     return true, msg, user_msg, llm_msg
   end
@@ -906,13 +920,29 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     release_notes = vim.fn.json_encode(json_data)
   else
     local msg = "Unsupported format: " .. format .. ". Supported formats: markdown, plain, json"
-    local user_msg = msg
+    local user_msg = "✗ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
 
-  user_msg = "Generated release notes for " .. from_tag .. " → " .. to_tag .. " (" .. #commits .. " commits)"
-  llm_msg = "<gitReleaseNotes>success: " .. user_msg .. "\n\n" .. release_notes .. "</gitReleaseNotes>"
+  -- Create formatted user message with the release notes
+  user_msg = string.format(
+    "✓ Generated release notes for %s → %s (%d commits)\n\n```%s\n%s\n```",
+    from_tag,
+    to_tag,
+    #commits,
+    format == "json" and "json" or format,
+    release_notes
+  )
+  llm_msg = "<gitReleaseNotes>success: "
+    .. from_tag
+    .. " → "
+    .. to_tag
+    .. " ("
+    .. #commits
+    .. " commits)\n\n"
+    .. release_notes
+    .. "</gitReleaseNotes>"
 
   return true, release_notes, user_msg, llm_msg
 end

@@ -103,6 +103,19 @@ local function setup_tools(opts)
     }
   end
 
+  -- Add AI Release Notes tool (always available if git_read is enabled)
+  if git_read_enabled then
+    local AIReleaseNotes = require("codecompanion._extensions.gitcommit.tools.ai_release_notes")
+    chat_tools["ai_release_notes"] = {
+      description = "Generate AI-powered release notes from commit history",
+      callback = AIReleaseNotes,
+      opts = {
+        auto_submit_errors = opts.git_tool_auto_submit_errors,
+        auto_submit_success = false, -- Don't auto-submit, let AI process the prompt
+      },
+    }
+  end
+
   if git_bot_enabled then
     chat_tools.groups = chat_tools.groups or {}
     chat_tools.groups["git_bot"] = {
@@ -141,6 +154,7 @@ When responding:
       tools = {
         "git_read",
         "git_edit",
+        "ai_release_notes",
       },
       opts = {
         collapse_tools = true,

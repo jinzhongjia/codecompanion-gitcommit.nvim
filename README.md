@@ -248,6 +248,29 @@ local success, notes = gitcommit.exports.git_tool.generate_release_notes()
 
 For detailed documentation, see: `:help codecompanion-gitcommit`
 
+## 🤖 AI-Powered Release Notes
+
+Generate comprehensive release notes using AI analysis of your commit history:
+
+```vim
+" In CodeCompanion chat buffer:
+@{ai_release_notes} style:detailed from_tag:0.0.13 to_tag:0.0.14
+```
+
+### Supported Styles
+
+- `detailed` - Comprehensive notes with technical details and migration guides
+- `concise` - Brief summary of key changes
+- `changelog` - Developer-focused changelog following Keep a Changelog format
+- `marketing` - User-friendly marketing release notes
+
+The AI will analyze your commits to:
+- Group changes by type (features, fixes, breaking changes)
+- Generate clear descriptions from commit messages
+- Credit contributors automatically
+- Provide migration instructions for breaking changes
+- Create appropriate formatting for your chosen style
+
 ## 🔒 Safety Features
 
 - **Read-only operations** (`@{git_read}`) require no confirmation
