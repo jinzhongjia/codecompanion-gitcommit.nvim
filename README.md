@@ -25,7 +25,7 @@ Add this extension to your CodeCompanion configuration:
 require("codecompanion").setup({
   extensions = {
     gitcommit = {
-      callback = "codecompanion._extensions.gitcommit",
+      callback = "codecompanion.extensions.gitcommit",
       opts = {
         -- Basic configuration
         adapter = "openai",                       -- LLM adapter

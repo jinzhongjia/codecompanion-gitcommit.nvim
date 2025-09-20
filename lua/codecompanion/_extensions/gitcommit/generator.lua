@@ -19,24 +19,50 @@ local CONSTANTS = {
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
 function Generator.setup(adapter, model)
-  _adapter = adapter or codecompanion_config.strategies.chat.adapter
-  _model = model or codecompanion_config.strategies.chat.model
+  -- Get the adapter configuration properly
+  local chat_config = codecompanion_config.strategies.chat
 
-  -- Validate adapter
-  if not codecompanion_adapter.resolve(_adapter) then
-    error("Invalid adapter specified: " .. tostring(_adapter))
+  -- Handle adapter as a table (with name and model) or string
+  if type(chat_config.adapter) == "table" then
+    _adapter = adapter or chat_config.adapter.name
+    _model = model or chat_config.adapter.model or chat_config.model
+  else
+    _adapter = adapter or chat_config.adapter
+    _model = model or chat_config.model
   end
 end
 ---@param commit_history? string[] Array of recent commit messages for context (optional)
 function Generator.generate_commit_message(diff, lang, commit_history, callback)
-  -- Setup adapter
-  local adapter = codecompanion_adapter.resolve(_adapter)
-  if not adapter then
-    return callback(nil, "Failed to resolve adapter")
+  -- Setup adapter with proper resolution
+  local adapter
+  local success, result = pcall(function()
+    return codecompanion_adapter.resolve({
+      name = _adapter,
+      model = _model,
+    })
+  end)
+
+  if not success then
+    -- Fallback to simple resolve
+    adapter = codecompanion_adapter.resolve(_adapter)
+  else
+    adapter = result
   end
 
+  if not adapter then
+    return callback(nil, "Failed to resolve adapter: " .. tostring(_adapter))
+  end
+
+  -- Configure adapter for non-streaming
+  adapter.opts = adapter.opts or {}
   adapter.opts.stream = false
-  adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, { model = _model }))
+
+  -- Map schema with model override if specified
+  local schema_opts = {}
+  if _model then
+    schema_opts.model = _model
+  end
+  adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, schema_opts))
 
   -- Create HTTP client
   local new_client = codecompanion_client.new({
