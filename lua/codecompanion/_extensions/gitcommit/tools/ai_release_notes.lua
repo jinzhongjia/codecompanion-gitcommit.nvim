@@ -78,8 +78,13 @@ local function get_detailed_commits(from_ref, to_ref)
   local escaped_range = vim.fn.shellescape(range)
 
   -- Get commits with more details
-  local commit_cmd =
-    string.format("git log --pretty=format:'%%H|%%s|%%b|%%an|%%ae|%%ad' --date=short %s", escaped_range)
+  -- Use git log with a separator to handle multi-line bodies correctly
+  local separator = "---COMMIT_SEPARATOR---"
+  local commit_cmd = string.format(
+    "git log --pretty=format:'%%H||%%s||%%an||%%ae||%%ad||%%b%s' --date=short %s",
+    separator,
+    escaped_range
+  )
 
   local success, output = pcall(vim.fn.system, commit_cmd)
   if not success or vim.v.shell_error ~= 0 then
@@ -92,38 +97,83 @@ local function get_detailed_commits(from_ref, to_ref)
   end
 
   local commits = {}
-  for line in output:gmatch("[^\r\n]+") do
-    local parts = vim.split(line, "|")
-    if #parts >= 6 then
-      local hash = parts[1]
-      local subject = parts[2]
-      local body = parts[3] ~= "" and parts[3] or nil
+  -- Split by separator to get individual commits
+  local commit_entries = vim.split(output, separator, { plain = true })
 
-      -- Get diff stats for this commit (safely handle first commit)
-      local diff_stats = nil
-      local diff_cmd = string.format("git diff-tree --stat --root %s", hash)
-      local diff_success, stats_output = pcall(vim.fn.system, diff_cmd)
-      if diff_success and vim.v.shell_error == 0 then
-        diff_stats = stats_output
+  for _, entry in ipairs(commit_entries) do
+    if entry and vim.trim(entry) ~= "" then
+      -- Find the first non-empty line with commit info
+      local lines = vim.split(entry, "\n")
+      local commit_line = nil
+      local body_start_idx = 1
+
+      -- Find the line with the commit info (has || separators)
+      for i, line in ipairs(lines) do
+        if line:match("||") then
+          commit_line = line
+          body_start_idx = i + 1
+          break
+        end
       end
 
-      -- Parse conventional commit type
-      local commit_type, scope = subject:match("^(%w+)%((.-)%):")
-      if not commit_type then
-        commit_type = subject:match("^(%w+):")
-      end
+      if commit_line then
+        local parts = vim.split(commit_line, "||", { plain = true })
 
-      table.insert(commits, {
-        hash = hash,
-        subject = subject,
-        body = body,
-        author = parts[4],
-        email = parts[5],
-        date = parts[6],
-        type = commit_type,
-        scope = scope,
-        diff_stats = diff_stats,
-      })
+        if #parts >= 5 then
+          local hash = vim.trim(parts[1] or "")
+          local subject = vim.trim(parts[2] or "")
+          local author = vim.trim(parts[3] or "")
+          local email = vim.trim(parts[4] or "")
+          local date = vim.trim(parts[5] or "")
+
+          -- Handle body (can be in part 6 or in following lines)
+          local body = nil
+          local body_lines = {}
+
+          -- Check if body is in the 6th part
+          if #parts > 5 and vim.trim(parts[6]) ~= "" then
+            table.insert(body_lines, vim.trim(parts[6]))
+          end
+
+          -- Add any additional lines as body
+          for i = body_start_idx, #lines do
+            local line = vim.trim(lines[i])
+            if line ~= "" then
+              table.insert(body_lines, line)
+            end
+          end
+
+          if #body_lines > 0 then
+            body = table.concat(body_lines, "\n")
+          end
+
+          -- Get diff stats for this commit (safely handle first commit)
+          local diff_stats = nil
+          local diff_cmd = string.format("git diff-tree --stat --root %s", hash)
+          local diff_success, stats_output = pcall(vim.fn.system, diff_cmd)
+          if diff_success and vim.v.shell_error == 0 then
+            diff_stats = stats_output
+          end
+
+          -- Parse conventional commit type
+          local commit_type, scope = subject:match("^(%w+)%((.-)%):")
+          if not commit_type then
+            commit_type = subject:match("^(%w+):")
+          end
+
+          table.insert(commits, {
+            hash = hash,
+            subject = subject,
+            body = body,
+            author = author,
+            email = email,
+            date = date,
+            type = commit_type,
+            scope = scope,
+            diff_stats = diff_stats,
+          })
+        end
+      end
     end
   end
 
