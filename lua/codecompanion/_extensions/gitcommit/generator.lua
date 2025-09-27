@@ -19,18 +19,10 @@ local CONSTANTS = {
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
 function Generator.setup(adapter, model)
-  -- Get the adapter configuration properly
-  local chat_config = codecompanion_config.strategies.chat
-
-  -- Handle adapter as a table (with name and model) or string
-  if type(chat_config.adapter) == "table" then
-    _adapter = adapter or chat_config.adapter.name
-    _model = model or chat_config.adapter.model or chat_config.model
-  else
-    _adapter = adapter or chat_config.adapter
-    _model = model or chat_config.model
-  end
+  _adapter = adapter
+  _model = model
 end
+
 ---@param commit_history? string[] Array of recent commit messages for context (optional)
 function Generator.generate_commit_message(diff, lang, commit_history, callback)
   -- Setup adapter with proper resolution
