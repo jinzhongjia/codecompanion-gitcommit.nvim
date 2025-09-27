@@ -163,15 +163,20 @@ When responding:
   end
 end
 
-local function create_command(name, callback, desc)
-  vim.api.nvim_create_user_command(name, callback, { desc = desc })
+local function setup_commands()
+  vim.api.nvim_create_user_command(
+    "CodeCompanionGitCommit",
+    M.generate_commit_message,
+    { desc = "Generate Git commit message using AI" }
+  )
+  vim.api.nvim_create_user_command(
+    "CCGitCommit",
+    M.generate_commit_message,
+    { desc = "Generate Git commit message using AI (short alias)" }
+  )
 end
 
-local function setup_commands(opts)
-  create_command("CodeCompanionGitCommit", M.generate_commit_message, "Generate Git commit message using AI")
-  create_command("CCGitCommit", M.generate_commit_message, "Generate Git commit message using AI (short alias)")
-end
-
+-- NOTE: Is this is ok??
 local function setup_slash_commands(opts)
   if not opts.add_slash_command then
     return
@@ -308,7 +313,9 @@ local function setup_slash_commands(opts)
   }
 end
 
-return {
+return
+--- @class CodeCompanion.Extension
+{
   --- @param opts CodeCompanion.GitCommit.ExtensionOpts
   setup = function(opts)
     opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
@@ -323,7 +330,7 @@ return {
     Langs.setup(opts.languages)
 
     setup_tools(opts)
-    setup_commands(opts)
+    setup_commands()
     setup_slash_commands(opts)
   end,
 
