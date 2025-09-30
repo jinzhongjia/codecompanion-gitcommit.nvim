@@ -73,7 +73,8 @@ local function send_http_request(client, adapter, payload, callback)
     on_done = function()
       if not has_error then
         if accumulated ~= "" then
-          callback(vim.trim(accumulated), nil)
+          local cleaned = Generator._clean_commit_message(accumulated)
+          callback(cleaned, nil)
         else
           callback(nil, "Generated content is empty")
         end
@@ -116,7 +117,8 @@ local function send_acp_request(client, adapter, messages, callback)
     :on_complete(function(stop_reason)
       if not has_error and accumulated ~= "" then
         -- ACP responses are plain text, wrap in expected format
-        callback(vim.trim(accumulated), nil)
+        local cleaned = Generator._clean_commit_message(accumulated)
+        callback(cleaned, nil)
       elseif not has_error then
         callback(nil, "ACP returned empty response")
       end
@@ -126,6 +128,24 @@ local function send_acp_request(client, adapter, messages, callback)
       callback(nil, "ACP error: " .. vim.inspect(error))
     end)
     :send()
+end
+
+---Clean commit message by removing markdown code blocks and extra formatting
+---@param message string Raw message from LLM
+---@return string cleaned_message The cleaned commit message
+function Generator._clean_commit_message(message)
+  local cleaned = vim.trim(message)
+
+  -- Remove markdown code blocks (```...``` or ````...````)
+  -- Match opening code fence with optional language identifier
+  cleaned = cleaned:gsub("^```+%w*\n", "")
+  -- Match closing code fence
+  cleaned = cleaned:gsub("\n```+$", "")
+
+  -- Trim again after removing code blocks
+  cleaned = vim.trim(cleaned)
+
+  return cleaned
 end
 
 ---@param commit_history? string[] Array of recent commit messages for context (optional)
@@ -213,35 +233,26 @@ CRITICAL FORMAT REQUIREMENTS:
 1. MUST generate exactly ONE commit message, never multiple messages
 2. MUST include a title line and at least one bullet point description
 3. MUST analyze ALL changes in the diff as a single logical unit
-4. MUST respond with ONLY the commit message, no explanations or extra text
+4. MUST respond with ONLY the commit message, no explanations, markdown code blocks, or extra text
+5. DO NOT wrap the output in markdown code blocks (```) or any other formatting
 
 MANDATORY FORMAT:
 type(scope): brief description
 
-- detailed description point 1
-- detailed description point 2 (if needed)
-- detailed description point 3 (if needed)
 
 Types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
 RULES:
-- Title: Use imperative mood ("add" not "added"), keep under 50 characters
-- Body: At least ONE bullet point describing the changes
-- For large diffs: Focus on the most significant changes, group related changes
+ - Output the commit message directly without any markdown formatting or code blocks
  - If commit history is provided, follow the established patterns and style from recent commits
 
 REQUIRED EXAMPLES:
 feat(auth): add OAuth2 integration
 
-- implement Google OAuth provider
-- update user authentication flow
-- add integration tests
 
 fix(api): resolve data validation issues
 
-- fix null pointer exceptions in user data
-- improve input validation for API endpoints
 
 Generate ONE complete commit message for this diff:
 ```diff

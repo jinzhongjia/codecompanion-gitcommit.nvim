@@ -48,10 +48,24 @@ function Buffer.setup(opts)
             return false
           end
 
-          -- Check if buffer already has commit message
           local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+          -- Find the verbose diff separator line (git commit --verbose adds this)
+          -- Format: "# ------------------------ >8 ------------------------"
+          local verbose_separator_line = nil
+          for i, line in ipairs(lines) do
+            if line:match("^#.*%-%-%-+%s*>8%s*%-%-%-+") then
+              verbose_separator_line = i
+              break
+            end
+          end
+
+          -- Check if buffer already has commit message
+          -- Only check lines before the verbose separator (if present)
+          local check_end = verbose_separator_line or #lines
           local has_message = false
-          for _, line in ipairs(lines) do
+          for i = 1, check_end do
+            local line = lines[i]
             if not line:match("^%s*#") and vim.trim(line) ~= "" then
               has_message = true
               break
@@ -199,9 +213,6 @@ function Buffer._generate_and_insert_commit_message(bufnr)
   end)
 end
 
----Insert commit message into gitcommit buffer
----@param bufnr number Buffer number
----@param message string Commit message to insert
 function Buffer._insert_commit_message(bufnr, message)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     vim.notify("Buffer is no longer valid", vim.log.levels.ERROR)
@@ -211,16 +222,23 @@ function Buffer._insert_commit_message(bufnr, message)
   -- Get current buffer content
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-  -- Find first line that doesn't start with # (comment)
-  -- This is where we'll insert commit message
-  local insert_line = 0
+  -- Find verbose diff separator (git commit --verbose)
+  local verbose_separator_line = nil
   for i, line in ipairs(lines) do
-    if not line:match("^%s*#") and vim.trim(line) == "" then
-      insert_line = i - 1
+    if line:match("^#.*%-%-%-+%s*>8%s*%-%-%-+") then
+      verbose_separator_line = i
       break
-    elseif not line:match("^%s*#") and vim.trim(line) ~= "" then
-      -- Found non-comment, non-empty line, insert before
-      insert_line = i - 1
+    end
+  end
+
+  -- Find first comment line (or verbose separator if present)
+  -- This is where we'll insert commit message
+  local first_comment_line = nil
+  local check_end = verbose_separator_line or #lines
+  for i = 1, check_end do
+    local line = lines[i]
+    if line:match("^%s*#") then
+      first_comment_line = i
       break
     end
   end
@@ -228,28 +246,9 @@ function Buffer._insert_commit_message(bufnr, message)
   -- Split message into lines
   local message_lines = vim.split(message, "\n")
 
-  -- Remove existing commit message if present
-  local first_comment_line = nil
-  for i, line in ipairs(lines) do
-    if line:match("^%s*#") then
-      first_comment_line = i - 1
-      break
-    end
-  end
-
   if first_comment_line then
-    -- Remove non-comment lines before first comment
-    local non_comment_lines = {}
-    for i = 1, first_comment_line do
-      if not lines[i]:match("^%s*#") and vim.trim(lines[i]) ~= "" then
-        -- This is non-comment line, might be existing commit message
-      else
-        table.insert(non_comment_lines, lines[i])
-      end
-    end
-
-    -- Clear buffer and insert new content
-    vim.api.nvim_buf_set_lines(bufnr, 0, first_comment_line, false, {})
+    -- Remove any existing commit message (non-comment lines before first comment)
+    vim.api.nvim_buf_set_lines(bufnr, 0, first_comment_line - 1, false, {})
   end
 
   -- Insert new commit message at beginning
