@@ -231,29 +231,38 @@ function Generator._create_prompt(diff, lang, commit_history)
 
 CRITICAL FORMAT REQUIREMENTS:
 1. MUST generate exactly ONE commit message, never multiple messages
-2. MUST include a title line and at least one bullet point description
+2. MUST include a title line, followed by a blank line, then bullet point descriptions
 3. MUST analyze ALL changes in the diff as a single logical unit
 4. MUST respond with ONLY the commit message, no explanations, markdown code blocks, or extra text
 5. DO NOT wrap the output in markdown code blocks (```) or any other formatting
 
 MANDATORY FORMAT:
 type(scope): brief description
+<blank line>
+- description point 1
+- description point 2
+- description point 3
 
-
-Types: feat, fix, docs, style, refactor, perf, test, chore
+Allowed types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
 RULES:
  - Output the commit message directly without any markdown formatting or code blocks
+ - The title (first line) must be followed by ONE blank line before the descriptions
+ - Each description point must start with a dash (-)
  - If commit history is provided, follow the established patterns and style from recent commits
 
 REQUIRED EXAMPLES:
 feat(auth): add OAuth2 integration
 
-
+- Implement OAuth2 authentication flow
+- Add token refresh mechanism
+- Update user session handling
 fix(api): resolve data validation issues
 
-
+- Fix null pointer exception in validator
+- Add input sanitization
+- Improve error messages
 Generate ONE complete commit message for this diff:
 ```diff
 %s
