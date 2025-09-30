@@ -316,16 +316,16 @@ AIReleaseNotes.cmds = {
         -- Set to_tag if not specified
         if not to_tag then
           if #tags > 0 then
-            to_tag = tags[1]  -- Use latest tag
+            to_tag = tags[1] -- Use latest tag
           else
-            to_tag = "HEAD"  -- No tags, use HEAD
+            to_tag = "HEAD" -- No tags, use HEAD
           end
         end
 
         -- Set from_tag if not specified
         if not from_tag then
           if #tags > 1 then
-            from_tag = tags[2]  -- Use previous tag
+            from_tag = tags[2] -- Use previous tag
           elseif #tags == 1 then
             -- Only one tag, get first commit as starting point
             local first_commit_cmd = "git rev-list --max-parents=0 HEAD"
@@ -347,7 +347,7 @@ AIReleaseNotes.cmds = {
           to_tag = "HEAD"
         end
         if not from_tag then
-          from_tag = "HEAD~10"  -- Default to last 10 commits
+          from_tag = "HEAD~10" -- Default to last 10 commits
         end
       end
     end
