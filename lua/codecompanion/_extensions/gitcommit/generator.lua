@@ -1,15 +1,13 @@
-local codecompanion_client = require("codecompanion.http")
-local codecompanion_config = require("codecompanion.config")
 local codecompanion_adapter = require("codecompanion.adapters")
 local codecompanion_schema = require("codecompanion.schema")
 
 ---@class CodeCompanion.GitCommit.Generator
 local Generator = {}
 
---- @type string?
-local _adapter = nil
---- @type string?
-local _model = nil
+--- @type string? Adapter name
+local _adapter_name = nil
+--- @type string? Model name
+local _model_name = nil
 
 local CONSTANTS = {
   STATUS_ERROR = "error",
@@ -19,65 +17,178 @@ local CONSTANTS = {
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
 function Generator.setup(adapter, model)
-  _adapter = adapter
-  _model = model
+  _adapter_name = adapter
+  _model_name = model
+end
+
+---Create a client for both HTTP and ACP adapters
+---@param adapter table The resolved adapter
+---@return table|nil client The client instance
+---@return string|nil error Error message if failed
+local function create_client(adapter)
+  if not adapter or not adapter.type then
+    return nil, "Invalid adapter: missing type field"
+  end
+
+  if adapter.type == "http" then
+    local HTTPClient = require("codecompanion.http")
+    return HTTPClient.new({ adapter = adapter }), nil
+  elseif adapter.type == "acp" then
+    local ACPClient = require("codecompanion.acp")
+    local client = ACPClient.new({ adapter = adapter })
+    local ok = client:connect_and_initialize()
+    if not ok then
+      return nil, "Failed to connect and initialize ACP client"
+    end
+    return client, nil
+  else
+    return nil, "Unknown adapter type: " .. tostring(adapter.type)
+  end
+end
+
+---Send request using HTTP client
+---@param client table HTTP client
+---@param adapter table Adapter instance
+---@param payload table Request payload
+---@param callback function Callback function
+local function send_http_request(client, adapter, payload, callback)
+  local accumulated = ""
+  local has_error = false
+
+  -- Use async send to properly handle streaming responses
+  client:send(payload, {
+    stream = true,
+    on_chunk = function(chunk)
+      if chunk and chunk ~= "" then
+        -- Use adapter's chat_output handler to process the chunk
+        local result = adapter.handlers.chat_output(adapter, chunk)
+        if result and result.status == CONSTANTS.STATUS_SUCCESS then
+          local content = result.output and result.output.content
+          if content and content ~= "" then
+            accumulated = accumulated .. content
+          end
+        end
+      end
+    end,
+    on_done = function()
+      if not has_error then
+        if accumulated ~= "" then
+          callback(vim.trim(accumulated), nil)
+        else
+          callback(nil, "Generated content is empty")
+        end
+      end
+    end,
+    on_error = function(err)
+      has_error = true
+      local error_msg = "HTTP request failed: " .. (err.message or vim.inspect(err))
+      callback(nil, error_msg)
+    end,
+  })
+end
+
+---Send request using ACP client
+---@param client table ACP client
+---@param adapter table Adapter instance
+---@param messages table Array of messages
+---@param callback function Callback function
+local function send_acp_request(client, adapter, messages, callback)
+  local accumulated = ""
+  local has_error = false
+
+  -- ACP expects messages to have _meta field
+  -- Add it to make messages compatible with form_messages
+  local formatted_messages = vim.tbl_map(function(msg)
+    return vim.tbl_extend("force", msg, {
+      _meta = {
+        visible = true,
+      },
+    })
+  end, messages)
+
+  client
+    :session_prompt(formatted_messages)
+    :on_message_chunk(function(chunk)
+      if chunk and chunk ~= "" then
+        accumulated = accumulated .. chunk
+      end
+    end)
+    :on_complete(function(stop_reason)
+      if not has_error and accumulated ~= "" then
+        -- ACP responses are plain text, wrap in expected format
+        callback(vim.trim(accumulated), nil)
+      elseif not has_error then
+        callback(nil, "ACP returned empty response")
+      end
+    end)
+    :on_error(function(error)
+      has_error = true
+      callback(nil, "ACP error: " .. vim.inspect(error))
+    end)
+    :send()
 end
 
 ---@param commit_history? string[] Array of recent commit messages for context (optional)
 function Generator.generate_commit_message(diff, lang, commit_history, callback)
-  -- Setup adapter with proper resolution
-  local adapter
-  local success, result = pcall(function()
-    return codecompanion_adapter.resolve({
-      name = _adapter,
-      model = _model,
-    })
-  end)
-
-  if not success then
-    -- Fallback to simple resolve
-    adapter = codecompanion_adapter.resolve(_adapter)
-  else
-    adapter = result
-  end
-
-  if not adapter then
-    return callback(nil, "Failed to resolve adapter: " .. tostring(_adapter))
-  end
-
-  -- Configure adapter for non-streaming
-  adapter.opts = adapter.opts or {}
-  adapter.opts.stream = false
-
-  -- Map schema with model override if specified
-  local schema_opts = {}
-  if _model then
-    schema_opts.model = _model
-  end
-  adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, schema_opts))
-
-  -- Create HTTP client
-  local new_client = codecompanion_client.new({
-    adapter = adapter,
+  -- 1. Resolve adapter
+  local adapter = codecompanion_adapter.resolve(_adapter_name, {
+    model = _model_name,
   })
+  if not adapter then
+    return callback(nil, "Failed to resolve adapter: " .. tostring(_adapter_name))
+  end
 
-  -- Create prompt for LLM
+  -- Validate adapter type
+  if not adapter.type or (adapter.type ~= "http" and adapter.type ~= "acp") then
+    return callback(nil, "Invalid or unsupported adapter type: " .. tostring(adapter.type))
+  end
+
+  -- 2. Create prompt
   local prompt = Generator._create_prompt(diff, lang, commit_history)
 
-  local payload = {
-    messages = adapter:map_roles({
-      { role = "user", content = prompt },
-    }),
+  -- 3. Prepare messages
+  local messages = {
+    { role = "user", content = prompt },
   }
 
-  -- Send request to LLM
-  new_client:request(payload, {
-    callback = function(err, data, adapter)
-      Generator._handle_response(err, data, adapter, callback)
-    end,
-  }, {
-    silent = true,
-  })
+  -- 4. Handle HTTP and ACP adapters differently
+  if adapter.type == "http" then
+    -- Map schema for HTTP adapter
+    local schema_opts = {}
+    if _model_name then
+      schema_opts.model = _model_name
+    end
+    adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, schema_opts))
+
+    -- Create client AFTER mapping schema
+    -- This is important because HTTPClient.request() does vim.deepcopy(self.adapter)
+    local client, err = create_client(adapter)
+    if not client then
+      return callback(nil, err)
+    end
+
+    -- Prepare HTTP payload
+    local payload = {
+      messages = adapter:map_roles(messages),
+    }
+
+    send_http_request(client, adapter, payload, callback)
+  elseif adapter.type == "acp" then
+    -- Create ACP client
+    local client, err = create_client(adapter)
+    if not client then
+      return callback(nil, err)
+    end
+
+    -- ACP doesn't need schema mapping for simple prompts
+    send_acp_request(client, adapter, messages, function(result, error)
+      -- Disconnect after request completes
+      pcall(function()
+        client:disconnect()
+      end)
+      callback(result, error)
+    end)
+  end
 end
 
 ---Create prompt for commit message generation
@@ -142,44 +253,6 @@ Return ONLY the commit message in the exact format shown above.]],
     lang or "English",
     diff
   )
-end
-
----Handle LLM response
----@param err table|nil Request error
----@param data table|nil Response data
----@param adapter table The adapter used
----@param callback fun(result: string|nil, error: string|nil) Callback function
-function Generator._handle_response(err, data, adapter, callback)
-  -- Handle request errors
-  if err then
-    local error_msg = "Error generating commit message: " .. (err.stderr or err.message or "Unknown error")
-    return callback(nil, error_msg)
-  end
-
-  -- Check for empty/invalid data
-  if not data then
-    return callback(nil, "No response received from LLM")
-  end
-
-  -- Process response
-  if data then
-    local result = adapter.handlers.chat_output(adapter, data)
-    if result and result.status then
-      if result.status == CONSTANTS.STATUS_SUCCESS then
-        local content = result.output and result.output.content
-        if content and vim.trim(content) ~= "" then
-          return callback(vim.trim(content), nil)
-        else
-          return callback(nil, "Generated content is empty")
-        end
-      elseif result.status == CONSTANTS.STATUS_ERROR then
-        local error_msg = result.output or "Unknown error occurred"
-        return callback(nil, error_msg)
-      end
-    end
-  end
-
-  return callback(nil, "No valid response received")
 end
 
 return Generator
