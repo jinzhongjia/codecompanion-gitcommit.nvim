@@ -248,6 +248,29 @@ local success, notes = gitcommit.exports.git_tool.generate_release_notes()
 
 详细文档请查看：`:help codecompanion-gitcommit`
 
+## 🤖 AI 驱动的发布说明
+
+使用 AI 分析提交历史来生成全面的发布说明：
+
+```vim
+" 在 CodeCompanion 聊天缓冲区中：
+@{ai_release_notes} style:detailed from_tag:0.0.13 to_tag:0.0.14
+```
+
+### 支持的风格
+
+- `detailed` - 包含技术细节和迁移指南的全面说明
+- `concise` - 主要变化的简要摘要
+- `changelog` - 遵循 Keep a Changelog 格式的面向开发者的变更日志
+- `marketing` - 用户友好的营销发布说明
+
+AI 将分析你的提交以：
+- 按类型分组更改（功能、修复、破坏性变更）
+- 从提交信息生成清晰的描述
+- 自动归功于贡献者
+- 为破坏性变更提供迁移说明
+- 为你选择的风格创建适当的格式
+
 ## 🔒 安全特性
 
 - **只读操作**（`@{git_read}`）无需确认
