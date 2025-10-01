@@ -1,4 +1,4 @@
-*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Jul 25
+*codecompanion-gitcommit.txt*	For Neovim >= 0.8.0	Last change: 2025 Sep 30
 
 CODECOMPANION GITCOMMIT EXTENSION			*codecompanion-gitcommit*
 
@@ -18,9 +18,10 @@ CONTENTS						*codecompanion-gitcommit-contents*
 4. Usage					|codecompanion-gitcommit-usage|
 5. Commands					|codecompanion-gitcommit-commands|
 6. Git Tools					|codecompanion-gitcommit-git-tools|
-7. Configuration				|codecompanion-gitcommit-config|
-8. Programmatic API				|codecompanion-gitcommit-api|
-9. License					|codecompanion-gitcommit-license|
+7. AI Release Notes				|codecompanion-gitcommit-ai-release-notes|
+8. Configuration				|codecompanion-gitcommit-config|
+9. Programmatic API				|codecompanion-gitcommit-api|
+10. License					|codecompanion-gitcommit-license|
 
 ==============================================================================
 1. INTRODUCTION					*codecompanion-gitcommit-intro*
@@ -31,10 +32,10 @@ Conventional Commits specification. It integrates seamlessly with
 CodeCompanion's LLM adapters to analyze your staged changes and create
 appropriate commit messages.
 
-The extension provides comprehensive Git operations through @{git_read} (16
-operations), @{git_edit} (17 operations), and @{git_bot} tools, offering a
-natural language interface for Git workflow management within CodeCompanion
-chat buffers.
+The extension provides comprehensive Git operations through @{git_read} (16 read
+operations), @{git_edit} (17 write operations), @{ai_release_notes} (AI-powered
+release notes generation), and @{git_bot} tools, offering a natural language
+interface for Git workflow management within CodeCompanion chat buffers.
 
 ==============================================================================
 2. FEATURES					*codecompanion-gitcommit-features*
@@ -50,6 +51,7 @@ chat buffers.
 🛠️ Git Tool Integration
 • @{git_read} tool - 16 read-only Git operations (status, log, diff, release notes, etc.)
 • @{git_edit} tool - 17 write-access Git operations (stage, commit, push, etc.)
+• @{ai_release_notes} tool - AI-powered release notes generation with multiple styles
 • @{git_bot} tool - Comprehensive Git assistant combining all operations
 • Natural language interface for Git workflow control
 • Async operations with proper error handling
@@ -143,7 +145,8 @@ Use Git tools in CodeCompanion chat: >
 	/gitcommit                          # Generate commit message
 	@{git_edit} commit --commit_message "feat(api): add feature"  # Commit
 	@{git_edit} push --remote "origin" --branch "main"      # Push
-	@{git_read} generate_release_notes                      # Generate release notes
+	@{git_read} generate_release_notes    # Generate release notes
+	@{ai_release_notes} style:detailed from_tag:v1.0.0 to_tag:v1.1.0  # AI-powered release notes
 <
 
 ==============================================================================
@@ -199,12 +202,18 @@ Git bot (@{git_bot}):				*git_bot*
 Comprehensive Git assistant that combines read and write operations to provide
 intelligent Git workflow assistance.
 
+Available tools:
+• git_read - All read-only operations
+• git_edit - All write operations  
+• ai_release_notes - AI-powered release notes generation
+
 Examples: >
 	@{git_read} status
 	@{git_read} log --count 5
 	@{git_edit} stage --files ["src/main.lua"]
 	@{git_edit} create_branch --branch_name "feature/new"
 	@{git_edit} commit --commit_message "feat(api): add new feature"
+	@{ai_release_notes} style:detailed from_tag:v1.0.0 to_tag:v1.1.0
 	@{git_bot} Please help me create a new branch and commit current changes
 <
 
@@ -235,7 +244,87 @@ Safety features:
 • Comprehensive error handling
 
 ==============================================================================
-7. CONFIGURATION				*codecompanion-gitcommit-config*
+7. AI RELEASE NOTES			*codecompanion-gitcommit-ai-release-notes*
+
+The @{ai_release_notes} tool uses AI to generate comprehensive release notes
+by analyzing commit history and generating well-formatted, user-friendly
+release notes in various styles.
+
+Usage: >
+	@{ai_release_notes} style:detailed
+	@{ai_release_notes} from_tag:v1.0.0 to_tag:v1.1.0
+	@{ai_release_notes} style:concise include_stats:true
+<
+
+Parameters:					*ai-release-notes-parameters*
+
+*from_tag*					Type: string (optional)
+	Starting tag/version. If not provided, uses the second latest tag.
+	Can be a tag name (e.g., "v1.0.0") or commit hash.
+
+*to_tag*					Type: string (optional)
+	Ending tag/version. If not provided, uses the latest tag or HEAD.
+	Can be a tag name (e.g., "v1.1.0") or "HEAD".
+
+*style*						Type: string (default: "detailed")
+	Style of release notes to generate. Available styles:
+	• detailed - Comprehensive notes with technical details and migration guides
+	• concise - Brief summary of key changes
+	• changelog - Developer-focused changelog following Keep a Changelog format
+	• marketing - User-friendly marketing release notes
+
+*include_stats*					Type: boolean (default: true)
+	Include statistics about changes (number of commits, features, fixes, etc.)
+
+*group_by_type*					Type: boolean (default: true)
+	Group commits by conventional commit types (feat, fix, docs, etc.)
+
+Features:					*ai-release-notes-features*
+• Automatic tag detection (uses latest and second-latest if not specified)
+• Support for Conventional Commits specification
+• Smart commit categorization (features, fixes, breaking changes)
+• Multiple output styles for different audiences
+• Contributors listing with commit counts
+• Detailed commit analysis including diffs and statistics
+• AI-powered descriptions and summaries
+
+Examples: >
+	" Generate detailed release notes between latest two tags
+	@{ai_release_notes} style:detailed
+	
+	" Generate concise marketing release notes
+	@{ai_release_notes} style:marketing from_tag:v1.0.0 to_tag:v1.1.0
+	
+	" Generate changelog with statistics
+	@{ai_release_notes} style:changelog include_stats:true
+	
+	" Generate notes from specific tag to HEAD
+	@{ai_release_notes} from_tag:v1.5.0 to_tag:HEAD
+<
+
+Style Examples:					*ai-release-notes-styles*
+
+Detailed Style:
+	Best for: Technical documentation and comprehensive release notes
+	Includes: Full feature descriptions, technical details, migration guides,
+	breaking changes, contributor acknowledgments
+
+Concise Style:
+	Best for: Quick summaries and changelogs
+	Includes: One-line summaries of key changes, minimal technical details
+
+Changelog Style:
+	Best for: Developer-focused documentation
+	Includes: Conventional commit grouping, technical descriptions,
+	commit references, upgrade instructions
+
+Marketing Style:
+	Best for: User-facing release announcements
+	Includes: Exciting feature descriptions, user benefits,
+	non-technical language, emphasis on value
+
+==============================================================================
+8. CONFIGURATION				*codecompanion-gitcommit-config*
 
 *adapter*					Type: string
 	The LLM adapter to use. If not specified, defaults to the adapter
@@ -311,7 +400,7 @@ Buffer configuration:
 	is enabled.
 
 ==============================================================================
-8. PROGRAMMATIC API				*codecompanion-gitcommit-api*
+9. PROGRAMMATIC API				*codecompanion-gitcommit-api*
 
 The extension provides a programmatic API for external integrations:
 
@@ -340,6 +429,14 @@ The extension provides a programmatic API for external integrations:
 	stage, unstage, create_branch, checkout, stash operations, reset,
 	contributors, search_commits, merge, and more.
 
+*gitcommit.exports.git_tool.generate_release_notes(from_tag, to_tag, format)*
+	Generate release notes between tags
+	Parameters:
+	• from_tag (string|nil): Starting tag (optional)
+	• to_tag (string|nil): Ending tag (optional)
+	• format (string|nil): Format (markdown, plain, json) (optional)
+	Returns: success (boolean), output (string), user_msg (string), llm_msg (string)
+
 Example usage: >
 	local gitcommit = require("codecompanion._extensions.gitcommit")
 	
@@ -360,10 +457,20 @@ Example usage: >
 	-- Get git status
 	local status = gitcommit.exports.git_tool.status()
 	print("Git status:", status)
+	
+	-- Generate release notes between specific tags
+	local success, notes, user_msg, llm_msg = 
+	  gitcommit.exports.git_tool.generate_release_notes("v1.0.0", "v1.1.0", "markdown")
+	if success then
+	  print("Release notes:", notes)
+	end
+	
+	-- Generate release notes (auto-detect latest two tags)
+	local success, notes = gitcommit.exports.git_tool.generate_release_notes()
 <
 
 ==============================================================================
-9. LICENSE					*codecompanion-gitcommit-license*
+10. LICENSE					*codecompanion-gitcommit-license*
 
 MIT License
 
