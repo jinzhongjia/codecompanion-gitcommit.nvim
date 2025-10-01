@@ -55,8 +55,19 @@ local function send_http_request(client, adapter, payload, callback)
   local accumulated = ""
   local has_error = false
 
+  -- Prepare options for spinner events
+  local request_opts = {
+    adapter = {
+      name = adapter.name or "unknown",
+      formatted_name = adapter.formatted_name or adapter.name or "GitCommit",
+      model = (adapter.schema and adapter.schema.model and adapter.schema.model.default) or "",
+    },
+    strategy = "gitcommit",
+    silent = false,
+  }
+
   -- Use async send to properly handle streaming responses
-  client:send(payload, {
+  client:send(payload, vim.tbl_extend("force", request_opts, {
     stream = true,
     on_chunk = function(chunk)
       if chunk and chunk ~= "" then
@@ -85,7 +96,7 @@ local function send_http_request(client, adapter, payload, callback)
       local error_msg = "HTTP request failed: " .. (err.message or vim.inspect(err))
       callback(nil, error_msg)
     end,
-  })
+  }))
 end
 
 ---Send request using ACP client
@@ -96,6 +107,18 @@ end
 local function send_acp_request(client, adapter, messages, callback)
   local accumulated = ""
   local has_error = false
+
+  -- Prepare options for spinner events
+  local request_opts = {
+    adapter = {
+      name = adapter.name or "unknown",
+      formatted_name = adapter.formatted_name or adapter.name or "GitCommit",
+      type = "acp",
+      model = nil,
+    },
+    strategy = "gitcommit",
+    silent = false,
+  }
 
   -- ACP expects messages to have _meta field
   -- Add it to make messages compatible with form_messages
@@ -109,6 +132,7 @@ local function send_acp_request(client, adapter, messages, callback)
 
   client
     :session_prompt(formatted_messages)
+    :with_options(request_opts)
     :on_message_chunk(function(chunk)
       if chunk and chunk ~= "" then
         accumulated = accumulated .. chunk
@@ -171,22 +195,23 @@ function Generator.generate_commit_message(diff, lang, commit_history, callback)
     { role = "user", content = prompt },
   }
 
-  -- 4. Handle HTTP and ACP adapters differently
+  -- 4. Map schema for HTTP adapter (must be done before client creation)
   if adapter.type == "http" then
-    -- Map schema for HTTP adapter
     local schema_opts = {}
     if _model_name then
       schema_opts.model = _model_name
     end
     adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, schema_opts))
+ end
 
-    -- Create client AFTER mapping schema
-    -- This is important because HTTPClient.request() does vim.deepcopy(self.adapter)
+    -- 5. Create client (after potential schema mapping for HTTP)
     local client, err = create_client(adapter)
     if not client then
       return callback(nil, err)
     end
 
+ -- 6. Send request based on adapter type
+ if adapter.type == "http" then
     -- Prepare HTTP payload
     local payload = {
       messages = adapter:map_roles(messages),
@@ -194,13 +219,6 @@ function Generator.generate_commit_message(diff, lang, commit_history, callback)
 
     send_http_request(client, adapter, payload, callback)
   elseif adapter.type == "acp" then
-    -- Create ACP client
-    local client, err = create_client(adapter)
-    if not client then
-      return callback(nil, err)
-    end
-
-    -- ACP doesn't need schema mapping for simple prompts
     send_acp_request(client, adapter, messages, function(result, error)
       -- Disconnect after request completes
       pcall(function()
