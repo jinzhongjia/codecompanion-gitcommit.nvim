@@ -176,7 +176,6 @@ local function setup_commands()
   )
 end
 
--- NOTE: Is this is ok??
 local function setup_slash_commands(opts)
   if not opts.add_slash_command then
     return
