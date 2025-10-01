@@ -67,36 +67,39 @@ local function send_http_request(client, adapter, payload, callback)
   }
 
   -- Use async send to properly handle streaming responses
-  client:send(payload, vim.tbl_extend("force", request_opts, {
-    stream = true,
-    on_chunk = function(chunk)
-      if chunk and chunk ~= "" then
-        -- Use adapter's chat_output handler to process the chunk
-        local result = adapter.handlers.chat_output(adapter, chunk)
-        if result and result.status == CONSTANTS.STATUS_SUCCESS then
-          local content = result.output and result.output.content
-          if content and content ~= "" then
-            accumulated = accumulated .. content
+  client:send(
+    payload,
+    vim.tbl_extend("force", request_opts, {
+      stream = true,
+      on_chunk = function(chunk)
+        if chunk and chunk ~= "" then
+          -- Use adapter's chat_output handler to process the chunk
+          local result = adapter.handlers.chat_output(adapter, chunk)
+          if result and result.status == CONSTANTS.STATUS_SUCCESS then
+            local content = result.output and result.output.content
+            if content and content ~= "" then
+              accumulated = accumulated .. content
+            end
           end
         end
-      end
-    end,
-    on_done = function()
-      if not has_error then
-        if accumulated ~= "" then
-          local cleaned = Generator._clean_commit_message(accumulated)
-          callback(cleaned, nil)
-        else
-          callback(nil, "Generated content is empty")
+      end,
+      on_done = function()
+        if not has_error then
+          if accumulated ~= "" then
+            local cleaned = Generator._clean_commit_message(accumulated)
+            callback(cleaned, nil)
+          else
+            callback(nil, "Generated content is empty")
+          end
         end
-      end
-    end,
-    on_error = function(err)
-      has_error = true
-      local error_msg = "HTTP request failed: " .. (err.message or vim.inspect(err))
-      callback(nil, error_msg)
-    end,
-  }))
+      end,
+      on_error = function(err)
+        has_error = true
+        local error_msg = "HTTP request failed: " .. (err.message or vim.inspect(err))
+        callback(nil, error_msg)
+      end,
+    })
+  )
 end
 
 ---Send request using ACP client
@@ -202,16 +205,16 @@ function Generator.generate_commit_message(diff, lang, commit_history, callback)
       schema_opts.model = _model_name
     end
     adapter = adapter:map_schema_to_params(codecompanion_schema.get_default(adapter, schema_opts))
- end
+  end
 
-    -- 5. Create client (after potential schema mapping for HTTP)
-    local client, err = create_client(adapter)
-    if not client then
-      return callback(nil, err)
-    end
+  -- 5. Create client (after potential schema mapping for HTTP)
+  local client, err = create_client(adapter)
+  if not client then
+    return callback(nil, err)
+  end
 
- -- 6. Send request based on adapter type
- if adapter.type == "http" then
+  -- 6. Send request based on adapter type
+  if adapter.type == "http" then
     -- Prepare HTTP payload
     local payload = {
       messages = adapter:map_roles(messages),
