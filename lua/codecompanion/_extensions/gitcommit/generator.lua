@@ -272,6 +272,8 @@ RULES:
  - The title (first line) must be followed by ONE blank line before the descriptions
  - Each description point must start with a dash (-)
  - If commit history is provided, follow the established patterns and style from recent commits
+ - It's best to keep Subject Line under 50 characters.
+ - Each line of the body should ideally not exceed 72 characters.
 
 REQUIRED EXAMPLES:
 feat(auth): add OAuth2 integration
