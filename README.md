@@ -3,7 +3,7 @@
 A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit messages following the Conventional Commits specification, with comprehensive Git workflow integration.
 
 > [!IMPORTANT]
-> As of CodeCompanion v17.5.0, variables and tools must be wrapped in curly braces, such as `@{git_read}` or `#{buffer}`
+> Supports CodeCompanion **v17.x** and **v18.0+** (compatibility handled automatically)
 
 ## ✨ Features
 
