@@ -384,6 +384,11 @@ GitEdit.output = {
 }
 
 GitEdit.opts = {
+  -- v18+ uses require_approval_before
+  require_approval_before = function(self, agent)
+    return true
+  end,
+  -- COMPAT(v17): Remove when dropping v17 support
   requires_approval = function(self, agent)
     return true
   end,
