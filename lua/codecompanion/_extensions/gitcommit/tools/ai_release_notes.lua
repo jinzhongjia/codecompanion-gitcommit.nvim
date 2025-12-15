@@ -445,6 +445,11 @@ AIReleaseNotes.output = {
 }
 
 AIReleaseNotes.opts = {
+  -- v18+ uses require_approval_before
+  require_approval_before = function(_self, _agent)
+    return false
+  end,
+  -- COMPAT(v17): Remove when dropping v17 support
   requires_approval = function(_self, _agent)
     return false
   end,

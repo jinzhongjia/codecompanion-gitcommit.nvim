@@ -9,6 +9,20 @@ local Config = require("codecompanion._extensions.gitcommit.config")
 
 local M = {}
 
+--- Get the chat config from CodeCompanion (handles v17 strategies vs v18 interactions)
+--- @return table|nil chat_config The chat configuration table
+local function get_chat_config()
+  local codecompanion_config = require("codecompanion.config")
+  -- v18+ uses interactions, v17.x uses strategies
+  if codecompanion_config.interactions and codecompanion_config.interactions.chat then
+    return codecompanion_config.interactions.chat
+  -- COMPAT(v17): Remove this branch when dropping v17 support
+  elseif codecompanion_config.strategies and codecompanion_config.strategies.chat then
+    return codecompanion_config.strategies.chat
+  end
+  return nil
+end
+
 ---Generate commit message using AI
 function M.generate_commit_message()
   -- Check git repository
@@ -69,13 +83,13 @@ local function setup_tools(opts)
     return
   end
 
-  local codecompanion_config = require("codecompanion.config")
-  if not (codecompanion_config.strategies and codecompanion_config.strategies.chat) then
+  local chat_config = get_chat_config()
+  if not chat_config then
     return
   end
 
-  codecompanion_config.strategies.chat.tools = codecompanion_config.strategies.chat.tools or {}
-  local chat_tools = codecompanion_config.strategies.chat.tools
+  chat_config.tools = chat_config.tools or {}
+  local chat_tools = chat_config.tools
 
   local git_read_enabled = opts.enable_git_read
   local git_edit_enabled = opts.enable_git_edit
@@ -181,7 +195,11 @@ local function setup_slash_commands(opts)
     return
   end
 
-  local slash_commands = require("codecompanion.config").strategies.chat.slash_commands
+  local chat_config = get_chat_config()
+  if not chat_config then
+    return
+  end
+  local slash_commands = chat_config.slash_commands
 
   local function get_commit_content(chat, choice)
     local stdout = vim.uv.new_pipe(false)
