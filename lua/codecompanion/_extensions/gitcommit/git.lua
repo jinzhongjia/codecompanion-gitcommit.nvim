@@ -78,6 +78,51 @@ function Git._filter_diff(diff_content)
   return table.concat(filtered_lines, "\n")
 end
 
+---Convert a glob pattern to a Lua pattern
+---Handles: * (any non-slash), ** (any including slash), ? (single char), escapes special chars
+---@param glob string The glob pattern (e.g., "*.lua", "**/*.js", "dist/*")
+---@return string lua_pattern The converted Lua pattern
+local function glob_to_lua_pattern(glob)
+  local escaped = glob:gsub("([%.%+%-%^%$%(%)%[%]%%])", "%%%1")
+  escaped = escaped:gsub("%*%*", "\0DOUBLESTAR\0")
+  escaped = escaped:gsub("%*", "[^/]*")
+  escaped = escaped:gsub("%?", "[^/]")
+  escaped = escaped:gsub("\0DOUBLESTAR\0", ".*")
+
+  if escaped:sub(1, 1) == "/" then
+    escaped = "^" .. escaped:sub(2)
+  end
+
+  if not glob:match("/") then
+    escaped = escaped .. "$"
+  else
+    escaped = escaped .. "$"
+  end
+
+  return escaped
+end
+
+---Check if filepath matches a glob pattern (handles basename matching for patterns without /)
+---@param filepath string The file path to check
+---@param pattern string The glob pattern
+---@return boolean matches True if filepath matches
+local function matches_glob(filepath, pattern)
+  local lua_pattern = glob_to_lua_pattern(pattern)
+
+  if filepath:match(lua_pattern) then
+    return true
+  end
+
+  if not pattern:match("/") then
+    local basename = filepath:match("[^/]+$") or filepath
+    if basename:match(lua_pattern) then
+      return true
+    end
+  end
+
+  return false
+end
+
 ---Check if file should be excluded by patterns
 ---@param filepath string The file path to check
 ---@return boolean should_exclude True if file should be excluded
@@ -86,10 +131,10 @@ function Git._should_exclude_file(filepath)
     return false
   end
 
+  local normalized_path = filepath:gsub("\\", "/")
+
   for _, pattern in ipairs(config.exclude_files) do
-    -- Convert glob pattern to Lua pattern
-    local lua_pattern = pattern:gsub("%*", ".*"):gsub("?", ".")
-    if filepath:match(lua_pattern) then
+    if matches_glob(normalized_path, pattern) then
       return true
     end
   end

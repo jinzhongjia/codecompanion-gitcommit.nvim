@@ -1,3 +1,5 @@
+local Git = require("codecompanion._extensions.gitcommit.git")
+
 local M = {}
 
 ---Git tool for CodeCompanion GitCommit extension
@@ -168,13 +170,7 @@ function GitTool.is_ignored(file)
 end
 
 local function is_git_repo()
-  -- Use Neovim built-in vim.fn.system instead of io.popen
-  local ok, result = pcall(function()
-    local cmd = "git rev-parse --is-inside-work-tree"
-    local output = vim.fn.system(cmd)
-    return vim.v.shell_error == 0 and output:match("true") ~= nil
-  end)
-  return ok and result or false
+  return Git.is_repository()
 end
 
 local function execute_git_command(cmd)
