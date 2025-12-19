@@ -1,4 +1,5 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+local validation = require("codecompanion._extensions.gitcommit.tools.validation")
 
 ---@class CodeCompanion.GitCommit.Tools.GitRead
 local GitRead = {}
@@ -111,41 +112,82 @@ GitRead.schema = {
   },
 }
 
-GitRead.system_prompt = [[Execute read-only Git repository operations
+GitRead.system_prompt = [[# Git Read Tool (`git_read`)
 
-When to use:
-• When examining repository status and history
-• When analyzing code changes and diffs
-• When investigating commit patterns and contributors
-• When checking branch states and configurations
+## CONTEXT
+- You have access to a read-only Git tool running within CodeCompanion, in Neovim.
+- Use this tool to examine repository status, history, branches, and configurations.
+- All operations are non-destructive and safe to execute.
 
-Best practices:
-• Must verify Git repository before operations
-• Use specific operation parameters for targeted results
-• Avoid operations that modify repository state
-• Ensure operation args match expected parameters
+## OBJECTIVE
+- Follow the tool's schema strictly.
+- Use the appropriate operation for the task.
+- Provide clear and accurate Git information to the user.
 
-Available operations: status, log, diff, branch, remotes, show, blame, stash_list, diff_commits, contributors, search_commits, tags, generate_release_notes, gitignore_get, gitignore_check, help]]
+## AVAILABLE OPERATIONS
+| Operation | Description | Required Args |
+|-----------|-------------|---------------|
+| `status` | Show repository status | - |
+| `log` | Show commit history | count?, format? |
+| `diff` | Show file differences | staged?, file_path? |
+| `branch` | List branches | remote_only? |
+| `remotes` | Show remote repositories | - |
+| `show` | Show commit details | commit_hash? |
+| `blame` | Show file blame info | file_path (required) |
+| `stash_list` | List stashes | - |
+| `diff_commits` | Compare commits | commit1 (required), commit2? |
+| `contributors` | Show contributors | count? |
+| `search_commits` | Search commit messages | pattern (required) |
+| `tags` | List all tags | - |
+| `generate_release_notes` | Generate release notes | from_tag?, to_tag? |
+| `gitignore_get` | Get .gitignore content | - |
+| `gitignore_check` | Check if file is ignored | gitignore_file (required) |
+| `help` | Show help information | - |
 
--- Helper function to validate required parameters
-local function validate_required_param(param_name, param_value, error_msg)
-  if not param_value or param_value == "" then
-    return {
-      status = "error",
-      data = {
-        output = error_msg or (param_name .. " is required"),
-        user_msg = error_msg or (param_name .. " is required"),
-        llm_msg = "<gitReadTool>fail: " .. (error_msg or (param_name .. " is required")) .. "</gitReadTool>",
-      },
-    }
-  end
-  return nil
-end
+## RESPONSE
+- Only invoke this tool when examining Git repository state.
+- Choose the most appropriate operation for the user's request.
+- For operations requiring file paths, use relative paths from the repository root.]]
+
+local TOOL_NAME = "gitRead"
+local VALID_OPERATIONS = {
+  "status",
+  "log",
+  "diff",
+  "branch",
+  "remotes",
+  "show",
+  "blame",
+  "stash_list",
+  "diff_commits",
+  "contributors",
+  "search_commits",
+  "tags",
+  "generate_release_notes",
+  "help",
+  "gitignore_get",
+  "gitignore_check",
+}
+local VALID_LOG_FORMATS = { "oneline", "short", "medium", "full", "fuller" }
+local VALID_RELEASE_FORMATS = { "markdown", "plain", "json" }
 
 GitRead.cmds = {
   function(self, args, _input)
+    if args == nil or type(args) ~= "table" then
+      return validation.format_error(TOOL_NAME, "Invalid arguments: expected object")
+    end
+
     local operation = args.operation
-    local op_args = args.args or {}
+    local err = validation.require_enum(operation, "operation", VALID_OPERATIONS, TOOL_NAME)
+    if err then
+      return err
+    end
+
+    local op_args = args.args
+    if op_args ~= nil and type(op_args) ~= "table" then
+      return validation.format_error(TOOL_NAME, "args must be an object")
+    end
+    op_args = op_args or {}
 
     if operation == "help" then
       local help_text =
@@ -154,68 +196,103 @@ GitRead.cmds = {
     end
 
     local success, output, user_msg, llm_msg
+    local param_err
 
-    -- Safely execute operations through pcall to ensure there's always a response
     local ok, result = pcall(function()
       if operation == "status" then
         success, output, user_msg, llm_msg = GitTool.get_status()
       elseif operation == "log" then
+        param_err = validation.first_error({
+          validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000),
+          op_args.format and validation.require_enum(op_args.format, "format", VALID_LOG_FORMATS, TOOL_NAME) or nil,
+        })
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg = GitTool.get_log(op_args.count, op_args.format)
       elseif operation == "diff" then
+        param_err = validation.first_error({
+          validation.optional_boolean(op_args.staged, "staged", TOOL_NAME),
+          validation.optional_string(op_args.file_path, "file_path", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg = GitTool.get_diff(op_args.staged, op_args.file_path)
       elseif operation == "branch" then
+        param_err = validation.optional_boolean(op_args.remote_only, "remote_only", TOOL_NAME)
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg = GitTool.get_branches(op_args.remote_only)
       elseif operation == "remotes" then
         success, output, user_msg, llm_msg = GitTool.get_remotes()
       elseif operation == "show" then
+        param_err = validation.optional_string(op_args.commit_hash, "commit_hash", TOOL_NAME)
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg = GitTool.show_commit(op_args.commit_hash)
       elseif operation == "blame" then
-        local validation_error =
-          validate_required_param("file_path", op_args.file_path, "File path is required for blame")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.file_path, "file_path", TOOL_NAME),
+          validation.optional_integer(op_args.line_start, "line_start", TOOL_NAME, 1),
+          validation.optional_integer(op_args.line_end, "line_end", TOOL_NAME, 1),
+        })
+        if param_err then
+          return param_err
         end
         success, output, user_msg, llm_msg = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
       elseif operation == "stash_list" then
         success, output, user_msg, llm_msg = GitTool.list_stashes()
       elseif operation == "diff_commits" then
-        local validation_error =
-          validate_required_param("commit1", op_args.commit1, "First commit is required for comparison")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.commit1, "commit1", TOOL_NAME),
+          validation.optional_string(op_args.commit2, "commit2", TOOL_NAME),
+          validation.optional_string(op_args.file_path, "file_path", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
         end
         success, output, user_msg, llm_msg = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
       elseif operation == "contributors" then
+        param_err = validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000)
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg = GitTool.get_contributors(op_args.count)
       elseif operation == "search_commits" then
-        local validation_error = validate_required_param("pattern", op_args.pattern, "Search pattern is required")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.pattern, "pattern", TOOL_NAME),
+          validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000),
+        })
+        if param_err then
+          return param_err
         end
         success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
       elseif operation == "tags" then
         success, output, user_msg, llm_msg = GitTool.get_tags()
       elseif operation == "generate_release_notes" then
+        param_err = validation.first_error({
+          validation.optional_string(op_args.from_tag, "from_tag", TOOL_NAME),
+          validation.optional_string(op_args.to_tag, "to_tag", TOOL_NAME),
+          op_args.release_format
+              and validation.require_enum(op_args.release_format, "release_format", VALID_RELEASE_FORMATS, TOOL_NAME)
+            or nil,
+        })
+        if param_err then
+          return param_err
+        end
         success, output, user_msg, llm_msg =
           GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then
-        local validation_error =
-          validate_required_param("gitignore_file", op_args.gitignore_file, "No file specified for .gitignore check")
-        if validation_error then
-          return validation_error
+        param_err = validation.require_string(op_args.gitignore_file, "gitignore_file", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output, user_msg, llm_msg = GitTool.is_ignored(op_args.gitignore_file)
-      else
-        return {
-          status = "error",
-          data = {
-            output = "Unknown Git read operation: " .. operation,
-            user_msg = "Unknown Git read operation: " .. operation,
-            llm_msg = "<gitReadTool>fail: Unknown Git read operation: " .. operation .. "</gitReadTool>",
-          },
-        }
       end
 
       return { success = success, output = output, user_msg = user_msg, llm_msg = llm_msg }
@@ -259,6 +336,11 @@ GitRead.handlers = {
 }
 
 GitRead.output = {
+  prompt = function(self, _tools)
+    local operation = self.args and self.args.operation or "unknown"
+    return string.format("Execute git %s?", operation)
+  end,
+
   success = function(self, agent, _cmd, stdout)
     local chat = agent.chat
     local data = stdout[1]
@@ -266,12 +348,20 @@ GitRead.output = {
     local user_msg = data and data.user_msg or data.output
     return chat:add_tool_output(self, llm_msg, user_msg)
   end,
+
   error = function(self, agent, _cmd, stderr, stdout)
     local chat = agent.chat
     local data = stderr[1] or stdout[1]
     local llm_msg = data and data.llm_msg or (type(data) == "string" and data or "Git read operation failed")
     local user_msg = data and data.user_msg or "Git read operation failed"
     return chat:add_tool_output(self, llm_msg, user_msg)
+  end,
+
+  rejected = function(self, tools, _cmd, _opts)
+    local chat = tools.chat
+    local operation = self.args and self.args.operation or "unknown"
+    local message = string.format("User rejected the git %s operation", operation)
+    return chat:add_tool_output(self, message, message)
   end,
 }
 

@@ -1,4 +1,5 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+local validation = require("codecompanion._extensions.gitcommit.tools.validation")
 
 ---@class CodeCompanion.GitCommit.Tools.GitEdit
 local GitEdit = {}
@@ -150,40 +151,87 @@ GitEdit.schema = {
   },
 }
 
-GitEdit.system_prompt = [[Execute write-access Git repository operations
+GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 
-When to use:
-• When staging or unstaging file changes
-• When creating or switching between branches
-• When managing stashes and repository state
-• When performing safe repository modifications
+## CONTEXT
+- You have access to a write-access Git tool running within CodeCompanion, in Neovim.
+- Use this tool to modify repository state: staging, committing, branching, etc.
+- These operations can modify the repository, so use them carefully.
 
-Best practices:
-• Must verify Git repository before operations
-• Always specify files parameter for stage/unstage operations
-• Use '.' to stage all modified files or specific file paths
-• For commit operations, if no commit_message provided, automatically generate AI message
-• Auto-generation analyzes staged changes and creates Conventional Commit compliant messages
-• Use format: type(scope): description with lowercase type and imperative verb description
-• Include body with bullet points for complex changes, keep description under 50 characters
-• Use the `set_upstream` option to create and track a remote branch if it doesn't exist
-• Avoid force push operations that rewrite history
-• Ensure file paths and branch names are valid
+## OBJECTIVE
+- Follow the tool's schema strictly.
+- Use the appropriate operation for the task.
+- For commits without a message, analyze staged changes and generate Conventional Commit format.
 
-Available operations: stage, unstage, commit, create_branch, checkout, stash, apply_stash, reset, gitignore_add, gitignore_remove, push, cherry_pick, revert, create_tag, delete_tag, merge, help]]
+## AVAILABLE OPERATIONS
+| Operation | Description | Required Args |
+|-----------|-------------|---------------|
+| `stage` | Stage files for commit | files (required) |
+| `unstage` | Unstage files | files (required) |
+| `commit` | Commit staged changes | commit_message? (auto-generates if empty) |
+| `create_branch` | Create new branch | branch_name (required), checkout? |
+| `checkout` | Switch branch/commit | target (required) |
+| `stash` | Stash changes | message?, include_untracked? |
+| `apply_stash` | Apply stash | stash_ref? |
+| `reset` | Reset to commit | commit_hash (required), mode? |
+| `gitignore_add` | Add .gitignore rules | gitignore_rules (required) |
+| `gitignore_remove` | Remove .gitignore rules | gitignore_rule (required) |
+| `push` | Push to remote | remote?, branch?, set_upstream? |
+| `cherry_pick` | Apply commit | cherry_pick_commit_hash (required) |
+| `revert` | Revert commit | revert_commit_hash (required) |
+| `create_tag` | Create tag | tag_name (required), tag_message? |
+| `delete_tag` | Delete tag | tag_name (required) |
+| `merge` | Merge branch | branch (required) |
+| `help` | Show help | - |
 
--- Helper function to validate required parameters
-local function validate_required_param(param_name, param_value, error_msg)
-  if not param_value or (type(param_value) == "table" and #param_value == 0) then
-    return { status = "error", data = error_msg or (param_name .. " is required") }
-  end
-  return nil
-end
+## SAFETY RESTRICTIONS
+- Never use force push without explicit user confirmation.
+- Always verify staged changes before committing.
+- Warn users before destructive operations (reset --hard, delete).
+
+## RESPONSE
+- Only invoke this tool when modifying Git repository state.
+- For commit messages, use Conventional Commit format: type(scope): description.]]
+
+local TOOL_NAME = "gitEdit"
+local VALID_OPERATIONS = {
+  "stage",
+  "unstage",
+  "commit",
+  "create_branch",
+  "checkout",
+  "stash",
+  "apply_stash",
+  "reset",
+  "gitignore_add",
+  "gitignore_remove",
+  "push",
+  "cherry_pick",
+  "revert",
+  "create_tag",
+  "delete_tag",
+  "merge",
+  "help",
+}
+local VALID_RESET_MODES = { "soft", "mixed", "hard" }
 
 GitEdit.cmds = {
   function(self, args, input, output_handler)
+    if args == nil or type(args) ~= "table" then
+      return validation.format_error(TOOL_NAME, "Invalid arguments: expected object")
+    end
+
     local operation = args.operation
-    local op_args = args.args or {}
+    local err = validation.require_enum(operation, "operation", VALID_OPERATIONS, TOOL_NAME)
+    if err then
+      return err
+    end
+
+    local op_args = args.args
+    if op_args ~= nil and type(op_args) ~= "table" then
+      return validation.format_error(TOOL_NAME, "args must be an object")
+    end
+    op_args = op_args or {}
 
     if operation == "help" then
       local help_text = [[
@@ -207,6 +255,17 @@ Available write-access Git operations:
     end
 
     if operation == "push" then
+      local param_err = validation.first_error({
+        validation.optional_string(op_args.remote, "remote", TOOL_NAME),
+        validation.optional_string(op_args.branch, "branch", TOOL_NAME),
+        validation.optional_boolean(op_args.force, "force", TOOL_NAME),
+        validation.optional_boolean(op_args.set_upstream, "set_upstream", TOOL_NAME),
+        validation.optional_boolean(op_args.tags, "tags", TOOL_NAME),
+        validation.optional_string(op_args.single_tag_name, "single_tag_name", TOOL_NAME),
+      })
+      if param_err then
+        return param_err
+      end
       -- If set_upstream is not explicitly specified, default to true for automatic remote tracking
       if op_args.set_upstream == nil then
         op_args.set_upstream = true
@@ -225,20 +284,29 @@ Available write-access Git operations:
     -- Safely execute operations through pcall to ensure there's always a response
     local ok, result = pcall(function()
       local success, output
+      local param_err
 
       if operation == "stage" then
-        local validation_error = validate_required_param("files", op_args.files, "No files specified for staging")
-        if validation_error then
-          return validation_error
+        param_err = validation.require_array(op_args.files, "files", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.stage_files(op_args.files)
       elseif operation == "unstage" then
-        local validation_error = validate_required_param("files", op_args.files, "No files specified for unstaging")
-        if validation_error then
-          return validation_error
+        param_err = validation.require_array(op_args.files, "files", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.unstage_files(op_args.files)
       elseif operation == "commit" then
+        param_err = validation.first_error({
+          validation.optional_string(op_args.commit_message, "commit_message", TOOL_NAME),
+          validation.optional_string(op_args.message, "message", TOOL_NAME),
+          validation.optional_boolean(op_args.amend, "amend", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
         local message = op_args.commit_message or op_args.message
         if not message then
           -- Check if there are staged changes
@@ -258,81 +326,107 @@ Available write-access Git operations:
         end
         success, output = GitTool.commit(message, op_args.amend)
       elseif operation == "create_branch" then
-        if not op_args.branch_name then
-          return { status = "error", data = "Branch name is required" }
+        param_err = validation.first_error({
+          validation.require_string(op_args.branch_name, "branch_name", TOOL_NAME),
+          validation.optional_boolean(op_args.checkout, "checkout", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
         end
         success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
       elseif operation == "checkout" then
-        local validation_error =
-          validate_required_param("target", op_args.target, "Target branch or commit is required")
-        if validation_error then
-          return validation_error
+        param_err = validation.require_string(op_args.target, "target", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.checkout(op_args.target)
       elseif operation == "stash" then
+        param_err = validation.first_error({
+          validation.optional_string(op_args.message, "message", TOOL_NAME),
+          validation.optional_boolean(op_args.include_untracked, "include_untracked", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
         success, output = GitTool.stash(op_args.message, op_args.include_untracked)
       elseif operation == "apply_stash" then
+        param_err = validation.optional_string(op_args.stash_ref, "stash_ref", TOOL_NAME)
+        if param_err then
+          return param_err
+        end
         success, output = GitTool.apply_stash(op_args.stash_ref)
       elseif operation == "reset" then
-        local validation_error =
-          validate_required_param("commit_hash", op_args.commit_hash, "Commit hash is required for reset")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.commit_hash, "commit_hash", TOOL_NAME),
+          op_args.mode and validation.require_enum(op_args.mode, "mode", VALID_RESET_MODES, TOOL_NAME) or nil,
+        })
+        if param_err then
+          return param_err
         end
         success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
       elseif operation == "gitignore_add" then
         local rules = op_args.gitignore_rules or op_args.gitignore_rule
-        if not rules then
-          return { status = "error", data = "No rule(s) specified for .gitignore add" }
+        if rules == nil then
+          return validation.format_error(TOOL_NAME, "gitignore_rules or gitignore_rule is required")
+        end
+        if type(rules) ~= "table" and type(rules) ~= "string" then
+          return validation.format_error(
+            TOOL_NAME,
+            "gitignore_rules must be an array or gitignore_rule must be a string"
+          )
         end
         success, output = GitTool.add_gitignore_rule(rules)
       elseif operation == "gitignore_remove" then
         local rules = op_args.gitignore_rules or op_args.gitignore_rule
-        if not rules then
-          return { status = "error", data = "No rule(s) specified for .gitignore remove" }
+        if rules == nil then
+          return validation.format_error(TOOL_NAME, "gitignore_rules or gitignore_rule is required")
+        end
+        if type(rules) ~= "table" and type(rules) ~= "string" then
+          return validation.format_error(
+            TOOL_NAME,
+            "gitignore_rules must be an array or gitignore_rule must be a string"
+          )
         end
         success, output = GitTool.remove_gitignore_rule(rules)
       elseif operation == "cherry_pick" then
-        local validation_error = validate_required_param(
-          "cherry_pick_commit_hash",
-          op_args.cherry_pick_commit_hash,
-          "Commit hash is required for cherry-pick"
-        )
-        if validation_error then
-          return validation_error
+        param_err = validation.require_string(op_args.cherry_pick_commit_hash, "cherry_pick_commit_hash", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
       elseif operation == "revert" then
-        local validation_error = validate_required_param(
-          "revert_commit_hash",
-          op_args.revert_commit_hash,
-          "Commit hash is required for revert"
-        )
-        if validation_error then
-          return validation_error
+        param_err = validation.require_string(op_args.revert_commit_hash, "revert_commit_hash", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.revert(op_args.revert_commit_hash)
       elseif operation == "create_tag" then
-        local validation_error = validate_required_param("tag_name", op_args.tag_name, "Tag name is required")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.tag_name, "tag_name", TOOL_NAME),
+          validation.optional_string(op_args.tag_message, "tag_message", TOOL_NAME),
+          validation.optional_string(op_args.tag_commit_hash, "tag_commit_hash", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
         end
         success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
       elseif operation == "delete_tag" then
-        local validation_error =
-          validate_required_param("tag_name", op_args.tag_name, "Tag name is required for deletion")
-        if validation_error then
-          return validation_error
+        param_err = validation.first_error({
+          validation.require_string(op_args.tag_name, "tag_name", TOOL_NAME),
+          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
         end
         success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
       elseif operation == "merge" then
-        local validation_error = validate_required_param("branch", op_args.branch, "Branch to merge is required")
-        if validation_error then
-          return validation_error
+        param_err = validation.require_string(op_args.branch, "branch", TOOL_NAME)
+        if param_err then
+          return param_err
         end
         success, output = GitTool.merge(op_args.branch)
       else
-        return { status = "error", data = "Unknown Git edit operation: " .. operation }
+        return validation.format_error(TOOL_NAME, "Unknown Git edit operation: " .. tostring(operation))
       end
 
       return { success = success, output = output }
@@ -368,18 +462,44 @@ GitEdit.handlers = {
 }
 
 GitEdit.output = {
-  success = function(self, agent, cmd, stdout)
+  prompt = function(self, _tools)
+    local operation = self.args and self.args.operation or "unknown"
+    local details = ""
+    if operation == "stage" or operation == "unstage" then
+      local files = self.args.args and self.args.args.files
+      if files then
+        details = string.format(" (%s)", type(files) == "table" and table.concat(files, ", ") or files)
+      end
+    elseif operation == "commit" then
+      local msg = self.args.args and self.args.args.commit_message
+      details = msg and string.format(" with message: %s", msg:sub(1, 50)) or " (auto-generate message)"
+    elseif operation == "create_branch" then
+      local branch = self.args.args and self.args.args.branch_name
+      details = branch and string.format(": %s", branch) or ""
+    end
+    return string.format("Execute git %s%s?", operation, details)
+  end,
+
+  success = function(self, agent, _cmd, stdout)
     local chat = agent.chat
     local operation = self.args.operation
     local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
     return chat:add_tool_output(self, stdout[1], user_msg)
   end,
-  error = function(self, agent, cmd, stderr, stdout)
+
+  error = function(self, agent, _cmd, stderr, stdout)
     local chat = agent.chat
     local operation = self.args.operation
     local error_msg = stderr and stderr[1] or ("Git edit operation [%s] failed"):format(operation)
     local user_msg = string.format("Git edit operation [%s] failed", operation)
     return chat:add_tool_output(self, error_msg, user_msg)
+  end,
+
+  rejected = function(self, tools, _cmd, _opts)
+    local chat = tools.chat
+    local operation = self.args and self.args.operation or "unknown"
+    local message = string.format("User rejected the git %s operation", operation)
+    return chat:add_tool_output(self, message, message)
   end,
 }
 
