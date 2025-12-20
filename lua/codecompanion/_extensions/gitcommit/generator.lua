@@ -252,46 +252,51 @@ function Generator._create_prompt(diff, lang, commit_history)
 
 CRITICAL FORMAT REQUIREMENTS:
 1. MUST generate exactly ONE commit message, never multiple messages
-2. MUST include a title line, followed by a blank line, then bullet point descriptions
-3. MUST analyze ALL changes in the diff as a single logical unit
-4. MUST respond with ONLY the commit message, no explanations, markdown code blocks, or extra text
-5. DO NOT wrap the output in markdown code blocks (```) or any other formatting
+2. MUST analyze ALL changes in the diff as a single logical unit
+3. MUST respond with ONLY the commit message, no explanations, markdown code blocks, or extra text
+4. DO NOT wrap the output in markdown code blocks (```) or any other formatting
 
-MANDATORY FORMAT:
+FORMAT:
 type(scope): brief description
-<blank line>
-- description point 1
-- description point 2
-- description point 3
+
+[Optional body - only if needed]
 
 Allowed types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
 RULES:
  - Output the commit message directly without any markdown formatting or code blocks
- - The title (first line) must be followed by ONE blank line before the descriptions
- - Each description point must start with a dash (-)
+ - Keep Subject Line under 50 characters
+ - Body is OPTIONAL: only include if the change needs explanation
+ - For trivial changes (typos, simple renames, minor tweaks): subject line ONLY, no body
+ - For small changes: 1-2 bullet points maximum
+ - For complex changes: up to 3-5 bullet points
+ - Each line of the body should not exceed 72 characters
  - If commit history is provided, follow the established patterns and style from recent commits
- - It's best to keep Subject Line under 50 characters.
- - Each line of the body should ideally not exceed 72 characters.
 
-REQUIRED EXAMPLES:
+EXAMPLES:
+
+Trivial change (no body needed):
+fix(typo): correct spelling in README
+
+Small change (1-2 points):
+refactor(utils): rename helper function
+
+- Rename `getData` to `fetchUserData` for clarity
+
+Complex change (multiple points):
 feat(auth): add OAuth2 integration
 
 - Implement OAuth2 authentication flow
 - Add token refresh mechanism
 - Update user session handling
-fix(api): resolve data validation issues
 
-- Fix null pointer exception in validator
-- Add input sanitization
-- Improve error messages
-Generate ONE complete commit message for this diff:
+Generate ONE commit message for this diff (match body length to change complexity):
 ```diff
 %s
 ```
 
-Return ONLY the commit message in the exact format shown above.]],
+Return ONLY the commit message.]],
     history_context,
     lang or "English",
     diff
