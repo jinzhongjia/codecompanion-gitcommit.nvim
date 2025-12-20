@@ -73,8 +73,8 @@ local function send_http_request(client, adapter, payload, callback)
       stream = true,
       on_chunk = function(chunk)
         if chunk and chunk ~= "" then
-          -- Use adapter's chat_output handler to process the chunk
-          local result = adapter.handlers.chat_output(adapter, chunk)
+          -- Use adapter's parse_chat handler to process the chunk (with backwards compatibility)
+          local result = codecompanion_adapter.call_handler(adapter, "parse_chat", chunk)
           if result and result.status == CONSTANTS.STATUS_SUCCESS then
             local content = result.output and result.output.content
             if content and content ~= "" then
