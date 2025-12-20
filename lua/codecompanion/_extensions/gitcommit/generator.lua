@@ -265,33 +265,31 @@ Allowed types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
 RULES:
- - Output the commit message directly without any markdown formatting or code blocks
- - Keep Subject Line under 50 characters
- - Body is OPTIONAL: only include if the change needs explanation
- - For trivial changes (typos, simple renames, minor tweaks): subject line ONLY, no body
- - For small changes: 1-2 bullet points maximum
- - For complex changes: up to 3-5 bullet points
- - Each line of the body should not exceed 72 characters
- - If commit history is provided, follow the established patterns and style from recent commits
+ - Keep Subject Line under 50 characters, body lines under 72 characters
+ - DEFAULT TO MINIMAL: prefer fewer bullet points over more
+ - Body is OPTIONAL: omit if subject line is self-explanatory
+ - NEVER pad with redundant points - each bullet must add unique value
+ - If commit history is provided, follow established patterns
+
+COMPLEXITY GUIDE:
+ - Single file text change, config tweak, typo fix → NO body
+ - Single logical change (rename, add one function) → 0-1 bullet
+ - Multiple related changes → 2-3 bullets MAX
 
 EXAMPLES:
 
-Trivial change (no body needed):
-fix(typo): correct spelling in README
+fix(config): update timeout value
 
-Small change (1-2 points):
-refactor(utils): rename helper function
+refactor(api): rename getUserData to fetchUser
 
-- Rename `getData` to `fetchUserData` for clarity
+- Update all call sites to use new name
 
-Complex change (multiple points):
-feat(auth): add OAuth2 integration
+feat(auth): add OAuth2 support
 
-- Implement OAuth2 authentication flow
-- Add token refresh mechanism
-- Update user session handling
+- Implement token refresh flow
+- Add session persistence
 
-Generate ONE commit message for this diff (match body length to change complexity):
+Generate a CONCISE commit message:
 ```diff
 %s
 ```
