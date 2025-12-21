@@ -6,6 +6,10 @@
 # stylua for code formatting
 "cargo:stylua" = "latest"
 
+[settings]
+# Use PowerShell 7 (pwsh) on Windows
+windows_default_inline_shell_args = "pwsh -NoProfile -Command"
+
 [tasks.deps]
 description = "Install test dependencies (mini.nvim)"
 run = """
@@ -21,7 +25,7 @@ if (-not (Test-Path deps/mini.nvim)) { git clone --depth 1 https://github.com/ec
 description = "Run all unit tests"
 depends = ["deps"]
 run = "nvim --headless -u tests/minimal_init.lua -c 'lua MiniTest.run()'"
-run_windows = "nvim --headless -u tests/minimal_init.lua -c \"lua MiniTest.run()\""
+run_windows = 'nvim --headless -u tests/minimal_init.lua -c "lua MiniTest.run()"'
 
 [tasks."test:file"]
 description = "Run tests for a specific file"
