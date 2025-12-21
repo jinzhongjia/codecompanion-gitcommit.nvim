@@ -856,6 +856,118 @@ function GitTool.merge_continue()
   end
 end
 
+---Get list of files with merge conflicts
+---@return boolean success, string output, string user_msg, string llm_msg
+function GitTool.get_conflict_status()
+  if not is_git_repo() then
+    local msg = "Not in a git repository"
+    return false, msg, "✗ " .. msg, "<gitConflictStatus>fail: " .. msg .. "</gitConflictStatus>"
+  end
+
+  -- git diff --name-only --diff-filter=U lists unmerged (conflicted) files
+  local cmd = "git diff --name-only --diff-filter=U"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code ~= 0 then
+    local msg = "Failed to get conflict status"
+    return false, msg, "✗ " .. msg, "<gitConflictStatus>fail: " .. msg .. "</gitConflictStatus>"
+  end
+
+  local trimmed = vim.trim(output)
+  if trimmed == "" then
+    local msg = "No conflicts found"
+    return true, msg, "✓ " .. msg, "<gitConflictStatus>success: " .. msg .. "</gitConflictStatus>"
+  end
+
+  local files = {}
+  for file in trimmed:gmatch("[^\r\n]+") do
+    if file ~= "" then
+      table.insert(files, file)
+    end
+  end
+
+  local user_msg = string.format("⚠ %d file(s) with conflicts:\n", #files)
+  for _, file in ipairs(files) do
+    user_msg = user_msg .. "  • " .. file .. "\n"
+  end
+
+  local llm_msg =
+    string.format("<gitConflictStatus>success: %d conflicted file(s):\n%s</gitConflictStatus>", #files, trimmed)
+
+  return true, trimmed, user_msg, llm_msg
+end
+
+---Show conflict markers in a specific file
+---@param file_path string Path to the file with conflicts
+---@return boolean success, string output, string user_msg, string llm_msg
+function GitTool.show_conflict(file_path)
+  if not is_git_repo() then
+    local msg = "Not in a git repository"
+    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+  end
+
+  if not file_path or vim.trim(file_path) == "" then
+    local msg = "File path is required"
+    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+  end
+
+  local stat = vim.uv.fs_stat(file_path)
+  if not stat then
+    local msg = "File not found: " .. file_path
+    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+  end
+
+  local fd = vim.uv.fs_open(file_path, "r", 438)
+  if not fd then
+    local msg = "Failed to open file: " .. file_path
+    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+  end
+
+  local content = vim.uv.fs_read(fd, stat.size, 0)
+  vim.uv.fs_close(fd)
+
+  if not content then
+    local msg = "Failed to read file: " .. file_path
+    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+  end
+
+  if not content:match("<<<<<<< ") then
+    local msg = "No conflict markers found in: " .. file_path
+    return true, msg, "✓ " .. msg, "<gitConflictShow>success: " .. msg .. "</gitConflictShow>"
+  end
+
+  local conflicts = {}
+  local conflict_num = 0
+
+  for conflict_block in content:gmatch("(<<<<<<<.->>>>>>>.-)\n?") do
+    conflict_num = conflict_num + 1
+    table.insert(conflicts, string.format("--- Conflict #%d ---\n%s", conflict_num, conflict_block))
+  end
+
+  if #conflicts == 0 then
+    local msg = "No conflict markers found in: " .. file_path
+    return true, msg, "✓ " .. msg, "<gitConflictShow>success: " .. msg .. "</gitConflictShow>"
+  end
+
+  local conflict_output = table.concat(conflicts, "\n\n")
+  local user_msg = string.format(
+    "⚠ Found %d conflict(s) in %s:\n\n```\n%s\n```\n\nResolve conflicts manually, then use 'stage' followed by 'cherry_pick_continue' or 'merge_continue'.",
+    #conflicts,
+    file_path,
+    conflict_output
+  )
+
+  local llm_msg = string.format(
+    "<gitConflictShow>success: %d conflict(s) in %s:\n%s</gitConflictShow>",
+    #conflicts,
+    file_path,
+    conflict_output
+  )
+
+  return true, conflict_output, user_msg, llm_msg
+end
+
 --- Generate release notes between two tags
 ---@param from_tag string|nil Starting tag (if not provided, uses second latest tag)
 ---@param to_tag string|nil Ending tag (if not provided, uses latest tag)

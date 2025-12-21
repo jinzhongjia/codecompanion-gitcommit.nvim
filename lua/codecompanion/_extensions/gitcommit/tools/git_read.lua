@@ -31,6 +31,8 @@ GitRead.schema = {
             "search_commits",
             "tags",
             "generate_release_notes",
+            "conflict_status",
+            "conflict_show",
             "help",
             "gitignore_get",
             "gitignore_check",
@@ -140,6 +142,8 @@ GitRead.system_prompt = [[# Git Read Tool (`git_read`)
 | `search_commits` | Search commit messages | pattern (required) |
 | `tags` | List all tags | - |
 | `generate_release_notes` | Generate release notes | from_tag?, to_tag? |
+| `conflict_status` | List files with conflicts | - |
+| `conflict_show` | Show conflict markers in file | file_path (required) |
 | `gitignore_get` | Get .gitignore content | - |
 | `gitignore_check` | Check if file is ignored | gitignore_file (required) |
 | `help` | Show help information | - |
@@ -164,6 +168,8 @@ local VALID_OPERATIONS = {
   "search_commits",
   "tags",
   "generate_release_notes",
+  "conflict_status",
+  "conflict_show",
   "help",
   "gitignore_get",
   "gitignore_check",
@@ -191,7 +197,7 @@ GitRead.cmds = {
 
     if operation == "help" then
       local help_text =
-        "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• tags: List all tags\n• generate_release_notes: Generate release notes between tags\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
+        "\\\nAvailable read-only Git operations:\n• status: Show repository status\n• log: Show commit history\n• diff: Show file differences\n• branch: List branches\n• remotes: Show remote repositories\n• show: Show commit details\n• blame: Show file blame info\n• stash_list: List stashes\n• diff_commits: Compare commits\n• contributors: Show contributors\n• search_commits: Search commit messages\n• tags: List all tags\n• generate_release_notes: Generate release notes between tags\n• conflict_status: List files with merge conflicts\n• conflict_show: Show conflict markers in a file\n• gitignore_get: Get .gitignore content\n• gitignore_check: Check if a file is ignored\n      "
       return { status = "success", data = help_text }
     end
 
@@ -285,6 +291,14 @@ GitRead.cmds = {
         end
         success, output, user_msg, llm_msg =
           GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
+      elseif operation == "conflict_status" then
+        success, output, user_msg, llm_msg = GitTool.get_conflict_status()
+      elseif operation == "conflict_show" then
+        param_err = validation.require_string(op_args.file_path, "file_path", TOOL_NAME)
+        if param_err then
+          return param_err
+        end
+        success, output, user_msg, llm_msg = GitTool.show_conflict(op_args.file_path)
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then
