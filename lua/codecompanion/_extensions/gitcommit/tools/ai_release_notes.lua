@@ -57,11 +57,9 @@ local function get_detailed_commits(from_ref, to_ref)
 
   local escaped_range = vim.fn.shellescape(range)
 
-  -- Get commits with more details
-  -- Use git log with a separator to handle multi-line bodies correctly
   local separator = "---COMMIT_SEPARATOR---"
   local commit_cmd = string.format(
-    "git log --pretty=format:'%%H||%%s||%%an||%%ae||%%ad||%%b%s' --date=short %s",
+    "git log --pretty=format:'%%H||%%s||%%an||%%b%s' %s",
     separator,
     escaped_range
   )
@@ -99,23 +97,18 @@ local function get_detailed_commits(from_ref, to_ref)
       if commit_line then
         local parts = vim.split(commit_line, "||", { plain = true })
 
-        if #parts >= 5 then
+        if #parts >= 3 then
           local hash = vim.trim(parts[1] or "")
           local subject = vim.trim(parts[2] or "")
           local author = vim.trim(parts[3] or "")
-          local email = vim.trim(parts[4] or "")
-          local date = vim.trim(parts[5] or "")
 
-          -- Handle body (can be in part 6 or in following lines)
           local body = nil
           local body_lines = {}
 
-          -- Check if body is in the 6th part
-          if #parts > 5 and vim.trim(parts[6]) ~= "" then
-            table.insert(body_lines, vim.trim(parts[6]))
+          if #parts > 3 and vim.trim(parts[4]) ~= "" then
+            table.insert(body_lines, vim.trim(parts[4]))
           end
 
-          -- Add any additional lines as body
           for i = body_start_idx, #lines do
             local line = vim.trim(lines[i])
             if line ~= "" then
@@ -127,30 +120,14 @@ local function get_detailed_commits(from_ref, to_ref)
             body = table.concat(body_lines, "\n")
           end
 
-          -- Get diff stats for this commit (safely handle first commit)
-          local diff_stats = nil
-          local diff_cmd = string.format("git diff-tree --stat --root %s", hash)
-          local diff_success, stats_output = pcall(vim.fn.system, diff_cmd)
-          if diff_success and vim.v.shell_error == 0 then
-            diff_stats = stats_output
-          end
-
-          -- Parse conventional commit type
-          local commit_type, scope = subject:match("^(%w+)%((.-)%):")
-          if not commit_type then
-            commit_type = subject:match("^(%w+):")
-          end
+          local commit_type = subject:match("^(%w+)%b():") or subject:match("^(%w+):")
 
           table.insert(commits, {
             hash = hash,
             subject = subject,
             body = body,
             author = author,
-            email = email,
-            date = date,
             type = commit_type,
-            scope = scope,
-            diff_stats = diff_stats,
           })
         end
       end
@@ -245,23 +222,15 @@ AIReleaseNotes.cmds = {
 
     local prompt = prompts.create_smart_prompt(commits, style, { from = from_tag, to = to_tag })
 
-    -- Return the prompt for the AI to process
     local user_msg = string.format(
-      "🤖 Analyzing %d commits between %s and %s to generate %s release notes...\n\nPlease analyze the following commit history and generate release notes:\n\n%s",
-      #commits,
+      "📝 Generating %s release notes: %s → %s (%d commits)",
+      style,
       from_tag,
       to_tag,
-      style,
-      prompt
+      #commits
     )
 
-    local llm_msg = string.format(
-      "<aiReleaseNotes>analyze: %s to %s (%d commits)\n%s</aiReleaseNotes>",
-      from_tag,
-      to_tag,
-      #commits,
-      prompt
-    )
+    local llm_msg = string.format("<aiReleaseNotes>\n%s\n</aiReleaseNotes>", prompt)
 
     return {
       status = "success",
