@@ -1,0 +1,40 @@
+# mise configuration for codecompanion-gitcommit.nvim
+# Run tasks with: mise run <task>
+# List tasks with: mise tasks
+
+[tools]
+# stylua for code formatting
+"cargo:stylua" = "latest"
+
+[tasks.deps]
+description = "Install test dependencies (mini.nvim)"
+shell = "pwsh -NoProfile -Command"
+run = """
+if (-not (Test-Path deps)) { New-Item -ItemType Directory -Path deps | Out-Null }
+if (-not (Test-Path deps/mini.nvim)) { git clone --depth 1 https://github.com/echasnovski/mini.nvim deps/mini.nvim }
+"""
+
+[tasks.test]
+description = "Run all unit tests"
+depends = ["deps"]
+shell = "pwsh -NoProfile -Command"
+run = "nvim --headless -u tests/minimal_init.lua -c 'lua MiniTest.run()'"
+
+[tasks."test:file"]
+description = "Run tests for a specific file"
+depends = ["deps"]
+shell = "pwsh -NoProfile -Command"
+run = "nvim --headless -u tests/minimal_init.lua -c 'lua MiniTest.run_file(\"{{arg(name=\"file\")}}\")'"
+
+[tasks.lint]
+description = "Check code formatting with stylua"
+run = "stylua --check ."
+
+[tasks.fmt]
+description = "Format code with stylua"
+run = "stylua ."
+
+[tasks.doc]
+description = "Download latest CodeCompanion documentation"
+shell = "pwsh -NoProfile -Command"
+run = "Invoke-WebRequest -Uri 'https://github.com/olimorris/codecompanion.nvim/raw/refs/heads/main/doc/codecompanion.txt' -OutFile 'codecompanion.txt'"
