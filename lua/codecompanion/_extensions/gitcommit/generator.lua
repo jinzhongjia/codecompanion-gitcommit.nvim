@@ -248,53 +248,48 @@ function Generator._create_prompt(diff, lang, commit_history)
   end
 
   return string.format(
-    [[You are a commit message generator. Generate exactly ONE complete Conventional Commit message for the provided git diff.%s
-
-CRITICAL FORMAT REQUIREMENTS:
-1. MUST generate exactly ONE commit message, never multiple messages
-2. MUST analyze ALL changes in the diff as a single logical unit
-3. MUST respond with ONLY the commit message, no explanations, markdown code blocks, or extra text
-4. DO NOT wrap the output in markdown code blocks (```) or any other formatting
+    [[You are a commit message generator. Generate exactly ONE Conventional Commit message for the provided git diff.%s
 
 FORMAT:
-type(scope): brief description
+type(scope): specific description of WHAT changed
 
-[Optional body - only if needed]
+[Optional body - only for non-obvious changes]
 
 Allowed types: feat, fix, docs, style, refactor, perf, test, chore
 Language: %s
 
-RULES:
- - Keep Subject Line under 50 characters, body lines under 72 characters
- - DEFAULT TO MINIMAL: prefer fewer bullet points over more
- - Body is OPTIONAL: omit if subject line is self-explanatory
- - NEVER pad with redundant points - each bullet must add unique value
- - If commit history is provided, follow established patterns
+CRITICAL RULES:
+1. Respond with ONLY the commit message - no markdown blocks, no explanations
+2. Description must state WHAT was done, not WHY or the effect
+3. AVOID vague verbs: "update", "improve", "clarify", "adjust", "enhance", "fix issues"
+   USE specific verbs: "add", "remove", "rename", "move", "replace", "extract", "inline"
+4. Subject line under 50 chars, body lines under 72 chars
+5. Body is OPTIONAL - omit if subject is self-explanatory
 
-COMPLEXITY GUIDE:
- - Single file text change, config tweak, typo fix → NO body
- - Single logical change (rename, add one function) → 0-1 bullet
- - Multiple related changes → 2-3 bullets MAX
+BAD (vague):
+- refactor(api): improve error handling
+- fix(auth): update login logic
+- chore(deps): update dependencies
+
+GOOD (specific):
+- refactor(api): replace try-catch with Result type
+- fix(auth): check token expiry before API call
+- chore(deps): bump axios from 0.21 to 1.6
 
 EXAMPLES:
 
-fix(config): update timeout value
+docs(readme): add installation section
 
 refactor(api): rename getUserData to fetchUser
 
-- Update all call sites to use new name
+feat(auth): add OAuth2 token refresh flow
 
-feat(auth): add OAuth2 support
+- Store refresh token in secure storage
+- Auto-refresh 5 min before expiry
 
-- Implement token refresh flow
-- Add session persistence
-
-Generate a CONCISE commit message:
 ```diff
 %s
-```
-
-Return ONLY the commit message.]],
+```]],
     history_context,
     lang or "English",
     diff
