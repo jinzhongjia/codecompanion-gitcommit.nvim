@@ -260,4 +260,162 @@ T["first_error"]["returns nil for empty array"] = function()
   h.eq(true, result)
 end
 
+T["robustness"] = new_set()
+
+T["robustness"]["require_string handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = {
+      nil,
+      true,
+      false,
+      0,
+      -1,
+      3.14,
+      "",
+      "valid",
+      {},
+      {1, 2, 3},
+      {key = "value"},
+      function() end,
+    }
+    for _, val in ipairs(test_values) do
+      local result = v.require_string(val, "param", "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["optional_string handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = { nil, true, false, 0, "", "valid", {}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.optional_string(val, "param", "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["require_array handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = { nil, true, 0, "", {}, {1}, {"a", "b"}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.require_array(val, "param", "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["optional_integer handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = { nil, true, 0, 1, -1, 3.14, math.huge, -math.huge, "", {}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.optional_integer(val, "param", "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["optional_boolean handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = { nil, true, false, 0, 1, "", "true", "false", {}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.optional_boolean(val, "param", "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["require_enum handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local allowed = {"one", "two", "three"}
+    local test_values = { nil, true, 0, "", "one", "invalid", {}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.require_enum(val, "param", allowed, "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["require_args handles various types without crash"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local test_values = { nil, true, 0, "", {}, {key = "value"}, function() end }
+    for _, val in ipairs(test_values) do
+      local result = v.require_args(val, "test")
+      if result ~= nil and type(result) ~= "table" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["format_error handles special characters"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local special_msgs = {
+      "",
+      "normal message",
+      "message with 'quotes'",
+      'message with "double quotes"',
+      "message with <xml> tags",
+      "message\nwith\nnewlines",
+      "message with unicode: 中文 日本語",
+    }
+    for _, msg in ipairs(special_msgs) do
+      local result = v.format_error("test", msg)
+      if type(result) ~= "table" or result.status ~= "error" then
+        return false
+      end
+    end
+    return true
+  ]])
+  h.eq(true, result)
+end
+
+T["robustness"]["first_error handles large arrays"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local large_array = {}
+    for i = 1, 1000 do
+      large_array[i] = nil
+    end
+    large_array[500] = v.format_error("test", "error at 500")
+    local first = v.first_error(large_array)
+    return first ~= nil and first.data.output == "error at 500"
+  ]])
+  h.eq(true, result)
+end
+
 return T

@@ -113,6 +113,87 @@ T["glob_to_lua_pattern"]["escapes square brackets in complex pattern"] = functio
   h.eq(true, result)
 end
 
+T["glob_to_lua_pattern"]["robustness"] = new_set()
+
+T["glob_to_lua_pattern"]["robustness"]["handles empty string"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("")
+    return pattern == "$"
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles all lua pattern special chars"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local special = "test.file-name^start$end(group)+more[bracket]%percent"
+    local pattern = GitUtils.glob_to_lua_pattern(special)
+    return special:match(pattern) ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles consecutive special chars"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local input = "..--^^$$"
+    local pattern = GitUtils.glob_to_lua_pattern(input)
+    return input:match(pattern) ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles unicode characters"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("文件*.txt")
+    return ("文件test.txt"):match(pattern) ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles path with spaces"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("my files/*.txt")
+    return ("my files/doc.txt"):match(pattern) ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles multiple wildcards"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("*test*.lua")
+    local match1 = ("my_test_file.lua"):match(pattern) ~= nil
+    local match2 = ("test.lua"):match(pattern) ~= nil
+    return match1 and match2
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["does not crash on long input"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local long_input = string.rep("a", 1000) .. "*.txt"
+    local pattern = GitUtils.glob_to_lua_pattern(long_input)
+    return type(pattern) == "string" and #pattern > 0
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["robustness"]["handles only wildcards"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern1 = GitUtils.glob_to_lua_pattern("*")
+    local pattern2 = GitUtils.glob_to_lua_pattern("**")
+    local pattern3 = GitUtils.glob_to_lua_pattern("?")
+    return type(pattern1) == "string" and type(pattern2) == "string" and type(pattern3) == "string"
+  ]])
+  h.eq(true, result)
+end
+
 T["matches_glob"] = new_set()
 
 T["matches_glob"]["matches simple file extension"] = function()
@@ -517,6 +598,207 @@ T["is_windows"]["returns boolean"] = function()
   local result = child.lua([[
     local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
     return type(GitUtils.is_windows()) == "boolean"
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"] = new_set()
+
+T["parse_conflicts"]["parses single conflict"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = "<<<<<<< HEAD\nour changes\n=======\ntheir changes\n>>>>>>> branch"
+    local conflicts = GitUtils.parse_conflicts(content)
+    return #conflicts == 1
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"]["parses multiple conflicts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = "<<<<<<< HEAD\nour changes 1\n=======\ntheir changes 1\n>>>>>>> branch\nsome code\n<<<<<<< HEAD\nour changes 2\n=======\ntheir changes 2\n>>>>>>> branch"
+    local conflicts = GitUtils.parse_conflicts(content)
+    return #conflicts == 2
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"]["handles multiline conflict blocks"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = "<<<<<<< HEAD\nline 1\nline 2\nline 3\n=======\ndifferent line 1\ndifferent line 2\n>>>>>>> branch"
+    local conflicts = GitUtils.parse_conflicts(content)
+    local has_multiple_lines = conflicts[1]:find("line 2") ~= nil
+    return #conflicts == 1 and has_multiple_lines
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"]["returns empty array for no conflicts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = "just normal code\nno conflicts here"
+    local conflicts = GitUtils.parse_conflicts(content)
+    return #conflicts == 0
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"]["handles incomplete conflict (no end marker)"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = "<<<<<<< HEAD\nour changes\n=======\ntheir changes"
+    local conflicts = GitUtils.parse_conflicts(content)
+    return #conflicts == 0
+  ]])
+  h.eq(true, result)
+end
+
+T["parse_conflicts"]["handles empty content"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local conflicts = GitUtils.parse_conflicts("")
+    return #conflicts == 0
+  ]])
+  h.eq(true, result)
+end
+
+T["has_conflicts"] = new_set()
+
+T["has_conflicts"]["returns true when conflicts exist"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    return GitUtils.has_conflicts("<<<<<<< HEAD\ncode")
+  ]])
+  h.eq(true, result)
+end
+
+T["has_conflicts"]["returns false when no conflicts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    return GitUtils.has_conflicts("normal code")
+  ]])
+  h.eq(false, result)
+end
+
+T["filter_diff"]["robustness"] = new_set()
+
+T["filter_diff"]["robustness"]["handles empty diff"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    return GitUtils.filter_diff("", {"*.js"}) == ""
+  ]])
+  h.eq(true, result)
+end
+
+T["filter_diff"]["robustness"]["handles diff with special chars in filename"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local diff = "diff --git a/file with spaces.lua b/file with spaces.lua\n+hello"
+    local filtered = GitUtils.filter_diff(diff, {"*.js"})
+    return filtered:find("file with spaces") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["filter_diff"]["robustness"]["handles diff with unicode filename"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local diff = "diff --git a/文件.lua b/文件.lua\n+code"
+    local filtered = GitUtils.filter_diff(diff, {"*.js"})
+    return filtered:find("文件") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["filter_diff"]["robustness"]["handles malformed diff header"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local diff = "not a valid diff header\n+some content"
+    local filtered = GitUtils.filter_diff(diff, {"*.js"})
+    return type(filtered) == "string"
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_unix"]["robustness"] = new_set()
+
+T["shell_quote_unix"]["robustness"]["handles newlines"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local quoted = GitUtils.shell_quote_unix("line1\nline2")
+    return quoted:find("\n") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_unix"]["robustness"]["handles tabs"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local quoted = GitUtils.shell_quote_unix("col1\tcol2")
+    return quoted:find("\t") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_unix"]["robustness"]["handles shell metacharacters"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local dangerous = "$(whoami); rm -rf /"
+    local quoted = GitUtils.shell_quote_unix(dangerous)
+    return quoted == "'" .. dangerous .. "'"
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_unix"]["robustness"]["handles backticks"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local input = "`whoami`"
+    local quoted = GitUtils.shell_quote_unix(input)
+    return quoted == "'`whoami`'"
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_unix"]["robustness"]["handles null bytes"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local input = "before\0after"
+    local quoted = GitUtils.shell_quote_unix(input)
+    return type(quoted) == "string"
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_windows"]["robustness"] = new_set()
+
+T["shell_quote_windows"]["robustness"]["handles newlines"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local quoted = GitUtils.shell_quote_windows("line1\nline2")
+    return quoted:find("\n") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_windows"]["robustness"]["handles cmd special chars"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local dangerous = "test & del /f /q *"
+    local quoted = GitUtils.shell_quote_windows(dangerous)
+    return quoted == '"' .. dangerous .. '"'
+  ]])
+  h.eq(true, result)
+end
+
+T["shell_quote_windows"]["robustness"]["handles percent signs"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local input = "%PATH%"
+    local quoted = GitUtils.shell_quote_windows(input)
+    return quoted == '"%PATH%"'
   ]])
   h.eq(true, result)
 end

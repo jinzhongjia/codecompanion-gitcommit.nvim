@@ -316,4 +316,37 @@ DIFF:
   )
 end
 
+---Parse git conflict markers from file content
+---@param content string The file content with potential conflicts
+---@return table[] conflicts Array of conflict blocks, each with {ours, theirs, marker_start, marker_end}
+function M.parse_conflicts(content)
+  local conflicts = {}
+  local lines = vim.split(content, "\n")
+  local in_conflict = false
+  local current_block = {}
+
+  for _, line in ipairs(lines) do
+    if line:match("^<<<<<<< ") then
+      in_conflict = true
+      current_block = { line }
+    elseif in_conflict then
+      table.insert(current_block, line)
+      if line:match("^>>>>>>> ") then
+        table.insert(conflicts, table.concat(current_block, "\n"))
+        in_conflict = false
+        current_block = {}
+      end
+    end
+  end
+
+  return conflicts
+end
+
+---Check if content has conflict markers
+---@param content string The file content to check
+---@return boolean has_conflicts True if conflict markers found
+function M.has_conflicts(content)
+  return content:match("<<<<<<< ") ~= nil
+end
+
 return M

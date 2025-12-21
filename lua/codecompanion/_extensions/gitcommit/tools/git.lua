@@ -1,4 +1,5 @@
 local Git = require("codecompanion._extensions.gitcommit.git")
+local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
 local Command = require("codecompanion._extensions.gitcommit.tools.command")
 
 local CommandBuilder = Command.CommandBuilder
@@ -720,35 +721,15 @@ function GitTool.show_conflict(file_path)
     return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
   end
 
-  if not content:match("<<<<<<< ") then
+  if not GitUtils.has_conflicts(content) then
     local msg = "No conflict markers found in: " .. file_path
     return true, msg, "✓ " .. msg, "<gitConflictShow>success: " .. msg .. "</gitConflictShow>"
   end
 
+  local raw_conflicts = GitUtils.parse_conflicts(content)
   local conflicts = {}
-  local conflict_num = 0
-
-  -- Parse conflicts line by line since Lua's . doesn't match newlines
-  local lines = vim.split(content, "\n")
-  local in_conflict = false
-  local current_block = {}
-
-  for _, line in ipairs(lines) do
-    if line:match("^<<<<<<< ") then
-      in_conflict = true
-      current_block = { line }
-    elseif in_conflict then
-      table.insert(current_block, line)
-      if line:match("^>>>>>>> ") then
-        conflict_num = conflict_num + 1
-        table.insert(
-          conflicts,
-          string.format("--- Conflict #%d ---\n%s", conflict_num, table.concat(current_block, "\n"))
-        )
-        in_conflict = false
-        current_block = {}
-      end
-    end
+  for i, block in ipairs(raw_conflicts) do
+    table.insert(conflicts, string.format("--- Conflict #%d ---\n%s", i, block))
   end
 
   if #conflicts == 0 then
