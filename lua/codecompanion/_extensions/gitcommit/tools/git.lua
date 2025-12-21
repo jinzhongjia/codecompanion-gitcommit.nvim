@@ -634,8 +634,94 @@ function GitTool.cherry_pick(commit_hash)
   if not commit_hash then
     return false, "Commit hash is required for cherry-pick"
   end
+
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
   local cmd = "git cherry-pick --no-edit " .. vim.fn.shellescape(commit_hash)
-  return execute_git_command(cmd)
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, output
+  else
+    if output:match("CONFLICT") or output:match("conflict") then
+      return false,
+        "Cherry-pick conflict detected. Please resolve the conflicts manually.\n"
+          .. "Options:\n"
+          .. "  • Use 'cherry_pick_continue' after resolving conflicts\n"
+          .. "  • Use 'cherry_pick_abort' to cancel the cherry-pick\n"
+          .. "  • Use 'cherry_pick_skip' to skip this commit"
+    else
+      return false, output
+    end
+  end
+end
+
+---Abort cherry-pick operation
+---@return boolean success, string output
+function GitTool.cherry_pick_abort()
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git cherry-pick --abort"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Cherry-pick aborted successfully"
+  else
+    if output:match("no cherry%-pick") or output:match("not in progress") then
+      return false, "No cherry-pick in progress to abort"
+    end
+    return false, output
+  end
+end
+
+---Continue cherry-pick after resolving conflicts
+---@return boolean success, string output
+function GitTool.cherry_pick_continue()
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git cherry-pick --continue"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Cherry-pick continued successfully"
+  else
+    if output:match("CONFLICT") or output:match("conflict") then
+      return false, "Conflicts still exist. Please resolve all conflicts before continuing."
+    elseif output:match("no cherry%-pick") or output:match("not in progress") then
+      return false, "No cherry-pick in progress to continue"
+    end
+    return false, output
+  end
+end
+
+---Skip current commit in cherry-pick
+---@return boolean success, string output
+function GitTool.cherry_pick_skip()
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git cherry-pick --skip"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Current commit skipped successfully"
+  else
+    if output:match("no cherry%-pick") or output:match("not in progress") then
+      return false, "No cherry-pick in progress to skip"
+    end
+    return false, output
+  end
 end
 
 ---Revert a commit
@@ -714,12 +800,59 @@ function GitTool.merge(branch)
   if exit_code == 0 then
     return true, output
   else
-    if output:match("CONFLICT") then
+    if output:match("CONFLICT") or output:match("conflict") then
       return false,
-        "Merge conflict detected. Please resolve the conflicts manually. You can use 'git merge --abort' to cancel."
+        "Merge conflict detected. Please resolve the conflicts manually.\n"
+          .. "Options:\n"
+          .. "  • Use 'merge_continue' after resolving conflicts\n"
+          .. "  • Use 'merge_abort' to cancel the merge"
     else
       return false, output
     end
+  end
+end
+
+---Abort merge operation
+---@return boolean success, string output
+function GitTool.merge_abort()
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git merge --abort"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Merge aborted successfully"
+  else
+    if output:match("not merging") or output:match("no merge") then
+      return false, "No merge in progress to abort"
+    end
+    return false, output
+  end
+end
+
+---Continue merge after resolving conflicts
+---@return boolean success, string output
+function GitTool.merge_continue()
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+
+  local cmd = "git merge --continue"
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Merge continued successfully"
+  else
+    if output:match("CONFLICT") or output:match("conflict") then
+      return false, "Conflicts still exist. Please resolve all conflicts before continuing."
+    elseif output:match("not merging") or output:match("no merge") then
+      return false, "No merge in progress to continue"
+    end
+    return false, output
   end
 end
 
