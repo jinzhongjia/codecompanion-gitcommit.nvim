@@ -131,7 +131,9 @@ function M.create_smart_prompt(commits, style, version_info)
   for name, count in pairs(analysis.contributors) do
     table.insert(contributor_list, { name = name, count = count })
   end
-  table.sort(contributor_list, function(a, b) return a.count > b.count end)
+  table.sort(contributor_list, function(a, b)
+    return a.count > b.count
+  end)
 
   if #contributor_list > 0 then
     local names = {}
