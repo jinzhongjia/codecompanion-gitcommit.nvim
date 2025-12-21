@@ -60,20 +60,9 @@ Output styles:
 
 -- Helper function to get commit details with diffs
 local function get_detailed_commits(from_ref, to_ref)
-  -- Build the range correctly
-  -- We want commits AFTER from_ref up to and including to_ref
-  -- Use ^..to_ref to include commits after from_ref (not including from_ref itself)
-  local range
-
-  -- Check if from_ref looks like a relative reference (e.g., HEAD~10)
-  if from_ref:match("^HEAD[~^]") then
-    -- For relative refs, use as-is
-    range = from_ref .. ".." .. (to_ref or "HEAD")
-  else
-    -- For tags/commits, use ^ to get commits AFTER the from_ref
-    -- This ensures we don't include the from_ref commit itself in the release notes
-    range = from_ref .. "^.." .. (to_ref or "HEAD")
-  end
+  -- Git range A..B = commits reachable from B but not from A
+  -- This correctly excludes from_ref itself and includes up to to_ref
+  local range = from_ref .. ".." .. (to_ref or "HEAD")
 
   local escaped_range = vim.fn.shellescape(range)
 
