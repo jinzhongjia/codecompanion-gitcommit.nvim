@@ -1,4 +1,3 @@
-local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
 
 ---@class CodeCompanion.GitCommit.Tools.AIReleaseNotes
@@ -27,14 +26,6 @@ AIReleaseNotes.schema = {
           type = "string",
           enum = { "detailed", "concise", "changelog", "marketing" },
           description = "Style of release notes to generate",
-        },
-        include_stats = {
-          type = "boolean",
-          description = "Include statistics about changes",
-        },
-        group_by_type = {
-          type = "boolean",
-          description = "Group commits by conventional commit types",
         },
       },
       additionalProperties = false,
@@ -169,125 +160,11 @@ local function get_detailed_commits(from_ref, to_ref)
   return commits, nil
 end
 
--- Generate AI prompt for release notes
-local function create_release_notes_prompt(commits, from_tag, to_tag, style, include_stats)
-  local prompt_parts = {
-    string.format(
-      "Generate release notes for version %s (from %s) based on these commits:\n\n",
-      to_tag or "HEAD",
-      from_tag or "previous version"
-    ),
-  }
-
-  -- Add commit information
-  table.insert(prompt_parts, "COMMIT HISTORY:\n")
-  table.insert(prompt_parts, "================\n\n")
-
-  for _, commit in ipairs(commits) do
-    table.insert(prompt_parts, string.format("Commit: %s\n", commit.hash:sub(1, 8)))
-    table.insert(prompt_parts, string.format("Type: %s\n", commit.type or "other"))
-    if commit.scope then
-      table.insert(prompt_parts, string.format("Scope: %s\n", commit.scope))
-    end
-    table.insert(prompt_parts, string.format("Subject: %s\n", commit.subject))
-    if commit.body then
-      table.insert(prompt_parts, string.format("Body: %s\n", commit.body))
-    end
-    table.insert(prompt_parts, string.format("Author: %s\n", commit.author))
-    table.insert(prompt_parts, string.format("Date: %s\n", commit.date))
-
-    if commit.diff_stats and include_stats then
-      table.insert(prompt_parts, "Changes:\n")
-      table.insert(prompt_parts, commit.diff_stats)
-    end
-    table.insert(prompt_parts, "\n---\n\n")
-  end
-
-  -- Add style-specific instructions
-  local style_instructions = {
-    detailed = [[Create comprehensive release notes with:
-- Detailed explanation of each feature and fix
-- Technical details where relevant
-- Migration guides for breaking changes
-- Full contributor acknowledgments]],
-
-    concise = [[Create brief release notes with:
-- One-line summaries of key changes
-- Only the most important features and fixes
-- Minimal technical details]],
-
-    changelog = [[Create a developer-focused changelog with:
-- Conventional commit grouping (Features, Fixes, Breaking Changes, etc.)
-- Technical descriptions
-- Links to commits (use short hash)
-- Clear upgrade instructions]],
-
-    marketing = [[Create user-friendly marketing release notes with:
-- Exciting descriptions of new features
-- Benefits to users clearly explained
-- Non-technical language
-- Emphasis on improvements and value]],
-  }
-
-  table.insert(prompt_parts, "\nRELEASE NOTES REQUIREMENTS:\n")
-  table.insert(prompt_parts, "============================\n")
-  table.insert(prompt_parts, style_instructions[style] or style_instructions.detailed)
-  table.insert(prompt_parts, "\n\n")
-
-  -- Add statistics if requested
-  if include_stats then
-    local stats = {
-      total = #commits,
-      features = 0,
-      fixes = 0,
-      breaking = 0,
-      contributors = {},
-    }
-
-    for _, commit in ipairs(commits) do
-      if commit.type == "feat" then
-        stats.features = stats.features + 1
-      elseif commit.type == "fix" then
-        stats.fixes = stats.fixes + 1
-      elseif commit.type == "!" or commit.subject:match("BREAKING") then
-        stats.breaking = stats.breaking + 1
-      end
-      stats.contributors[commit.author] = true
-    end
-
-    local contributor_count = 0
-    for _ in pairs(stats.contributors) do
-      contributor_count = contributor_count + 1
-    end
-
-    table.insert(prompt_parts, "STATISTICS:\n")
-    table.insert(prompt_parts, string.format("- Total commits: %d\n", stats.total))
-    table.insert(prompt_parts, string.format("- New features: %d\n", stats.features))
-    table.insert(prompt_parts, string.format("- Bug fixes: %d\n", stats.fixes))
-    table.insert(prompt_parts, string.format("- Breaking changes: %d\n", stats.breaking))
-    table.insert(prompt_parts, string.format("- Contributors: %d\n", contributor_count))
-    table.insert(prompt_parts, "\n")
-  end
-
-  table.insert(
-    prompt_parts,
-    [[
-Please generate well-formatted release notes based on the above information.
-Focus on clarity, completeness, and making the changes understandable to the target audience.
-Group related changes together and highlight the most important updates.
-]]
-  )
-
-  return table.concat(prompt_parts)
-end
-
 AIReleaseNotes.cmds = {
-  function(self, args, chat)
+  function(_, args)
     local from_tag = args.from_tag
     local to_tag = args.to_tag
     local style = args.style or "detailed"
-    local include_stats = args.include_stats ~= false
-    local group_by_type = args.group_by_type ~= false
 
     -- Get tags if not specified
     if not to_tag or not from_tag then
@@ -366,19 +243,7 @@ AIReleaseNotes.cmds = {
       }
     end
 
-    -- Use the smart prompt generator
-    local version_info = {
-      from = from_tag,
-      to = to_tag,
-    }
-
-    -- Use the new template system if available, fallback to old method
-    local prompt
-    if group_by_type and prompts.create_smart_prompt then
-      prompt = prompts.create_smart_prompt(commits, style, version_info)
-    else
-      prompt = create_release_notes_prompt(commits, from_tag, to_tag, style, include_stats)
-    end
+    local prompt = prompts.create_smart_prompt(commits, style, { from = from_tag, to = to_tag })
 
     -- Return the prompt for the AI to process
     local user_msg = string.format(

@@ -1,127 +1,64 @@
 local M = {}
 
--- Prompt templates for different release note styles
-M.templates = {
-  detailed = {
-    intro = [[You are an expert technical writer creating comprehensive release notes.
-Analyze the provided git commit history and create detailed release notes that:
-- Explain each change thoroughly with context
-- Include technical implementation details
-- Provide migration guides for breaking changes
-- Credit all contributors appropriately
-- Add helpful examples where relevant]],
+M.style_guides = {
+  detailed = [[You are creating comprehensive release notes for developers.
+Write thorough explanations of changes with technical context.
+Include migration guides for breaking changes and code examples where helpful.
+Credit contributors and explain the "why" behind significant changes.]],
 
-    format = [[
-# Release {version}
+  concise = [[You are creating brief, scannable release notes.
+Use one-line bullet points. Focus only on user-facing changes.
+Skip internal refactoring and minor fixes unless significant.
+Readers should understand key changes in under 30 seconds.]],
 
-## 🎯 Overview
-[Provide a compelling summary of this release's purpose and main achievements]
+  changelog = [[You are creating a CHANGELOG following Keep a Changelog format.
+Group by: Added, Changed, Fixed, Deprecated, Removed, Security.
+Use technical language. Include commit hashes in parentheses.
+Only include sections that have content.]],
 
-## ✨ What's New
-
-### Features
-[List and explain new features with examples]
-
-### Improvements
-[Detail enhancements to existing functionality]
-
-## 🐛 Bug Fixes
-[Describe fixed issues and their impact]
-
-## 💔 Breaking Changes
-[List breaking changes with migration instructions]
-
-## 🔧 Technical Details
-[Include implementation notes for developers]
-
-## 📊 Statistics
-- Total commits: {commit_count}
-- Contributors: {contributor_count}
-- Files changed: {files_changed}
-
-## 👥 Contributors
-[List contributors with their contributions]
-
-## 📝 Full Changelog
-[Link or reference to complete commit list]
-]],
-  },
-
-  concise = {
-    intro = [[Create brief, scannable release notes focusing on user impact.
-Summarize changes in one-line bullet points, highlighting only the most important updates.]],
-
-    format = [[
-# Version {version}
-
-## Key Changes
-- [Major feature or change 1]
-- [Major feature or change 2]
-- [Important bug fix]
-
-## Quick Stats
-- {commit_count} commits from {contributor_count} contributors
-]],
-  },
-
-  changelog = {
-    intro = [[Generate a developer-focused CHANGELOG following Keep a Changelog format.
-Group changes by type (Added, Changed, Fixed, Deprecated, Removed, Security).
-Use technical language and include commit references.]],
-
-    format = [[
-## [{version}] - {date}
-
-### Added
-- New features and additions
-
-### Changed
-- Changes in existing functionality
-
-### Fixed
-- Bug fixes
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Removed features
-
-### Security
-- Security fixes and improvements
-
-[{version}]: {compare_url}
-]],
-  },
-
-  marketing = {
-    intro = [[Write engaging, user-friendly release notes for a general audience.
-Focus on benefits and value, using non-technical language.
-Make it exciting and highlight how these changes improve the user experience.]],
-
-    format = [[
-# 🎉 {product_name} {version} is Here!
-
-## What's New
-
-### 🌟 Headline Feature
-[Exciting description of the main feature and its benefits]
-
-### ✨ More Improvements You'll Love
-[User-friendly descriptions of other enhancements]
-
-## 🐛 Squashed Bugs
-[Light-hearted mentions of fixed issues]
-
-## 🙏 Thank You
-Special thanks to our amazing contributors who made this release possible!
-
-[Call-to-action: Update now, try it out, etc.]
-]],
-  },
+  marketing = [[You are creating user-friendly release notes for end users.
+Focus on benefits, not implementation. Use non-technical language.
+Make it engaging - highlight how changes improve user experience.
+Skip internal changes that don't affect users.]],
 }
 
--- Helper function to analyze commits for smart categorization
+M.base_instructions = [[
+CRITICAL RULES:
+- Only include sections that have actual content - skip empty categories entirely
+- Do NOT use placeholder text like "[description here]" - write real content or omit
+- Adapt structure to fit the actual changes - small releases need simple notes
+- Group related commits together when they serve the same purpose
+- For trivial releases (1-3 small commits), keep notes proportionally brief
+
+WRITING GUIDELINES:
+- Lead with the most impactful changes
+- Explain "why" changes matter, not just "what" changed
+- Convert commit messages into user-friendly descriptions
+- Merge similar commits into single entries when appropriate
+]]
+
+local function format_commit(commit)
+  local parts = { string.format("- %s", commit.subject) }
+  if commit.author then
+    table.insert(parts, string.format(" (@%s)", commit.author))
+  end
+  if commit.body and #commit.body > 0 then
+    table.insert(parts, string.format("\n  > %s", commit.body:gsub("\n", "\n  > ")))
+  end
+  return table.concat(parts)
+end
+
+local function format_category(name, commits)
+  if #commits == 0 then
+    return nil
+  end
+  local lines = { string.format("\n### %s", name) }
+  for _, commit in ipairs(commits) do
+    table.insert(lines, format_commit(commit))
+  end
+  return table.concat(lines, "\n")
+end
+
 function M.analyze_commits(commits)
   local analysis = {
     features = {},
@@ -131,135 +68,96 @@ function M.analyze_commits(commits)
     documentation = {},
     refactoring = {},
     tests = {},
+    chore = {},
     other = {},
     contributors = {},
-    stats = {
-      total = #commits,
-      by_type = {},
-    },
   }
 
   for _, commit in ipairs(commits) do
-    -- Track contributors
     analysis.contributors[commit.author] = (analysis.contributors[commit.author] or 0) + 1
 
-    -- Categorize by conventional commit type
-    local category = "other"
-    local is_breaking = commit.subject:match("!") or commit.subject:match("BREAKING")
+    local is_breaking = commit.subject:match("!:") or commit.subject:upper():match("BREAKING")
 
     if is_breaking then
       table.insert(analysis.breaking_changes, commit)
-      category = "breaking"
     elseif commit.type == "feat" or commit.type == "feature" then
       table.insert(analysis.features, commit)
-      category = "features"
     elseif commit.type == "fix" or commit.type == "bugfix" then
       table.insert(analysis.fixes, commit)
-      category = "fixes"
     elseif commit.type == "perf" then
       table.insert(analysis.performance, commit)
-      category = "performance"
-    elseif commit.type == "docs" then
+    elseif commit.type == "docs" or commit.type == "doc" then
       table.insert(analysis.documentation, commit)
-      category = "documentation"
     elseif commit.type == "refactor" then
       table.insert(analysis.refactoring, commit)
-      category = "refactoring"
     elseif commit.type == "test" or commit.type == "tests" then
       table.insert(analysis.tests, commit)
-      category = "tests"
+    elseif commit.type == "chore" or commit.type == "build" or commit.type == "ci" then
+      table.insert(analysis.chore, commit)
     else
       table.insert(analysis.other, commit)
     end
-
-    -- Track stats by type
-    analysis.stats.by_type[category] = (analysis.stats.by_type[category] or 0) + 1
   end
 
   return analysis
 end
 
--- Generate context-aware prompts based on commit analysis
 function M.create_smart_prompt(commits, style, version_info)
   local analysis = M.analyze_commits(commits)
-  local template = M.templates[style] or M.templates.detailed
+  local guide = M.style_guides[style] or M.style_guides.detailed
 
-  local prompt_parts = {
-    template.intro,
-    "\n\n",
-    "VERSION INFORMATION:\n",
-    string.format("- Previous version: %s\n", version_info.from),
-    string.format("- New version: %s\n", version_info.to),
-    string.format("- Release date: %s\n", os.date("%Y-%m-%d")),
-    "\n",
+  local parts = {}
+
+  table.insert(parts, guide)
+  table.insert(parts, "\n\n")
+  table.insert(parts, M.base_instructions)
+  table.insert(parts, "\n\n---\n\n")
+
+  table.insert(parts, "## Release Context\n")
+  table.insert(parts, string.format("From: %s → To: %s\n", version_info.from, version_info.to))
+  table.insert(parts, string.format("Date: %s\n", os.date("%Y-%m-%d")))
+  table.insert(parts, string.format("Total commits: %d\n", #commits))
+
+  local contributor_names = {}
+  for name, count in pairs(analysis.contributors) do
+    table.insert(contributor_names, string.format("%s (%d)", name, count))
+  end
+  if #contributor_names > 0 then
+    table.insert(parts, string.format("Contributors: %s\n", table.concat(contributor_names, ", ")))
+  end
+
+  table.insert(parts, "\n---\n\n## Commits by Category\n")
+
+  local categories = {
+    { "⚠️ Breaking Changes", analysis.breaking_changes },
+    { "Features", analysis.features },
+    { "Bug Fixes", analysis.fixes },
+    { "Performance", analysis.performance },
+    { "Refactoring", analysis.refactoring },
+    { "Documentation", analysis.documentation },
+    { "Tests", analysis.tests },
+    { "Chore/Build/CI", analysis.chore },
+    { "Other", analysis.other },
   }
 
-  -- Add commit analysis summary
-  table.insert(prompt_parts, "COMMIT ANALYSIS:\n")
-  table.insert(prompt_parts, string.format("- Total commits: %d\n", analysis.stats.total))
-
-  if #analysis.features > 0 then
-    table.insert(prompt_parts, string.format("- New features: %d\n", #analysis.features))
-  end
-  if #analysis.fixes > 0 then
-    table.insert(prompt_parts, string.format("- Bug fixes: %d\n", #analysis.fixes))
-  end
-  if #analysis.breaking_changes > 0 then
-    table.insert(
-      prompt_parts,
-      string.format("- BREAKING CHANGES: %d (requires careful documentation)\n", #analysis.breaking_changes)
-    )
-  end
-
-  local contributor_count = 0
-  for _ in pairs(analysis.contributors) do
-    contributor_count = contributor_count + 1
-  end
-  table.insert(prompt_parts, string.format("- Contributors: %d\n\n", contributor_count))
-
-  -- Add categorized commits
-  if #analysis.breaking_changes > 0 then
-    table.insert(prompt_parts, "⚠️ BREAKING CHANGES:\n")
-    for _, commit in ipairs(analysis.breaking_changes) do
-      table.insert(prompt_parts, string.format("- %s (by %s)\n", commit.subject, commit.author))
-      if commit.body then
-        table.insert(prompt_parts, string.format("  Details: %s\n", commit.body))
-      end
+  local has_content = false
+  for _, cat in ipairs(categories) do
+    local section = format_category(cat[1], cat[2])
+    if section then
+      table.insert(parts, section)
+      has_content = true
     end
-    table.insert(prompt_parts, "\n")
   end
 
-  if #analysis.features > 0 then
-    table.insert(prompt_parts, "NEW FEATURES:\n")
-    for _, commit in ipairs(analysis.features) do
-      table.insert(prompt_parts, string.format("- %s\n", commit.subject))
-    end
-    table.insert(prompt_parts, "\n")
+  if not has_content then
+    table.insert(parts, "\n(No categorized commits found)\n")
   end
 
-  if #analysis.fixes > 0 then
-    table.insert(prompt_parts, "BUG FIXES:\n")
-    for _, commit in ipairs(analysis.fixes) do
-      table.insert(prompt_parts, string.format("- %s\n", commit.subject))
-    end
-    table.insert(prompt_parts, "\n")
-  end
+  table.insert(parts, "\n\n---\n\n")
+  table.insert(parts, "Generate release notes based on the commits above. ")
+  table.insert(parts, "Adapt the structure and length to match the actual content.")
 
-  -- Add other categories if present
-  if #analysis.performance > 0 then
-    table.insert(prompt_parts, "PERFORMANCE IMPROVEMENTS:\n")
-    for _, commit in ipairs(analysis.performance) do
-      table.insert(prompt_parts, string.format("- %s\n", commit.subject))
-    end
-    table.insert(prompt_parts, "\n")
-  end
-
-  -- Add format template
-  table.insert(prompt_parts, "\nDESIRED OUTPUT FORMAT:\n")
-  table.insert(prompt_parts, template.format)
-  table.insert(prompt_parts, "\n\nPlease generate the release notes following the above format and guidelines.")
-
-  return table.concat(prompt_parts)
+  return table.concat(parts)
 end
 
 return M
