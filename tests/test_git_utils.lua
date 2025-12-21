@@ -249,12 +249,12 @@ T["filter_diff"]["keeps non-excluded files"] = function()
   h.eq(true, result)
 end
 
-T["filter_diff"]["returns original when all files excluded"] = function()
+T["filter_diff"]["returns empty when all files excluded"] = function()
   local result = child.lua([[
     local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
     local diff = "diff --git a/package-lock.json b/package-lock.json\n+deps"
     local filtered = GitUtils.filter_diff(diff, {"package-lock.json"})
-    return filtered == diff
+    return vim.trim(filtered) == ""
   ]])
   h.eq(true, result)
 end

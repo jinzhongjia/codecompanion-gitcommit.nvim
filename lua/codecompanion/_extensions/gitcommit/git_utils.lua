@@ -66,6 +66,16 @@ function M.matches_glob(filepath, pattern)
     end
   end
 
+  -- Handle **/ at start of pattern - should match any depth including root
+  if pattern:match("^%*%*/") then
+    local suffix_pattern = pattern:gsub("^%*%*/", "")
+    local suffix_lua_pattern = M.glob_to_lua_pattern(suffix_pattern)
+    -- Try matching from root (no directory prefix)
+    if filepath:match(suffix_lua_pattern) then
+      return true
+    end
+  end
+
   return false
 end
 
@@ -137,10 +147,6 @@ function M.filter_diff(diff_content, exclude_patterns)
     if not skip_current_file then
       table.insert(filtered_lines, line)
     end
-  end
-
-  if #all_files > 0 and #excluded_files >= #all_files then
-    return diff_content
   end
 
   return table.concat(filtered_lines, "\n")
