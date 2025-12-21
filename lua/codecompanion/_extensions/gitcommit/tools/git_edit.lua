@@ -36,10 +36,15 @@ GitEdit.schema = {
             "rename_remote",
             "set_remote_url",
             "cherry_pick",
+            "cherry_pick_abort",
+            "cherry_pick_continue",
+            "cherry_pick_skip",
             "revert",
             "create_tag",
             "delete_tag",
             "merge",
+            "merge_abort",
+            "merge_continue",
             "help",
           },
           description = "The write-access Git operation to perform.",
@@ -210,10 +215,15 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 | `rename_remote` | Rename remote | remote_name (required), new_remote_name (required) |
 | `set_remote_url` | Change remote URL | remote_name (required), remote_url (required) |
 | `cherry_pick` | Apply commit | cherry_pick_commit_hash (required) |
+| `cherry_pick_abort` | Abort cherry-pick | - |
+| `cherry_pick_continue` | Continue cherry-pick | - |
+| `cherry_pick_skip` | Skip current commit | - |
 | `revert` | Revert commit | revert_commit_hash (required) |
 | `create_tag` | Create tag | tag_name (required), tag_message? |
 | `delete_tag` | Delete tag | tag_name (required) |
 | `merge` | Merge branch | branch (required) |
+| `merge_abort` | Abort merge | - |
+| `merge_continue` | Continue merge | - |
 | `help` | Show help | - |
 
 ## PUSH OPERATION NOTES
@@ -250,10 +260,15 @@ local VALID_OPERATIONS = {
   "rename_remote",
   "set_remote_url",
   "cherry_pick",
+  "cherry_pick_abort",
+  "cherry_pick_continue",
+  "cherry_pick_skip",
   "revert",
   "create_tag",
   "delete_tag",
   "merge",
+  "merge_abort",
+  "merge_continue",
   "help",
 }
 local VALID_RESET_MODES = { "soft", "mixed", "hard" }
@@ -295,10 +310,15 @@ Available write-access Git operations:
 • rename_remote: Rename a remote repository
 • set_remote_url: Change URL of a remote repository
 • cherry_pick: Apply changes from existing commits
+• cherry_pick_abort: Abort cherry-pick in progress
+• cherry_pick_continue: Continue cherry-pick after resolving conflicts
+• cherry_pick_skip: Skip current commit in cherry-pick
 • revert: Revert a commit
 • create_tag: Create a new tag
 • delete_tag: Delete a tag
 • merge: Merge a branch into the current branch (requires branch parameter)
+• merge_abort: Abort merge in progress
+• merge_continue: Continue merge after resolving conflicts
       ]]
       return { status = "success", data = help_text }
     end
@@ -443,6 +463,12 @@ Available write-access Git operations:
           return param_err
         end
         success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
+      elseif operation == "cherry_pick_abort" then
+        success, output = GitTool.cherry_pick_abort()
+      elseif operation == "cherry_pick_continue" then
+        success, output = GitTool.cherry_pick_continue()
+      elseif operation == "cherry_pick_skip" then
+        success, output = GitTool.cherry_pick_skip()
       elseif operation == "revert" then
         param_err = validation.require_string(op_args.revert_commit_hash, "revert_commit_hash", TOOL_NAME)
         if param_err then
@@ -474,6 +500,10 @@ Available write-access Git operations:
           return param_err
         end
         success, output = GitTool.merge(op_args.branch)
+      elseif operation == "merge_abort" then
+        success, output = GitTool.merge_abort()
+      elseif operation == "merge_continue" then
+        success, output = GitTool.merge_continue()
       elseif operation == "fetch" then
         param_err = validation.first_error({
           validation.optional_string(op_args.remote, "remote", TOOL_NAME),
