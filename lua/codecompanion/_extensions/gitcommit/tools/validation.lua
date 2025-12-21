@@ -149,9 +149,15 @@ end
 ---@param validations table Array of validation results (nil or error table)
 ---@return table|nil error_response Returns first error or nil if all valid
 function M.first_error(validations)
-  for _, result in ipairs(validations) do
-    if result then
-      return result
+  local max_idx = 0
+  for k in pairs(validations) do
+    if type(k) == "number" and k > max_idx then
+      max_idx = k
+    end
+  end
+  for i = 1, max_idx do
+    if validations[i] then
+      return validations[i]
     end
   end
   return nil

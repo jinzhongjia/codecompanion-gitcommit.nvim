@@ -2,6 +2,25 @@ local Git = require("codecompanion._extensions.gitcommit.git")
 
 local M = {}
 
+--- Check if running on Windows
+---@return boolean
+local function is_windows()
+  return vim.loop.os_uname().sysname == "Windows_NT"
+end
+
+--- Quote a string for shell command (Windows uses double quotes, Unix uses single quotes)
+---@param str string The string to quote
+---@return string
+local function shell_quote(str)
+  if is_windows() then
+    -- Windows CMD: use double quotes, escape internal double quotes with \"
+    return '"' .. str:gsub('"', '\\"') .. '"'
+  else
+    -- Unix: use single quotes, escape internal single quotes
+    return "'" .. str:gsub("'", "'\\''") .. "'"
+  end
+end
+
 ---Git tool for CodeCompanion GitCommit extension
 ---Provides git operations like status, diff, log, branch management etc.
 ---@class CodeCompanion.GitCommit.Tools.Git
@@ -1027,7 +1046,8 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
-  local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. escaped_range
+  local format_str = shell_quote("%h\x01%s\x01%an\x01%ad")
+  local commit_cmd = "git log --pretty=format:" .. format_str .. " --date=short " .. escaped_range
   local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
 
   if not success_commits or vim.v.shell_error ~= 0 then

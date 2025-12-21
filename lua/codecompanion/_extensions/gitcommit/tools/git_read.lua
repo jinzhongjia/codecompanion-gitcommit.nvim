@@ -317,6 +317,11 @@ GitRead.cmds = {
       return { status = "error", data = error_msg }
     end
 
+    -- Check if this is an early return case (validation error)
+    if result.status then
+      return result
+    end
+
     local op_success, output = result.success, result.output
 
     if op_success then

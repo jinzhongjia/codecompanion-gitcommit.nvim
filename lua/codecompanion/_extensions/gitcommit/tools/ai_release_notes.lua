@@ -1,5 +1,24 @@
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
 
+--- Check if running on Windows
+---@return boolean
+local function is_windows()
+  return vim.loop.os_uname().sysname == "Windows_NT"
+end
+
+--- Quote a string for shell command (Windows uses double quotes, Unix uses single quotes)
+---@param str string The string to quote
+---@return string
+local function shell_quote(str)
+  if is_windows() then
+    -- Windows CMD: use double quotes, escape internal double quotes with \"
+    return '"' .. str:gsub('"', '\\"') .. '"'
+  else
+    -- Unix: use single quotes, escape internal single quotes
+    return "'" .. str:gsub("'", "'\\''") .. "'"
+  end
+end
+
 ---@class CodeCompanion.GitCommit.Tools.AIReleaseNotes: CodeCompanion.Tools.Tool
 local AIReleaseNotes = {}
 
@@ -57,7 +76,8 @@ local function get_detailed_commits(from_ref, to_ref)
   local escaped_range = vim.fn.shellescape(range)
 
   local separator = "---COMMIT_SEPARATOR---"
-  local commit_cmd = string.format("git log --pretty=format:'%%H||%%s||%%an||%%b%s' %s", separator, escaped_range)
+  local format_str = shell_quote("%H||%s||%an||%b" .. separator)
+  local commit_cmd = string.format("git log --pretty=format:%s %s", format_str, escaped_range)
 
   local success, output = pcall(vim.fn.system, commit_cmd)
   if not success or vim.v.shell_error ~= 0 then
