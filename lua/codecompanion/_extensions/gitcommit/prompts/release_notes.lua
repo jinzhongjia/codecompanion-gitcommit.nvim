@@ -23,6 +23,10 @@ Skip internal changes that don't affect users.]],
 }
 
 M.base_instructions = [[
+OUTPUT FORMAT:
+- Wrap the entire output in a markdown code block (```markdown ... ```)
+- This allows easy copying of the complete release notes
+
 CRITICAL RULES:
 - Only include sections that have actual content - skip empty categories entirely
 - Do NOT use placeholder text like "[description here]" - write real content or omit
@@ -37,10 +41,13 @@ WRITING GUIDELINES:
 - Merge similar commits into single entries when appropriate
 ]]
 
-local function format_commit(commit)
-  local parts = { string.format("- %s", commit.subject) }
+local function format_commit(commit, include_hash)
+  local parts = { "- ", commit.subject }
+  if include_hash and commit.hash then
+    table.insert(parts, string.format(" (%s)", commit.hash:sub(1, 7)))
+  end
   if commit.author then
-    table.insert(parts, string.format(" (@%s)", commit.author))
+    table.insert(parts, string.format(" @%s", commit.author))
   end
   if commit.body and #commit.body > 0 then
     table.insert(parts, string.format("\n  > %s", commit.body:gsub("\n", "\n  > ")))
@@ -48,13 +55,13 @@ local function format_commit(commit)
   return table.concat(parts)
 end
 
-local function format_category(name, commits)
+local function format_category(name, commits, include_hash)
   if #commits == 0 then
     return nil
   end
   local lines = { string.format("\n### %s", name) }
   for _, commit in ipairs(commits) do
-    table.insert(lines, format_commit(commit))
+    table.insert(lines, format_commit(commit, include_hash))
   end
   return table.concat(lines, "\n")
 end
@@ -76,7 +83,9 @@ function M.analyze_commits(commits)
   for _, commit in ipairs(commits) do
     analysis.contributors[commit.author] = (analysis.contributors[commit.author] or 0) + 1
 
-    local is_breaking = commit.subject:match("!:") or commit.subject:upper():match("BREAKING")
+    local is_breaking = commit.subject:match("^%w+!:") -- feat!: xxx
+      or commit.subject:match("^%w+%b()!:") -- feat(scope)!: xxx
+      or commit.subject:upper():match("BREAKING")
 
     if is_breaking then
       table.insert(analysis.breaking_changes, commit)
@@ -118,15 +127,23 @@ function M.create_smart_prompt(commits, style, version_info)
   table.insert(parts, string.format("Date: %s\n", os.date("%Y-%m-%d")))
   table.insert(parts, string.format("Total commits: %d\n", #commits))
 
-  local contributor_names = {}
+  local contributor_list = {}
   for name, count in pairs(analysis.contributors) do
-    table.insert(contributor_names, string.format("%s (%d)", name, count))
+    table.insert(contributor_list, { name = name, count = count })
   end
-  if #contributor_names > 0 then
-    table.insert(parts, string.format("Contributors: %s\n", table.concat(contributor_names, ", ")))
+  table.sort(contributor_list, function(a, b) return a.count > b.count end)
+
+  if #contributor_list > 0 then
+    local names = {}
+    for _, c in ipairs(contributor_list) do
+      table.insert(names, string.format("%s (%d)", c.name, c.count))
+    end
+    table.insert(parts, string.format("Contributors: %s\n", table.concat(names, ", ")))
   end
 
   table.insert(parts, "\n---\n\n## Commits by Category\n")
+
+  local include_hash = (style == "changelog" or style == "detailed")
 
   local categories = {
     { "⚠️ Breaking Changes", analysis.breaking_changes },
@@ -142,7 +159,7 @@ function M.create_smart_prompt(commits, style, version_info)
 
   local has_content = false
   for _, cat in ipairs(categories) do
-    local section = format_category(cat[1], cat[2])
+    local section = format_category(cat[1], cat[2], include_hash)
     if section then
       table.insert(parts, section)
       has_content = true
