@@ -23,10 +23,6 @@ Skip internal changes that don't affect users.]],
 }
 
 M.base_instructions = [[
-OUTPUT FORMAT:
-- Wrap the entire output in a markdown code block (```markdown ... ```)
-- This allows easy copying of the complete release notes
-
 CRITICAL RULES:
 - Only include sections that have actual content - skip empty categories entirely
 - Do NOT use placeholder text like "[description here]" - write real content or omit
@@ -173,8 +169,9 @@ function M.create_smart_prompt(commits, style, version_info)
   end
 
   table.insert(parts, "\n\n---\n\n")
-  table.insert(parts, "Generate release notes based on the commits above. ")
-  table.insert(parts, "Adapt the structure and length to match the actual content.")
+  table.insert(parts, "Generate release notes based on the commits above.\n\n")
+  table.insert(parts, "IMPORTANT: Wrap your ENTIRE output in a markdown code block like this:\n")
+  table.insert(parts, "```markdown\n[your release notes here]\n```")
 
   return table.concat(parts)
 end
