@@ -515,15 +515,15 @@ function GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
   -- Handle tag pushing - single tag takes priority over all tags
   if tag_name and vim.trim(tag_name) ~= "" then
     -- Push single tag: git push origin tag_name
-    if remote then
-      cmd = cmd .. " " .. vim.fn.shellescape(remote)
-    end
+    -- Default to "origin" if no remote specified to avoid git interpreting tag_name as remote
+    local push_remote = remote or "origin"
+    cmd = cmd .. " " .. vim.fn.shellescape(push_remote)
     cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
   elseif tags then
     -- Push all tags: git push origin --tags
-    if remote then
-      cmd = cmd .. " " .. vim.fn.shellescape(remote)
-    end
+    -- Default to "origin" if no remote specified
+    local push_remote = remote or "origin"
+    cmd = cmd .. " " .. vim.fn.shellescape(push_remote)
     cmd = cmd .. " --tags"
   else
     -- Regular branch push: git push origin branch
@@ -558,15 +558,13 @@ function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name,
   -- Handle tag pushing - single tag takes priority over all tags
   if tag_name and vim.trim(tag_name) ~= "" then
     -- Push single tag: git push origin tag_name
-    if remote then
-      table.insert(cmd, remote)
-    end
+    -- Default to "origin" if no remote specified to avoid git interpreting tag_name as remote
+    table.insert(cmd, remote or "origin")
     table.insert(cmd, tag_name)
   elseif tags then
     -- Push all tags: git push origin --tags
-    if remote then
-      table.insert(cmd, remote)
-    end
+    -- Default to "origin" if no remote specified
+    table.insert(cmd, remote or "origin")
     table.insert(cmd, "--tags")
   else
     -- Regular branch push with optional upstream setting
@@ -942,6 +940,102 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     .. "</gitReleaseNotes>"
 
   return true, release_notes, user_msg, llm_msg
+end
+
+---Add a new remote
+---@param name string Remote name
+---@param url string Remote URL
+---@return boolean success, string output
+function GitTool.add_remote(name, url)
+  if not name or vim.trim(name) == "" then
+    return false, "Remote name is required"
+  end
+  if not url or vim.trim(url) == "" then
+    return false, "Remote URL is required"
+  end
+  local cmd = "git remote add " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
+  return execute_git_command(cmd)
+end
+
+---Remove a remote
+---@param name string Remote name
+---@return boolean success, string output
+function GitTool.remove_remote(name)
+  if not name or vim.trim(name) == "" then
+    return false, "Remote name is required"
+  end
+  local cmd = "git remote remove " .. vim.fn.shellescape(name)
+  return execute_git_command(cmd)
+end
+
+---Rename a remote
+---@param old_name string Current remote name
+---@param new_name string New remote name
+---@return boolean success, string output
+function GitTool.rename_remote(old_name, new_name)
+  if not old_name or vim.trim(old_name) == "" then
+    return false, "Current remote name is required"
+  end
+  if not new_name or vim.trim(new_name) == "" then
+    return false, "New remote name is required"
+  end
+  local cmd = "git remote rename " .. vim.fn.shellescape(old_name) .. " " .. vim.fn.shellescape(new_name)
+  return execute_git_command(cmd)
+end
+
+---Set remote URL
+---@param name string Remote name
+---@param url string New URL
+---@return boolean success, string output
+function GitTool.set_remote_url(name, url)
+  if not name or vim.trim(name) == "" then
+    return false, "Remote name is required"
+  end
+  if not url or vim.trim(url) == "" then
+    return false, "Remote URL is required"
+  end
+  local cmd = "git remote set-url " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
+  return execute_git_command(cmd)
+end
+
+---Fetch from remote
+---@param remote? string Remote name (default: all remotes)
+---@param branch? string Specific branch to fetch
+---@param prune? boolean Remove remote-tracking references that no longer exist
+---@return boolean success, string output
+function GitTool.fetch(remote, branch, prune)
+  local cmd = "git fetch"
+  if prune then
+    cmd = cmd .. " --prune"
+  end
+  if remote then
+    cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    if branch then
+      cmd = cmd .. " " .. vim.fn.shellescape(branch)
+    end
+  else
+    cmd = cmd .. " --all"
+  end
+  return execute_git_command(cmd)
+end
+
+---Pull from remote
+---@param remote? string Remote name (default: origin)
+---@param branch? string Branch to pull (default: current branch)
+---@param rebase? boolean Use rebase instead of merge
+---@return boolean success, string output
+function GitTool.pull(remote, branch, rebase)
+  local cmd = "git pull"
+  if rebase then
+    cmd = cmd .. " --rebase"
+  end
+  if remote then
+    cmd = cmd .. " " .. vim.fn.shellescape(remote)
+    if branch then
+      cmd = cmd .. " " .. vim.fn.shellescape(branch)
+    end
+  end
+  return execute_git_command(cmd)
 end
 
 M.GitTool = GitTool

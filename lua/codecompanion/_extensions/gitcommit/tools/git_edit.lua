@@ -29,6 +29,12 @@ GitEdit.schema = {
             "gitignore_add",
             "gitignore_remove",
             "push",
+            "fetch",
+            "pull",
+            "add_remote",
+            "remove_remote",
+            "rename_remote",
+            "set_remote_url",
             "cherry_pick",
             "revert",
             "create_tag",
@@ -140,6 +146,26 @@ GitEdit.schema = {
               type = "string",
               description = "An optional commit hash to tag",
             },
+            remote_name = {
+              type = "string",
+              description = "Name of the remote",
+            },
+            remote_url = {
+              type = "string",
+              description = "URL of the remote repository",
+            },
+            new_remote_name = {
+              type = "string",
+              description = "New name for the remote (used in rename_remote)",
+            },
+            prune = {
+              type = "boolean",
+              description = "Remove remote-tracking references that no longer exist (for fetch)",
+            },
+            rebase = {
+              type = "boolean",
+              description = "Use rebase instead of merge (for pull)",
+            },
           },
           additionalProperties = false,
         },
@@ -176,13 +202,24 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 | `reset` | Reset to commit | commit_hash (required), mode? |
 | `gitignore_add` | Add .gitignore rules | gitignore_rules (required) |
 | `gitignore_remove` | Remove .gitignore rules | gitignore_rule (required) |
-| `push` | Push to remote | remote?, branch?, set_upstream? |
+| `push` | Push to remote | remote?, branch?, set_upstream?, tags?, single_tag_name? |
+| `fetch` | Fetch from remote | remote?, branch?, prune? |
+| `pull` | Pull from remote | remote?, branch?, rebase? |
+| `add_remote` | Add new remote | remote_name (required), remote_url (required) |
+| `remove_remote` | Remove remote | remote_name (required) |
+| `rename_remote` | Rename remote | remote_name (required), new_remote_name (required) |
+| `set_remote_url` | Change remote URL | remote_name (required), remote_url (required) |
 | `cherry_pick` | Apply commit | cherry_pick_commit_hash (required) |
 | `revert` | Revert commit | revert_commit_hash (required) |
 | `create_tag` | Create tag | tag_name (required), tag_message? |
 | `delete_tag` | Delete tag | tag_name (required) |
 | `merge` | Merge branch | branch (required) |
 | `help` | Show help | - |
+
+## PUSH OPERATION NOTES
+- To push a single tag: use `single_tag_name` parameter (remote defaults to "origin")
+- To push all tags: use `tags: true` parameter
+- Do NOT use `single_tag_name` as the `branch` parameter
 
 ## SAFETY RESTRICTIONS
 - Never use force push without explicit user confirmation.
@@ -206,6 +243,12 @@ local VALID_OPERATIONS = {
   "gitignore_add",
   "gitignore_remove",
   "push",
+  "fetch",
+  "pull",
+  "add_remote",
+  "remove_remote",
+  "rename_remote",
+  "set_remote_url",
   "cherry_pick",
   "revert",
   "create_tag",
@@ -245,6 +288,12 @@ Available write-access Git operations:
 • gitignore_add: Add rule to .gitignore
 • gitignore_remove: Remove rule from .gitignore
 • push: Push changes to a remote repository (WARNING: force push is dangerous)
+• fetch: Fetch from remote (prune option available)
+• pull: Pull from remote (rebase option available)
+• add_remote: Add a new remote repository
+• remove_remote: Remove a remote repository
+• rename_remote: Rename a remote repository
+• set_remote_url: Change URL of a remote repository
 • cherry_pick: Apply changes from existing commits
 • revert: Revert a commit
 • create_tag: Create a new tag
@@ -425,6 +474,59 @@ Available write-access Git operations:
           return param_err
         end
         success, output = GitTool.merge(op_args.branch)
+      elseif operation == "fetch" then
+        param_err = validation.first_error({
+          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
+          validation.optional_string(op_args.branch, "branch", TOOL_NAME),
+          validation.optional_boolean(op_args.prune, "prune", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.fetch(op_args.remote, op_args.branch, op_args.prune)
+      elseif operation == "pull" then
+        param_err = validation.first_error({
+          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
+          validation.optional_string(op_args.branch, "branch", TOOL_NAME),
+          validation.optional_boolean(op_args.rebase, "rebase", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.pull(op_args.remote, op_args.branch, op_args.rebase)
+      elseif operation == "add_remote" then
+        param_err = validation.first_error({
+          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(op_args.remote_url, "remote_url", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.add_remote(op_args.remote_name, op_args.remote_url)
+      elseif operation == "remove_remote" then
+        param_err = validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME)
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.remove_remote(op_args.remote_name)
+      elseif operation == "rename_remote" then
+        param_err = validation.first_error({
+          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(op_args.new_remote_name, "new_remote_name", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.rename_remote(op_args.remote_name, op_args.new_remote_name)
+      elseif operation == "set_remote_url" then
+        param_err = validation.first_error({
+          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(op_args.remote_url, "remote_url", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.set_remote_url(op_args.remote_name, op_args.remote_url)
       else
         return validation.format_error(TOOL_NAME, "Unknown Git edit operation: " .. tostring(operation))
       end
