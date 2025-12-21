@@ -272,34 +272,22 @@ function GitTool.stage_files(files)
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-  local ok, result = pcall(function()
-    if type(files) == "string" then
-      files = { files }
-    end
-    local cmd = CommandBuilder.stage(files)
-    return CommandExecutor.run(cmd)
-  end)
-  if not ok then
-    return false, "Failed to stage files: " .. tostring(result)
+  if type(files) == "string" then
+    files = { files }
   end
-  return result
+  local cmd = CommandBuilder.stage(files)
+  return CommandExecutor.run(cmd)
 end
 
 function GitTool.unstage_files(files)
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-  local ok, result = pcall(function()
-    if type(files) == "string" then
-      files = { files }
-    end
-    local cmd = CommandBuilder.unstage(files)
-    return CommandExecutor.run(cmd)
-  end)
-  if not ok then
-    return false, "Failed to unstage files: " .. tostring(result)
+  if type(files) == "string" then
+    files = { files }
   end
-  return result
+  local cmd = CommandBuilder.unstage(files)
+  return CommandExecutor.run(cmd)
 end
 
 function GitTool.commit(message, amend)
@@ -740,9 +728,27 @@ function GitTool.show_conflict(file_path)
   local conflicts = {}
   local conflict_num = 0
 
-  for conflict_block in content:gmatch("(<<<<<<<.->>>>>>>.-)\n?") do
-    conflict_num = conflict_num + 1
-    table.insert(conflicts, string.format("--- Conflict #%d ---\n%s", conflict_num, conflict_block))
+  -- Parse conflicts line by line since Lua's . doesn't match newlines
+  local lines = vim.split(content, "\n")
+  local in_conflict = false
+  local current_block = {}
+
+  for _, line in ipairs(lines) do
+    if line:match("^<<<<<<< ") then
+      in_conflict = true
+      current_block = { line }
+    elseif in_conflict then
+      table.insert(current_block, line)
+      if line:match("^>>>>>>> ") then
+        conflict_num = conflict_num + 1
+        table.insert(
+          conflicts,
+          string.format("--- Conflict #%d ---\n%s", conflict_num, table.concat(current_block, "\n"))
+        )
+        in_conflict = false
+        current_block = {}
+      end
+    end
   end
 
   if #conflicts == 0 then

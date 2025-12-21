@@ -235,4 +235,29 @@ T["first_error"]["returns first error"] = function()
   h.eq("First error", result)
 end
 
+T["first_error"]["handles sparse array with nil values"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    local err = v.format_error("test", "The error")
+    local validations = {}
+    validations[1] = nil
+    validations[2] = nil
+    validations[3] = err
+    local first = v.first_error(validations)
+    if first and first.data then
+      return first.data.output
+    end
+    return "no error found"
+  ]])
+  h.eq("The error", result)
+end
+
+T["first_error"]["returns nil for empty array"] = function()
+  local result = child.lua([[
+    local v = require("codecompanion._extensions.gitcommit.tools.validation")
+    return v.first_error({}) == nil
+  ]])
+  h.eq(true, result)
+end
+
 return T

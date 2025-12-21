@@ -25,6 +25,8 @@ function M.glob_to_lua_pattern(glob)
   escaped = escaped:gsub("%(", "%%%(")
   escaped = escaped:gsub("%)", "%%%)")
   escaped = escaped:gsub("%+", "%%%+")
+  escaped = escaped:gsub("%[", "%%%[")
+  escaped = escaped:gsub("%]", "%%%]")
 
   local placeholder = "\001DOUBLESTAR\001"
   escaped = escaped:gsub("%*%*", placeholder)

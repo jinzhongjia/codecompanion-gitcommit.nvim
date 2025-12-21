@@ -93,6 +93,26 @@ T["glob_to_lua_pattern"]["escapes special regex characters"] = function()
   h.eq(true, result)
 end
 
+T["glob_to_lua_pattern"]["escapes square brackets"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("test[1].lua")
+    return ("test[1].lua"):match(pattern) ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["glob_to_lua_pattern"]["escapes square brackets in complex pattern"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local pattern = GitUtils.glob_to_lua_pattern("files[0-9].txt")
+    local matches_literal = ("files[0-9].txt"):match(pattern) ~= nil
+    local no_match_digit = ("files5.txt"):match(pattern) == nil
+    return matches_literal and no_match_digit
+  ]])
+  h.eq(true, result)
+end
+
 T["matches_glob"] = new_set()
 
 T["matches_glob"]["matches simple file extension"] = function()

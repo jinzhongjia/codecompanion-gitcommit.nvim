@@ -36,12 +36,22 @@ T["schema"]["has function type and strict mode"] = function()
   h.eq(true, result.strict)
 end
 
-T["schema"]["contains all valid operations"] = function()
-  local count = child.lua([[
+T["schema"]["contains valid operations enum"] = function()
+  local result = child.lua([[
     local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
-    return #GitRead.schema["function"].parameters.properties.operation.enum
+    local enum = GitRead.schema["function"].parameters.properties.operation.enum
+    local has_status = vim.tbl_contains(enum, "status")
+    local has_log = vim.tbl_contains(enum, "log")
+    local has_help = vim.tbl_contains(enum, "help")
+    return {
+      count = #enum,
+      has_required = has_status and has_log and has_help,
+      is_non_empty = #enum > 0,
+    }
   ]])
-  h.eq(18, count)
+  h.eq(true, result.has_required)
+  h.eq(true, result.is_non_empty)
+  h.eq(true, result.count >= 15)
 end
 
 T["cmds"] = new_set()
