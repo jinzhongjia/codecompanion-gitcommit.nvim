@@ -1,11 +1,10 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local validation = require("codecompanion._extensions.gitcommit.tools.validation")
 
----@class CodeCompanion.GitCommit.Tools.GitEdit
+---@class CodeCompanion.GitCommit.Tools.GitEdit: CodeCompanion.Tools.Tool
 local GitEdit = {}
 
 GitEdit.name = "git_edit"
-GitEdit.description = "Tool for write-access Git operations like stage, unstage, branch creation, etc."
 
 GitEdit.schema = {
   type = "function",
@@ -587,14 +586,11 @@ Available write-access Git operations:
 }
 
 GitEdit.handlers = {
-  setup = function(self, agent)
-    return true
-  end,
-  on_exit = function(self, agent) end,
+  on_exit = function(self, tools) end,
 }
 
 GitEdit.output = {
-  prompt = function(self, _tools)
+  prompt = function(self, tools)
     local operation = self.args and self.args.operation or "unknown"
     local details = ""
     if operation == "stage" or operation == "unstage" then
@@ -612,36 +608,40 @@ GitEdit.output = {
     return string.format("Execute git %s%s?", operation, details)
   end,
 
-  success = function(self, agent, _cmd, stdout)
-    local chat = agent.chat
-    local operation = self.args.operation
-    local user_msg = string.format("Git edit operation [%s] executed successfully", operation)
-    return chat:add_tool_output(self, stdout[1], user_msg)
-  end,
-
-  error = function(self, agent, _cmd, stderr, stdout)
-    local chat = agent.chat
-    local operation = self.args.operation
-    local error_msg = stderr and stderr[1] or ("Git edit operation [%s] failed"):format(operation)
-    local user_msg = string.format("Git edit operation [%s] failed", operation)
-    return chat:add_tool_output(self, error_msg, user_msg)
-  end,
-
-  rejected = function(self, tools, _cmd, _opts)
+  success = function(self, tools, cmd, stdout)
     local chat = tools.chat
     local operation = self.args and self.args.operation or "unknown"
+    local output = stdout and #stdout > 0 and vim.iter(stdout):flatten():join("\n") or ""
+    local user_msg = string.format("Git %s completed", operation)
+    chat:add_tool_output(self, output, user_msg)
+  end,
+
+  error = function(self, tools, cmd, stderr, stdout)
+    local chat = tools.chat
+    local operation = self.args and self.args.operation or "unknown"
+    local errors = stderr and #stderr > 0 and vim.iter(stderr):flatten():join("\n") or "Unknown error"
+    local user_msg = string.format("Git %s failed", operation)
+    chat:add_tool_output(self, errors, user_msg)
+  end,
+
+  rejected = function(self, tools, cmd, opts)
+    local operation = self.args and self.args.operation or "unknown"
     local message = string.format("User rejected the git %s operation", operation)
-    return chat:add_tool_output(self, message, message)
+    opts = vim.tbl_extend("force", { message = message }, opts or {})
+    local ok, helpers = pcall(require, "codecompanion.interactions.chat.tools.builtin.helpers")
+    if ok and helpers and helpers.rejected then
+      helpers.rejected(self, tools, cmd, opts)
+    else
+      tools.chat:add_tool_output(self, message)
+    end
   end,
 }
 
 GitEdit.opts = {
-  -- v18+ uses require_approval_before
-  require_approval_before = function(self, agent)
+  require_approval_before = function(self, tools)
     return true
   end,
-  -- COMPAT(v17): Remove when dropping v17 support
-  requires_approval = function(self, agent)
+  requires_approval = function(self, tools)
     return true
   end,
 }

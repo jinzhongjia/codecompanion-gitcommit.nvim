@@ -1,10 +1,9 @@
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
 
----@class CodeCompanion.GitCommit.Tools.AIReleaseNotes
+---@class CodeCompanion.GitCommit.Tools.AIReleaseNotes: CodeCompanion.Tools.Tool
 local AIReleaseNotes = {}
 
 AIReleaseNotes.name = "ai_release_notes"
-AIReleaseNotes.description = "Generate comprehensive release notes using AI analysis of commit history"
 
 AIReleaseNotes.schema = {
   type = "function",
@@ -194,77 +193,44 @@ AIReleaseNotes.cmds = {
     -- Get detailed commit history
     local commits, error_msg = get_detailed_commits(from_tag, to_tag)
     if not commits then
-      return {
-        status = "error",
-        data = {
-          output = error_msg,
-          user_msg = "✗ " .. error_msg,
-          llm_msg = "<aiReleaseNotes>fail: " .. error_msg .. "</aiReleaseNotes>",
-        },
-      }
+      return { status = "error", data = error_msg }
     end
 
     if #commits == 0 then
       local msg = string.format("No commits found between %s and %s", from_tag, to_tag)
-      return {
-        status = "success",
-        data = {
-          output = msg,
-          user_msg = "ℹ " .. msg,
-          llm_msg = "<aiReleaseNotes>success: " .. msg .. "</aiReleaseNotes>",
-        },
-      }
+      return { status = "success", data = msg }
     end
 
     local prompt = prompts.create_smart_prompt(commits, style, { from = from_tag, to = to_tag })
 
-    local user_msg =
-      string.format("📝 Generating %s release notes: %s → %s (%d commits)", style, from_tag, to_tag, #commits)
-
-    local llm_msg = string.format("<aiReleaseNotes>\n%s\n</aiReleaseNotes>", prompt)
-
-    return {
-      status = "success",
-      data = {
-        output = prompt,
-        user_msg = user_msg,
-        llm_msg = llm_msg,
-      },
-    }
+    return { status = "success", data = prompt }
   end,
 }
 
 AIReleaseNotes.handlers = {
-  setup = function(_self, _agent)
-    return true
-  end,
-  on_exit = function(_self, _agent) end,
+  on_exit = function(self, tools) end,
 }
 
 AIReleaseNotes.output = {
-  success = function(self, agent, _cmd, stdout)
-    local chat = agent.chat
-    local data = stdout[1]
-    local llm_msg = data and data.llm_msg or data.output
-    local user_msg = data and data.user_msg or data.output
-    return chat:add_tool_output(self, llm_msg, user_msg)
+  success = function(self, tools, cmd, stdout)
+    local chat = tools.chat
+    local output = stdout and #stdout > 0 and vim.iter(stdout):flatten():join("\n") or ""
+    local user_msg = "Release notes generated"
+    chat:add_tool_output(self, output, user_msg)
   end,
-  error = function(self, agent, _cmd, stderr, stdout)
-    local chat = agent.chat
-    local data = stderr[1] or stdout[1]
-    local llm_msg = data and data.llm_msg or (type(data) == "string" and data or "AI release notes generation failed")
-    local user_msg = data and data.user_msg or "AI release notes generation failed"
-    return chat:add_tool_output(self, llm_msg, user_msg)
+  error = function(self, tools, cmd, stderr, stdout)
+    local chat = tools.chat
+    local errors = stderr and #stderr > 0 and vim.iter(stderr):flatten():join("\n") or "Unknown error"
+    local user_msg = "Release notes generation failed"
+    chat:add_tool_output(self, errors, user_msg)
   end,
 }
 
 AIReleaseNotes.opts = {
-  -- v18+ uses require_approval_before
-  require_approval_before = function(_self, _agent)
+  require_approval_before = function(self, tools)
     return false
   end,
-  -- COMPAT(v17): Remove when dropping v17 support
-  requires_approval = function(_self, _agent)
+  requires_approval = function(self, tools)
     return false
   end,
 }

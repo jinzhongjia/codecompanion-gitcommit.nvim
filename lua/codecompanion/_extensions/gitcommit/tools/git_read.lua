@@ -1,11 +1,10 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local validation = require("codecompanion._extensions.gitcommit.tools.validation")
 
----@class CodeCompanion.GitCommit.Tools.GitRead
+---@class CodeCompanion.GitCommit.Tools.GitRead: CodeCompanion.Tools.Tool
 local GitRead = {}
 
 GitRead.name = "git_read"
-GitRead.description = "Tool for read-only Git operations like status, log, diff, etc."
 
 GitRead.schema = {
   type = "function",
@@ -315,77 +314,63 @@ GitRead.cmds = {
     -- Handle unexpected execution errors
     if not ok then
       local error_msg = "Git read operation failed unexpectedly: " .. tostring(result)
-      return {
-        status = "error",
-        data = {
-          output = error_msg,
-          user_msg = error_msg,
-          llm_msg = "<gitReadTool>fail: " .. error_msg .. "</gitReadTool>",
-        },
-      }
+      return { status = "error", data = error_msg }
     end
 
-    local success, output, user_msg, llm_msg = result.success, result.output, result.user_msg, result.llm_msg
+    local op_success, output = result.success, result.output
 
-    -- Ensure proper response format even if operation fails
-    if success then
-      return { status = "success", data = { output = output, user_msg = user_msg, llm_msg = llm_msg } }
+    if op_success then
+      return { status = "success", data = output or "Operation completed" }
     else
-      -- Ensure consistent error message format
-      local formatted_output = {
-        output = output or "Git read operation failed",
-        user_msg = user_msg or "Git read operation failed",
-        llm_msg = llm_msg or "<gitReadTool>fail: Git read operation failed</gitReadTool>",
-      }
-      return { status = "error", data = formatted_output }
+      return { status = "error", data = output or "Git read operation failed" }
     end
   end,
 }
 
 GitRead.handlers = {
-  setup = function(_self, _agent)
-    return true
-  end,
-  on_exit = function(_self, _agent) end,
+  on_exit = function(self, tools) end,
 }
 
 GitRead.output = {
-  prompt = function(self, _tools)
+  prompt = function(self, tools)
     local operation = self.args and self.args.operation or "unknown"
     return string.format("Execute git %s?", operation)
   end,
 
-  success = function(self, agent, _cmd, stdout)
-    local chat = agent.chat
-    local data = stdout[1]
-    local llm_msg = data and data.llm_msg or data.output
-    local user_msg = data and data.user_msg or data.output
-    return chat:add_tool_output(self, llm_msg, user_msg)
-  end,
-
-  error = function(self, agent, _cmd, stderr, stdout)
-    local chat = agent.chat
-    local data = stderr[1] or stdout[1]
-    local llm_msg = data and data.llm_msg or (type(data) == "string" and data or "Git read operation failed")
-    local user_msg = data and data.user_msg or "Git read operation failed"
-    return chat:add_tool_output(self, llm_msg, user_msg)
-  end,
-
-  rejected = function(self, tools, _cmd, _opts)
+  success = function(self, tools, cmd, stdout)
     local chat = tools.chat
     local operation = self.args and self.args.operation or "unknown"
+    local output = stdout and #stdout > 0 and vim.iter(stdout):flatten():join("\n") or ""
+    local user_msg = string.format("Git %s completed", operation)
+    chat:add_tool_output(self, output, user_msg)
+  end,
+
+  error = function(self, tools, cmd, stderr, stdout)
+    local chat = tools.chat
+    local operation = self.args and self.args.operation or "unknown"
+    local errors = stderr and #stderr > 0 and vim.iter(stderr):flatten():join("\n") or "Unknown error"
+    local user_msg = string.format("Git %s failed", operation)
+    chat:add_tool_output(self, errors, user_msg)
+  end,
+
+  rejected = function(self, tools, cmd, opts)
+    local operation = self.args and self.args.operation or "unknown"
     local message = string.format("User rejected the git %s operation", operation)
-    return chat:add_tool_output(self, message, message)
+    opts = vim.tbl_extend("force", { message = message }, opts or {})
+    local ok, helpers = pcall(require, "codecompanion.interactions.chat.tools.builtin.helpers")
+    if ok and helpers and helpers.rejected then
+      helpers.rejected(self, tools, cmd, opts)
+    else
+      tools.chat:add_tool_output(self, message)
+    end
   end,
 }
 
 GitRead.opts = {
-  -- v18+ uses require_approval_before
-  require_approval_before = function(_self, _agent)
+  require_approval_before = function(self, tools)
     return false
   end,
-  -- COMPAT(v17): Remove when dropping v17 support
-  requires_approval = function(_self, _agent)
+  requires_approval = function(self, tools)
     return false
   end,
 }
