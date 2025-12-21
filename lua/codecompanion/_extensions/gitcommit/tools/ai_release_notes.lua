@@ -58,11 +58,7 @@ local function get_detailed_commits(from_ref, to_ref)
   local escaped_range = vim.fn.shellescape(range)
 
   local separator = "---COMMIT_SEPARATOR---"
-  local commit_cmd = string.format(
-    "git log --pretty=format:'%%H||%%s||%%an||%%b%s' %s",
-    separator,
-    escaped_range
-  )
+  local commit_cmd = string.format("git log --pretty=format:'%%H||%%s||%%an||%%b%s' %s", separator, escaped_range)
 
   local success, output = pcall(vim.fn.system, commit_cmd)
   if not success or vim.v.shell_error ~= 0 then
@@ -222,13 +218,8 @@ AIReleaseNotes.cmds = {
 
     local prompt = prompts.create_smart_prompt(commits, style, { from = from_tag, to = to_tag })
 
-    local user_msg = string.format(
-      "📝 Generating %s release notes: %s → %s (%d commits)",
-      style,
-      from_tag,
-      to_tag,
-      #commits
-    )
+    local user_msg =
+      string.format("📝 Generating %s release notes: %s → %s (%d commits)", style, from_tag, to_tag, #commits)
 
     local llm_msg = string.format("<aiReleaseNotes>\n%s\n</aiReleaseNotes>", prompt)
 
