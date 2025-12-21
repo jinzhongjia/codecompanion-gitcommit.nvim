@@ -1,23 +1,7 @@
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
+local git_utils = require("codecompanion._extensions.gitcommit.git_utils")
 
---- Check if running on Windows
----@return boolean
-local function is_windows()
-  return vim.loop.os_uname().sysname == "Windows_NT"
-end
-
---- Quote a string for shell command (Windows uses double quotes, Unix uses single quotes)
----@param str string The string to quote
----@return string
-local function shell_quote(str)
-  if is_windows() then
-    -- Windows CMD: use double quotes, escape internal double quotes with \"
-    return '"' .. str:gsub('"', '\\"') .. '"'
-  else
-    -- Unix: use single quotes, escape internal single quotes
-    return "'" .. str:gsub("'", "'\\''") .. "'"
-  end
-end
+local shell_quote = git_utils.shell_quote
 
 ---@class CodeCompanion.GitCommit.Tools.AIReleaseNotes: CodeCompanion.Tools.Tool
 local AIReleaseNotes = {}
