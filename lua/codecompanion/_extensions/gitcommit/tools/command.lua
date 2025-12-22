@@ -442,7 +442,7 @@ end
 ---@param to_tag string Ending tag
 ---@return string command
 function CommandBuilder.release_notes_log(from_tag, to_tag)
-  local range = from_tag .. "^.." .. to_tag
+  local range = from_tag .. ".." .. to_tag
   local escaped_range = vim.fn.shellescape(range)
   local format_str = shell_quote("%h\x01%s\x01%an\x01%ad")
   return "git log --pretty=format:" .. format_str .. " --date=short " .. escaped_range
