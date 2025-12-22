@@ -241,15 +241,23 @@ Same pattern as read operations, but in `git_edit.lua`. Remember:
 
 ## Testing & Development
 
+### Available Mise Tasks
+```bash
+mise run deps       # Install test dependencies (mini.nvim)
+mise run test       # Run all unit tests
+mise run test:file file=tests/test_validation.lua  # Run specific test file
+mise run lint       # Check code formatting with stylua
+mise run fmt        # Format code with stylua
+mise run doc        # Download latest CodeCompanion documentation
+```
+
 ### Running Style Checks
 ```bash
 stylua --check .    # Check formatting (used in CI)
 stylua .            # Auto-fix formatting
-```
-
-### Available Make Commands
-```bash
-make doc            # Download latest CodeCompanion documentation
+# Or via mise:
+mise run lint       # Check formatting
+mise run fmt        # Auto-fix formatting
 ```
 
 ### Development Setup

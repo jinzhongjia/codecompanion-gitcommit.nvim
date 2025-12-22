@@ -1,5 +1,6 @@
 local codecompanion_adapter = require("codecompanion.adapters")
 local codecompanion_schema = require("codecompanion.schema")
+local git_utils = require("codecompanion._extensions.gitcommit.git_utils")
 
 ---@class CodeCompanion.GitCommit.Generator
 local Generator = {}
@@ -161,18 +162,7 @@ end
 ---@param message string Raw message from LLM
 ---@return string cleaned_message The cleaned commit message
 function Generator._clean_commit_message(message)
-  local cleaned = vim.trim(message)
-
-  -- Remove markdown code blocks (```...``` or ````...````)
-  -- Match opening code fence with optional language identifier
-  cleaned = cleaned:gsub("^```+%w*\n", "")
-  -- Match closing code fence
-  cleaned = cleaned:gsub("\n```+$", "")
-
-  -- Trim again after removing code blocks
-  cleaned = vim.trim(cleaned)
-
-  return cleaned
+  return git_utils.clean_commit_message(message)
 end
 
 ---@param commit_history? string[] Array of recent commit messages for context (optional)
@@ -236,64 +226,7 @@ end
 ---@param diff string The git diff to include in prompt
 ---@param commit_history? string[] Recent commit messages for context (optional)
 function Generator._create_prompt(diff, lang, commit_history)
-  -- Build history context section
-  local history_context = ""
-  if commit_history and #commit_history > 0 then
-    history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
-    for i, commit_msg in ipairs(commit_history) do
-      history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
-    end
-    history_context = history_context
-      .. "\nAnalyze commit history to understand project style, tone, and format patterns. Use this for consistency.\n"
-  end
-
-  return string.format(
-    [[You are a commit message generator. Generate exactly ONE Conventional Commit message for the provided git diff.%s
-
-FORMAT:
-type(scope): specific description of WHAT changed
-
-[Optional body - only for non-obvious changes]
-
-Allowed types: feat, fix, docs, style, refactor, perf, test, chore
-Language: %s
-
-CRITICAL RULES:
-1. Respond with ONLY the commit message - no markdown blocks, no explanations
-2. Description must state WHAT was done, not WHY or the effect
-3. AVOID vague verbs: "update", "improve", "clarify", "adjust", "enhance", "fix issues"
-   USE specific verbs: "add", "remove", "rename", "move", "replace", "extract", "inline"
-4. Subject line under 50 chars, body lines under 72 chars
-5. Body is OPTIONAL - omit if subject is self-explanatory
-
-BAD (vague):
-- refactor(api): improve error handling
-- fix(auth): update login logic
-- chore(deps): update dependencies
-
-GOOD (specific):
-- refactor(api): replace try-catch with Result type
-- fix(auth): check token expiry before API call
-- chore(deps): bump axios from 0.21 to 1.6
-
-EXAMPLES:
-
-docs(readme): add installation section
-
-refactor(api): rename getUserData to fetchUser
-
-feat(auth): add OAuth2 token refresh flow
-
-- Store refresh token in secure storage
-- Auto-refresh 5 min before expiry
-
-```diff
-%s
-```]],
-    history_context,
-    lang or "English",
-    diff
-  )
+  return git_utils.build_commit_prompt(diff, lang, commit_history)
 end
 
 return Generator

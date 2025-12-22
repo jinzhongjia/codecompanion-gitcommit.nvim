@@ -16,6 +16,7 @@ A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit
 - 📚 **Commit History Context** - Use recent commit history to maintain consistent styling and patterns
 - 🔌 **Programmatic API** - Full API for external integrations and custom workflows
 - ⚡ **Async Operations** - Non-blocking Git operations with proper error handling
+- 🛡️ **Config Validation** - Automatic validation of configuration options with helpful error messages
 
 ## 📦 Installation
 
@@ -277,6 +278,56 @@ The AI will analyze your commits to:
 - **Modifying operations** (`@{git_edit}`) require user confirmation
 - **Repository validation** ensures operations in valid Git repositories
 - **Comprehensive error handling** with helpful error messages
+
+## 🛡️ Configuration Validation
+
+The extension automatically validates your configuration options at startup and provides helpful feedback:
+
+### Validation Types
+
+| Type | Behavior |
+|------|----------|
+| **Type errors** | Warns when a config option has the wrong type (e.g., string instead of boolean) |
+| **Unknown options** | Warns about typos or unsupported configuration options |
+| **Nested validation** | Validates nested options like `buffer.enabled`, `buffer.keymap`, etc. |
+
+### Example Output
+
+If you have configuration errors, you'll see helpful messages:
+
+```
+[codecompanion-gitcommit] config.adapter: expected string (optional), got number
+[codecompanion-gitcommit] config.languges: unknown configuration option
+[codecompanion-gitcommit] config.buffer.enabled: expected boolean (optional), got string
+```
+
+### Validation Behavior
+
+- **Non-blocking**: Invalid config produces warnings but doesn't prevent the extension from loading
+- **Helpful messages**: Each message includes the field path and expected type
+- **Typo detection**: Unknown fields are flagged as warnings to help catch typos
+
+### Programmatic Validation
+
+You can also validate configuration programmatically:
+
+```lua
+local ConfigValidation = require("codecompanion._extensions.gitcommit.config_validation")
+
+-- Validate custom options
+local result = ConfigValidation.validate({
+  adapter = "openai",
+  buffer = { enabled = true },
+})
+
+if result.valid then
+  print("Config is valid!")
+else
+  for _, issue in ipairs(result.issues) do
+    print(issue.field .. ": " .. issue.message)
+  end
+end
+```
 
 ## 📄 License
 

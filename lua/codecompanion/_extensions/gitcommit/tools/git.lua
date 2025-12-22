@@ -1,26 +1,31 @@
 local Git = require("codecompanion._extensions.gitcommit.git")
+local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+local Command = require("codecompanion._extensions.gitcommit.tools.command")
+
+local CommandBuilder = Command.CommandBuilder
+local CommandExecutor = Command.CommandExecutor
 
 local M = {}
 
----Git tool for CodeCompanion GitCommit extension
----Provides git operations like status, diff, log, branch management etc.
 ---@class CodeCompanion.GitCommit.Tools.Git
 local GitTool = {
   name = "git_operations",
   description = "Execute git operations and commands",
 }
 
---- Get the path to the .gitignore file in the current git repo root
 local function get_gitignore_path()
-  local git_dir = vim.fn.system("git rev-parse --show-toplevel"):gsub("\n", "")
-  if vim.v.shell_error ~= 0 or not git_dir or git_dir == "" then
+  local success, output = CommandExecutor.run(CommandBuilder.repo_root())
+  if not success then
+    return nil
+  end
+  local git_dir = output:gsub("\n", "")
+  if not git_dir or git_dir == "" then
     return nil
   end
   local sep = package.config:sub(1, 1)
   return git_dir .. sep .. ".gitignore"
 end
 
---- Read .gitignore content
 function GitTool.get_gitignore()
   local path = get_gitignore_path()
   if not path then
@@ -31,7 +36,7 @@ function GitTool.get_gitignore()
   end
   local stat = vim.uv.fs_stat(path)
   if not stat then
-    local msg = "" -- treat as empty if not exists
+    local msg = ""
     local user_msg = "ℹ .gitignore file does not exist (repository has no ignore rules)"
     local llm_msg = "<gitIgnoreTool>success: .gitignore is empty</gitIgnoreTool>"
     return true, msg, user_msg, llm_msg
@@ -46,7 +51,7 @@ function GitTool.get_gitignore()
   local data = vim.uv.fs_read(fd, stat.size, 0)
   vim.uv.fs_close(fd)
   local msg = data or ""
-  -- Format the output nicely for users
+  local user_msg
   if data and vim.trim(data) ~= "" then
     user_msg = "✓ .gitignore content:\n\n```gitignore\n" .. data .. "\n```"
   else
@@ -56,7 +61,6 @@ function GitTool.get_gitignore()
   return true, msg, user_msg, llm_msg
 end
 
---- Add rule(s) to .gitignore (no duplicates)
 function GitTool.add_gitignore_rule(rule)
   local path = get_gitignore_path()
   if not path then
@@ -101,7 +105,6 @@ function GitTool.add_gitignore_rule(rule)
   return true, "Added rule(s): " .. table.concat(added, ", ")
 end
 
---- Remove rule(s) from .gitignore
 function GitTool.remove_gitignore_rule(rule)
   local path = get_gitignore_path()
   if not path then
@@ -146,7 +149,6 @@ function GitTool.remove_gitignore_rule(rule)
   return true, "Removed rule(s): " .. table.concat(removed, ", ")
 end
 
---- Check if a file is ignored by .gitignore
 function GitTool.is_ignored(file)
   if not file or file == "" then
     local msg = "No file specified"
@@ -154,10 +156,9 @@ function GitTool.is_ignored(file)
     local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
     return false, msg, user_msg, llm_msg
   end
-  local ok, result = pcall(function()
-    return vim.fn.system({ "git", "check-ignore", file })
-  end)
-  if not ok or vim.v.shell_error ~= 0 then
+  local cmd = CommandBuilder.check_ignore(file)
+  local success, result = CommandExecutor.run_array(cmd)
+  if not success then
     local msg = "File is not ignored or not in a git repo"
     local user_msg = string.format("ℹ File '%s' is NOT ignored by .gitignore", file)
     local llm_msg = "<gitIgnoreCheckTool>fail: " .. msg .. "</gitIgnoreCheckTool>"
@@ -173,51 +174,23 @@ local function is_git_repo()
   return Git.is_repository()
 end
 
-local function execute_git_command(cmd)
-  local ok, success, output = pcall(function()
-    if not is_git_repo() then
-      return false, "Not in a git repository"
-    end
-
-    local cmd_output = vim.fn.system(cmd)
-    local exit_code = vim.v.shell_error
-
-    if exit_code ~= 0 or (cmd_output and cmd_output:match("fatal: ")) then
-      return false, cmd_output or "Git command failed"
-    end
-    return true, cmd_output or ""
-  end)
-
-  if not ok then
-    return false, "Git command execution failed: " .. tostring(success)
-  end
-
-  return success, output
-end
-
--- Helper function to format git tool responses consistently
 local function format_git_response(tool_name, success, output, empty_msg)
   local user_msg, llm_msg
   local tag = "git" .. tool_name:gsub("^%l", string.upper) .. "Tool"
 
   if success then
     if output and vim.trim(output) ~= "" then
-      -- Format user message with better visual structure
       local formatted_output = vim.trim(output)
-      -- Add icons and better formatting for user messages
       local icon = "✓"
       user_msg = string.format("%s Git %s executed successfully:\n\n```\n%s\n```", icon, tool_name, formatted_output)
-      -- Keep llm_msg simple and structured
       llm_msg = string.format("<%s>success:\n%s</%s>", tag, formatted_output, tag)
     else
-      -- Handle empty results with more descriptive messaging
       local icon = "ℹ"
       local empty_text = empty_msg or ("No " .. tool_name .. " data available")
       user_msg = string.format("%s Git %s: %s", icon, tool_name, empty_text)
       llm_msg = string.format("<%s>success: %s</%s>", tag, empty_text, tag)
     end
   else
-    -- Format error messages clearly
     local icon = "✗"
     local error_text = output or "Unknown error occurred"
     user_msg = string.format("%s Git %s failed:\n%s", icon, tool_name, error_text)
@@ -228,59 +201,68 @@ local function format_git_response(tool_name, success, output, empty_msg)
 end
 
 function GitTool.get_status()
-  local success, output = execute_git_command("git status --porcelain")
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitStatusTool>fail: Not in a git repository</gitStatusTool>"
+  end
+  local cmd = CommandBuilder.status()
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("status", success, output, "no changes found")
   return success, output, user_msg, llm_msg
 end
 
 function GitTool.get_log(count, format)
-  count = count or 10
-  format = format or "oneline"
-  local format_map = {
-    oneline = "--oneline",
-    short = "--pretty=short",
-    medium = "--pretty=medium",
-    full = "--pretty=full",
-    fuller = "--pretty=fuller",
-    format = "--pretty=format",
-  }
-  local format_option = format_map[format] or "--oneline"
-  local cmd = string.format("git log -%d %s", count, format_option)
-  local success, output = execute_git_command(cmd)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitLogTool>fail: Not in a git repository</gitLogTool>"
+  end
+  local cmd = CommandBuilder.log(count, format)
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("log", success, output, "no commits found")
   return success, output, user_msg, llm_msg
 end
 
 function GitTool.get_diff(staged, file)
-  local cmd = "git diff"
-  if staged then
-    cmd = cmd .. " --cached"
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitDiffTool>fail: Not in a git repository</gitDiffTool>"
   end
-  if file then
-    cmd = cmd .. " " .. vim.fn.shellescape(file)
-  end
-  local success, output = execute_git_command(cmd)
+  local cmd = CommandBuilder.diff(staged, file)
+  local success, output = CommandExecutor.run(cmd)
   local diff_type = staged and "staged" or "unstaged"
   local empty_msg = "no " .. diff_type .. " changes found"
   local user_msg, llm_msg = format_git_response("diff", success, output, empty_msg)
   return success, output, user_msg, llm_msg
 end
 
----Get current branch name
----@return boolean success, string branch_name
-
 function GitTool.get_current_branch()
-  local success, output = execute_git_command("git branch --show-current")
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitBranchTool>fail: Not in a git repository</gitBranchTool>"
+  end
+  local cmd = CommandBuilder.current_branch()
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("branch", success, output, "no current branch (possibly detached HEAD)")
   return success, output, user_msg, llm_msg
 end
 
----Get all branches (local and remote)
----@param remote_only? boolean Show only remote branches
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_branches(remote_only)
-  local cmd = remote_only and "git branch -r" or "git branch -a"
-  local success, output = execute_git_command(cmd)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitBranchTool>fail: Not in a git repository</gitBranchTool>"
+  end
+  local cmd = CommandBuilder.branches(remote_only)
+  local success, output = CommandExecutor.run(cmd)
   local branch_type = remote_only and "remote branches" or "branches"
   local empty_msg = "no " .. branch_type .. " found"
   local user_msg, llm_msg = format_git_response("branch", success, output, empty_msg)
@@ -288,358 +270,213 @@ function GitTool.get_branches(remote_only)
 end
 
 function GitTool.stage_files(files)
-  local ok, success, output = pcall(function()
-    if type(files) == "string" then
-      files = { files }
-    end
-
-    local escaped_files = {}
-    for _, file in ipairs(files) do
-      table.insert(escaped_files, vim.fn.shellescape(file))
-    end
-
-    local cmd = "git add " .. table.concat(escaped_files, " ")
-    return execute_git_command(cmd)
-  end)
-
-  if not ok then
-    return false, "Failed to stage files: " .. tostring(success)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-
-  return success, output
+  if type(files) == "string" then
+    files = { files }
+  end
+  local cmd = CommandBuilder.stage(files)
+  return CommandExecutor.run(cmd)
 end
 
 function GitTool.unstage_files(files)
-  local ok, success, output = pcall(function()
-    if type(files) == "string" then
-      files = { files }
-    end
-
-    local escaped_files = {}
-    for _, file in ipairs(files) do
-      table.insert(escaped_files, vim.fn.shellescape(file))
-    end
-
-    local cmd = "git reset HEAD " .. table.concat(escaped_files, " ")
-    return execute_git_command(cmd)
-  end)
-
-  if not ok then
-    return false, "Failed to unstage files: " .. tostring(success)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-
-  return success, output
+  if type(files) == "string" then
+    files = { files }
+  end
+  local cmd = CommandBuilder.unstage(files)
+  return CommandExecutor.run(cmd)
 end
----Commit staged changes
----Commit staged changes
----@param message string Commit message
----@param amend? boolean Whether to amend the last commit (default: false)
----@return boolean success, string output
+
 function GitTool.commit(message, amend)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
   if not message or vim.trim(message) == "" then
     return false, "Commit message is required"
   end
-
-  local cmd = "git commit"
-  if amend then
-    cmd = cmd .. " --amend"
-  end
-  cmd = cmd .. " -m " .. vim.fn.shellescape(message)
-
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.commit(message, amend)
+  return CommandExecutor.run(cmd)
 end
 
----Create a new branch
----@param branch_name string Name of the new branch
----@param checkout? boolean Whether to checkout the new branch (default: true)
----@return boolean success, string output
 function GitTool.create_branch(branch_name, checkout)
-  checkout = checkout ~= false -- default to true
-
-  local cmd = checkout and "git checkout -b " or "git branch "
-  cmd = cmd .. vim.fn.shellescape(branch_name)
-
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.create_branch(branch_name, checkout)
+  return CommandExecutor.run(cmd)
 end
 
----Checkout branch or commit
----@param target string Branch name or commit hash
----@return boolean success, string output
 function GitTool.checkout(target)
-  local cmd = "git checkout " .. vim.fn.shellescape(target)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.checkout(target)
+  return CommandExecutor.run(cmd)
 end
 
----Get remote information
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_remotes()
-  local success, output = execute_git_command("git remote -v")
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitRemoteTool>fail: Not in a git repository</gitRemoteTool>"
+  end
+  local cmd = CommandBuilder.remotes()
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("remote", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Show commit details
----@param commit_hash? string Commit hash (default: HEAD)
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.show_commit(commit_hash)
-  commit_hash = commit_hash or "HEAD"
-  local cmd = "git show " .. vim.fn.shellescape(commit_hash)
-  local success, output = execute_git_command(cmd)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitShowTool>fail: Not in a git repository</gitShowTool>"
+  end
+  local cmd = CommandBuilder.show(commit_hash)
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("show", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Get blame information for a file
----@param file_path string Path to the file
----@param line_start? number Start line number
----@param line_end? number End line number
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_blame(file_path, line_start, line_end)
-  local cmd = "git blame " .. vim.fn.shellescape(file_path)
-  if line_start and line_end then
-    cmd = cmd .. " -L " .. line_start .. "," .. line_end
-  elseif line_start then
-    cmd = cmd .. " -L " .. line_start .. ",+10"
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitBlameTool>fail: Not in a git repository</gitBlameTool>"
   end
-  local success, output = execute_git_command(cmd)
+  local cmd = CommandBuilder.blame(file_path, line_start, line_end)
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("blame", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Stash changes
----@param message? string Stash message
----@param include_untracked? boolean Include untracked files
----@return boolean success, string output
 function GitTool.stash(message, include_untracked)
-  local cmd = "git stash"
-
-  if include_untracked then
-    cmd = cmd .. " -u"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-
-  if message then
-    cmd = cmd .. " -m " .. vim.fn.shellescape(message)
-  end
-
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.stash(message, include_untracked)
+  return CommandExecutor.run(cmd)
 end
 
----List stashes
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.list_stashes()
-  local success, output = execute_git_command("git stash list")
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitStashTool>fail: Not in a git repository</gitStashTool>"
+  end
+  local cmd = CommandBuilder.stash_list()
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("stash", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Apply stash
----@param stash_ref? string Stash reference (default: stash@{0})
----@return boolean success, string output
 function GitTool.apply_stash(stash_ref)
-  stash_ref = stash_ref or "stash@{0}"
-  local cmd = "git stash apply " .. vim.fn.shellescape(stash_ref)
-  return execute_git_command(cmd)
-end
-
----Reset to a specific commit
----@param commit_hash string Commit hash or reference
----@param mode? string Reset mode (soft, mixed, hard)
----@return boolean success, string output
-function GitTool.reset(commit_hash, mode)
-  mode = mode or "mixed"
-  local cmd = string.format("git reset --%s %s", mode, vim.fn.shellescape(commit_hash))
-  return execute_git_command(cmd)
-end
-
----Get file changes between commits
----@param commit1 string First commit
----@param commit2? string Second commit (default: HEAD)
----@param file_path? string Specific file path
----@return boolean success, string output, string user_msg, string llm_msg
-function GitTool.diff_commits(commit1, commit2, file_path)
-  commit2 = commit2 or "HEAD"
-  local cmd = string.format("git diff %s %s", vim.fn.shellescape(commit1), vim.fn.shellescape(commit2))
-  if file_path then
-    cmd = cmd .. " -- " .. vim.fn.shellescape(file_path)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  local success, output = execute_git_command(cmd)
+  local cmd = CommandBuilder.stash_apply(stash_ref)
+  return CommandExecutor.run(cmd)
+end
+
+function GitTool.reset(commit_hash, mode)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.reset(commit_hash, mode)
+  return CommandExecutor.run(cmd)
+end
+
+function GitTool.diff_commits(commit1, commit2, file_path)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitDiff_commitsTool>fail: Not in a git repository</gitDiff_commitsTool>"
+  end
+  local cmd = CommandBuilder.diff_commits(commit1, commit2, file_path)
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("diff_commits", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Get contributors/authors
----@param count? number Number of top contributors to show
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_contributors(count)
-  count = count or 10
-  local head_cmd
-  if vim.loop.os_uname().sysname == "Windows_NT" then
-    head_cmd = string.format("git shortlog -sn | Select-Object -First %d", count)
-  else
-    head_cmd = string.format("git shortlog -sn | head -%d", count)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitContributorsTool>fail: Not in a git repository</gitContributorsTool>"
   end
-  local success, output = execute_git_command(head_cmd)
+  count = count or 10
+  local cmd = CommandBuilder.contributors()
+  local success, output = CommandExecutor.run(cmd)
+  if success and output then
+    local lines = vim.split(output, "\n")
+    local limited_lines = {}
+    for i = 1, math.min(count, #lines) do
+      if lines[i] and lines[i] ~= "" then
+        table.insert(limited_lines, lines[i])
+      end
+    end
+    output = table.concat(limited_lines, "\n")
+  end
   local user_msg, llm_msg = format_git_response("contributors", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Search commits by message
----@param pattern string Search pattern
----@param count? number Maximum number of results
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.search_commits(pattern, count)
-  count = count or 20
-  local cmd = string.format("git log --grep=%s --oneline -%d", vim.fn.shellescape(pattern), count)
-  local success, output = execute_git_command(cmd)
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitSearch_commitsTool>fail: Not in a git repository</gitSearch_commitsTool>"
+  end
+  local cmd = CommandBuilder.search_commits(pattern, count)
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("search_commits", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Push changes to a remote repository
----@param remote? string The name of the remote to push to (e.g., origin)
----@param branch? string The name of the branch to push (defaults to current branch)
----@param force? boolean Force push (DANGEROUS: overwrites remote history)
----@param set_upstream? boolean Set the upstream branch for the current local branch
----@param tags? boolean Push all tags
----@param tag_name? string The name of a single tag to push (takes priority over tags parameter)
----@return boolean success, string output
 function GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
-  local cmd = "git push"
-  if force then
-    cmd = cmd .. " --force"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  if set_upstream then
-    cmd = cmd .. " --set-upstream"
-  end
-
-  -- Handle tag pushing - single tag takes priority over all tags
-  if tag_name and vim.trim(tag_name) ~= "" then
-    -- Push single tag: git push origin tag_name
-    -- Default to "origin" if no remote specified to avoid git interpreting tag_name as remote
-    local push_remote = remote or "origin"
-    cmd = cmd .. " " .. vim.fn.shellescape(push_remote)
-    cmd = cmd .. " " .. vim.fn.shellescape(tag_name)
-  elseif tags then
-    -- Push all tags: git push origin --tags
-    -- Default to "origin" if no remote specified
-    local push_remote = remote or "origin"
-    cmd = cmd .. " " .. vim.fn.shellescape(push_remote)
-    cmd = cmd .. " --tags"
-  else
-    -- Regular branch push: git push origin branch
-    if remote then
-      cmd = cmd .. " " .. vim.fn.shellescape(remote)
-    end
-    if branch then
-      cmd = cmd .. " " .. vim.fn.shellescape(branch)
-    end
-  end
-
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.push(remote, branch, force, set_upstream, tags, tag_name)
+  return CommandExecutor.run(cmd)
 end
 
----Push changes to a remote repository asynchronously
----@param remote? string The name of the remote to push to (e.g., origin)
----@param branch? string The name of the branch to push (defaults to current branch)
----@param force? boolean Force push (DANGEROUS: overwrites remote history)
----@param set_upstream? boolean Set the upstream branch
----@param tags? boolean Push all tags
----@param tag_name? string The name of a single tag to push
----@param on_exit function The callback function to execute on completion
 function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name, on_exit)
-  local cmd = { "git", "push" }
-  if force then
-    table.insert(cmd, "--force")
+  if not is_git_repo() then
+    on_exit({ status = "error", data = "Not in a git repository" })
+    return
   end
-  if set_upstream then
-    table.insert(cmd, "--set-upstream")
-  end
-
-  -- Handle tag pushing - single tag takes priority over all tags
-  if tag_name and vim.trim(tag_name) ~= "" then
-    -- Push single tag: git push origin tag_name
-    -- Default to "origin" if no remote specified to avoid git interpreting tag_name as remote
-    table.insert(cmd, remote or "origin")
-    table.insert(cmd, tag_name)
-  elseif tags then
-    -- Push all tags: git push origin --tags
-    -- Default to "origin" if no remote specified
-    table.insert(cmd, remote or "origin")
-    table.insert(cmd, "--tags")
-  else
-    -- Regular branch push with optional upstream setting
-    if remote then
-      table.insert(cmd, remote)
-    end
-    if branch then
-      table.insert(cmd, branch)
-    end
-  end
-
-  local stdout_lines = {}
-  local stderr_lines = {}
-
-  vim.fn.jobstart(cmd, {
-    on_stdout = function(_, data)
-      if data then
-        for _, line in ipairs(data) do
-          if line ~= "" then
-            table.insert(stdout_lines, line)
-          end
-        end
-      end
-    end,
-    on_stderr = function(_, data)
-      if data then
-        for _, line in ipairs(data) do
-          if line ~= "" then
-            table.insert(stderr_lines, line)
-          end
-        end
-      end
-    end,
-    on_exit = function(_, code)
-      if code == 0 then
-        on_exit({ status = "success", data = table.concat(stdout_lines, "\n") })
-      else
-        on_exit({ status = "error", data = table.concat(stderr_lines, "\n") })
-      end
-    end,
-  })
+  local cmd = CommandBuilder.push_array(remote, branch, force, set_upstream, tags, tag_name)
+  CommandExecutor.run_async(cmd, on_exit)
 end
 
----Perform a git rebase operation
----@param onto? string The branch to rebase onto
----@param base? string The upstream branch to rebase from
----@param interactive? boolean Whether to perform an interactive rebase (DANGEROUS: opens an editor, not suitable for automated environments)
----@return boolean success, string output
 function GitTool.rebase(onto, base, interactive)
-  local cmd = "git rebase"
-  if interactive then
-    cmd = cmd .. " --interactive"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  if onto then
-    cmd = cmd .. " --onto " .. vim.fn.shellescape(onto)
-  end
-  if base then
-    cmd = cmd .. " " .. vim.fn.shellescape(base)
-  end
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.rebase(onto, base, interactive)
+  return CommandExecutor.run(cmd)
 end
 
----Apply the changes introduced by some existing commits
----@param commit_hash string The commit hash to cherry-pick
----@return boolean success, string output
 function GitTool.cherry_pick(commit_hash)
   if not commit_hash then
     return false, "Commit hash is required for cherry-pick"
   end
-
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git cherry-pick --no-edit " .. vim.fn.shellescape(commit_hash)
+  local cmd = CommandBuilder.cherry_pick(commit_hash)
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -659,14 +496,11 @@ function GitTool.cherry_pick(commit_hash)
   end
 end
 
----Abort cherry-pick operation
----@return boolean success, string output
 function GitTool.cherry_pick_abort()
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git cherry-pick --abort"
+  local cmd = CommandBuilder.cherry_pick_abort()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -680,14 +514,11 @@ function GitTool.cherry_pick_abort()
   end
 end
 
----Continue cherry-pick after resolving conflicts
----@return boolean success, string output
 function GitTool.cherry_pick_continue()
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git cherry-pick --continue"
+  local cmd = CommandBuilder.cherry_pick_continue()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -703,14 +534,11 @@ function GitTool.cherry_pick_continue()
   end
 end
 
----Skip current commit in cherry-pick
----@return boolean success, string output
 function GitTool.cherry_pick_skip()
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git cherry-pick --skip"
+  local cmd = CommandBuilder.cherry_pick_skip()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -724,76 +552,60 @@ function GitTool.cherry_pick_skip()
   end
 end
 
----Revert a commit
----@param commit_hash string The commit hash to revert
----@return boolean success, string output
 function GitTool.revert(commit_hash)
   if not commit_hash then
     return false, "Commit hash is required for revert"
   end
-  local cmd = "git revert --no-edit " .. vim.fn.shellescape(commit_hash)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.revert(commit_hash)
+  return CommandExecutor.run(cmd)
 end
 
----Get all tags
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_tags()
-  local success, output = execute_git_command("git tag")
+  if not is_git_repo() then
+    return false,
+      "Not in a git repository",
+      "✗ Not in a git repository",
+      "<gitTagTool>fail: Not in a git repository</gitTagTool>"
+  end
+  local cmd = CommandBuilder.tags()
+  local success, output = CommandExecutor.run(cmd)
   local user_msg, llm_msg = format_git_response("tag", success, output)
   return success, output, user_msg, llm_msg
 end
 
----Create a new tag
----@param tag_name string The name of the tag
----@param message? string An optional message for an annotated tag
----@param commit_hash? string An optional commit hash to tag
----@return boolean success, string output
 function GitTool.create_tag(tag_name, message, commit_hash)
   if not tag_name then
     return false, "Tag name is required"
   end
-  local cmd = "git tag "
-  if message then
-    cmd = cmd .. "-a " .. vim.fn.shellescape(tag_name) .. " -m " .. vim.fn.shellescape(message)
-  else
-    cmd = cmd .. vim.fn.shellescape(tag_name)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  if commit_hash then
-    cmd = cmd .. " " .. vim.fn.shellescape(commit_hash)
-  end
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.create_tag(tag_name, message, commit_hash)
+  return CommandExecutor.run(cmd)
 end
 
----Delete a tag
----@param tag_name string The name of the tag to delete
----@param remote? string The name of the remote to delete from
----@return boolean success, string output
 function GitTool.delete_tag(tag_name, remote)
   if not tag_name then
     return false, "Tag name is required for deletion"
   end
-  local cmd
-  if remote then
-    cmd = "git push --delete " .. vim.fn.shellescape(remote) .. " " .. vim.fn.shellescape(tag_name)
-  else
-    cmd = "git tag -d " .. vim.fn.shellescape(tag_name)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.delete_tag(tag_name, remote)
+  return CommandExecutor.run(cmd)
 end
 
----Merge a branch into the current branch
----@param branch string The name of the branch to merge
----@return boolean success, string output
 function GitTool.merge(branch)
   if not branch or vim.trim(branch) == "" then
     return false, "Branch name is required for merge"
   end
-
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git merge " .. vim.fn.shellescape(branch) .. " --no-edit"
+  local cmd = CommandBuilder.merge(branch)
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -812,14 +624,11 @@ function GitTool.merge(branch)
   end
 end
 
----Abort merge operation
----@return boolean success, string output
 function GitTool.merge_abort()
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git merge --abort"
+  local cmd = CommandBuilder.merge_abort()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -833,14 +642,11 @@ function GitTool.merge_abort()
   end
 end
 
----Continue merge after resolving conflicts
----@return boolean success, string output
 function GitTool.merge_continue()
   if not is_git_repo() then
     return false, "Not in a git repository"
   end
-
-  local cmd = "git merge --continue"
+  local cmd = CommandBuilder.merge_continue()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -856,16 +662,13 @@ function GitTool.merge_continue()
   end
 end
 
----Get list of files with merge conflicts
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.get_conflict_status()
   if not is_git_repo() then
     local msg = "Not in a git repository"
     return false, msg, "✗ " .. msg, "<gitConflictStatus>fail: " .. msg .. "</gitConflictStatus>"
   end
 
-  -- git diff --name-only --diff-filter=U lists unmerged (conflicted) files
-  local cmd = "git diff --name-only --diff-filter=U"
+  local cmd = CommandBuilder.conflict_status()
   local output = vim.fn.system(cmd)
   local exit_code = vim.v.shell_error
 
@@ -898,9 +701,6 @@ function GitTool.get_conflict_status()
   return true, trimmed, user_msg, llm_msg
 end
 
----Show conflict markers in a specific file
----@param file_path string Path to the file with conflicts
----@return boolean success, string output, string user_msg, string llm_msg
 function GitTool.show_conflict(file_path)
   if not is_git_repo() then
     local msg = "Not in a git repository"
@@ -932,17 +732,15 @@ function GitTool.show_conflict(file_path)
     return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
   end
 
-  if not content:match("<<<<<<< ") then
+  if not GitUtils.has_conflicts(content) then
     local msg = "No conflict markers found in: " .. file_path
     return true, msg, "✓ " .. msg, "<gitConflictShow>success: " .. msg .. "</gitConflictShow>"
   end
 
+  local raw_conflicts = GitUtils.parse_conflicts(content)
   local conflicts = {}
-  local conflict_num = 0
-
-  for conflict_block in content:gmatch("(<<<<<<<.->>>>>>>.-)\n?") do
-    conflict_num = conflict_num + 1
-    table.insert(conflicts, string.format("--- Conflict #%d ---\n%s", conflict_num, conflict_block))
+  for i, block in ipairs(raw_conflicts) do
+    table.insert(conflicts, string.format("--- Conflict #%d ---\n%s", i, block))
   end
 
   if #conflicts == 0 then
@@ -968,20 +766,12 @@ function GitTool.show_conflict(file_path)
   return true, conflict_output, user_msg, llm_msg
 end
 
---- Generate release notes between two tags
----@param from_tag string|nil Starting tag (if not provided, uses second latest tag)
----@param to_tag string|nil Ending tag (if not provided, uses latest tag)
----@param format string|nil Format (markdown, plain, json)
----@return boolean success
----@return string output
----@return string user_msg
----@return string llm_msg
 function GitTool.generate_release_notes(from_tag, to_tag, format)
   format = format or "markdown"
 
-  -- Get all tags sorted by version
-  local success, tags_output = pcall(vim.fn.system, "git tag --sort=-version:refname")
-  if not success or vim.v.shell_error ~= 0 then
+  local tags_cmd = CommandBuilder.tags_sorted()
+  local success_tags, tags_output = CommandExecutor.run(tags_cmd)
+  if not success_tags then
     local msg = "Failed to get git tags: " .. (tags_output or "unknown error")
     local user_msg = "✗ " .. msg
     local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
@@ -1002,9 +792,8 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     return false, msg, user_msg, llm_msg
   end
 
-  -- Determine tag range
   if not to_tag then
-    to_tag = tags[1] -- Latest tag
+    to_tag = tags[1]
   end
 
   if not from_tag then
@@ -1014,23 +803,13 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
       return false, msg, user_msg, llm_msg
     end
-    from_tag = tags[2] -- Second latest tag
+    from_tag = tags[2]
   end
 
-  -- Get commit range between tags
-  -- Use ^.. to get commits AFTER from_tag (excluding from_tag itself)
-  local range = from_tag .. "^.." .. to_tag
-  local escaped_range = vim.fn.shellescape(range)
-  if not escaped_range or escaped_range == "" then
-    local msg = "Failed to escape tag range: " .. range
-    local user_msg = "✗ " .. msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
-    return false, msg, user_msg, llm_msg
-  end
-  local commit_cmd = "git log --pretty=format:'%h\x01%s\x01%an\x01%ad' --date=short " .. escaped_range
-  local success_commits, commits_output = pcall(vim.fn.system, commit_cmd)
+  local commit_cmd = CommandBuilder.release_notes_log(from_tag, to_tag)
+  local success_commits, commits_output = CommandExecutor.run(commit_cmd)
 
-  if not success_commits or vim.v.shell_error ~= 0 then
+  if not success_commits then
     local msg = "Failed to get commits between "
       .. from_tag
       .. " and "
@@ -1042,7 +821,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     return false, msg, user_msg, llm_msg
   end
 
-  -- Parse commits
   local commits = {}
   for line in commits_output:gmatch("[^\r\n]+") do
     local parts = vim.split(line, "\x01")
@@ -1063,7 +841,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     return true, msg, user_msg, llm_msg
   end
 
-  -- Generate release notes based on format
   local release_notes = ""
   local user_msg = ""
   local llm_msg = ""
@@ -1072,7 +849,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     local parts = { "# Release Notes: " .. from_tag .. " → " .. to_tag .. "\n\n" }
     table.insert(parts, "## Changes (" .. #commits .. " commits)\n\n")
 
-    -- Group commits by type (conventional commits)
     local features = {}
     local fixes = {}
     local others = {}
@@ -1092,7 +868,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       end
     end
 
-    -- Add features
     if #features > 0 then
       table.insert(parts, "### ✨ New Features\n\n")
       for _, commit in ipairs(features) do
@@ -1101,7 +876,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       table.insert(parts, "\n")
     end
 
-    -- Add fixes
     if #fixes > 0 then
       table.insert(parts, "### 🐛 Bug Fixes\n\n")
       for _, commit in ipairs(fixes) do
@@ -1110,7 +884,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       table.insert(parts, "\n")
     end
 
-    -- Add other changes
     if #others > 0 then
       table.insert(parts, "### 📝 Other Changes\n\n")
       for _, commit in ipairs(others) do
@@ -1119,7 +892,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
       table.insert(parts, "\n")
     end
 
-    -- Add contributors
     local contributors = {}
     for _, commit in ipairs(commits) do
       if not contributors[commit.author] then
@@ -1160,12 +932,11 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
     release_notes = vim.fn.json_encode(json_data)
   else
     local msg = "Unsupported format: " .. format .. ". Supported formats: markdown, plain, json"
-    local user_msg = "✗ " .. msg
-    local llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
+    user_msg = "✗ " .. msg
+    llm_msg = "<gitReleaseNotes>fail: " .. msg .. "</gitReleaseNotes>"
     return false, msg, user_msg, llm_msg
   end
 
-  -- Create formatted user message with the release notes
   user_msg = string.format(
     "✓ Generated release notes for %s → %s (%d commits)\n\n```%s\n%s\n```",
     from_tag,
@@ -1187,10 +958,6 @@ function GitTool.generate_release_notes(from_tag, to_tag, format)
   return true, release_notes, user_msg, llm_msg
 end
 
----Add a new remote
----@param name string Remote name
----@param url string Remote URL
----@return boolean success, string output
 function GitTool.add_remote(name, url)
   if not name or vim.trim(name) == "" then
     return false, "Remote name is required"
@@ -1198,25 +965,24 @@ function GitTool.add_remote(name, url)
   if not url or vim.trim(url) == "" then
     return false, "Remote URL is required"
   end
-  local cmd = "git remote add " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.add_remote(name, url)
+  return CommandExecutor.run(cmd)
 end
 
----Remove a remote
----@param name string Remote name
----@return boolean success, string output
 function GitTool.remove_remote(name)
   if not name or vim.trim(name) == "" then
     return false, "Remote name is required"
   end
-  local cmd = "git remote remove " .. vim.fn.shellescape(name)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.remove_remote(name)
+  return CommandExecutor.run(cmd)
 end
 
----Rename a remote
----@param old_name string Current remote name
----@param new_name string New remote name
----@return boolean success, string output
 function GitTool.rename_remote(old_name, new_name)
   if not old_name or vim.trim(old_name) == "" then
     return false, "Current remote name is required"
@@ -1224,14 +990,13 @@ function GitTool.rename_remote(old_name, new_name)
   if not new_name or vim.trim(new_name) == "" then
     return false, "New remote name is required"
   end
-  local cmd = "git remote rename " .. vim.fn.shellescape(old_name) .. " " .. vim.fn.shellescape(new_name)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.rename_remote(old_name, new_name)
+  return CommandExecutor.run(cmd)
 end
 
----Set remote URL
----@param name string Remote name
----@param url string New URL
----@return boolean success, string output
 function GitTool.set_remote_url(name, url)
   if not name or vim.trim(name) == "" then
     return false, "Remote name is required"
@@ -1239,48 +1004,27 @@ function GitTool.set_remote_url(name, url)
   if not url or vim.trim(url) == "" then
     return false, "Remote URL is required"
   end
-  local cmd = "git remote set-url " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
-  return execute_git_command(cmd)
+  if not is_git_repo() then
+    return false, "Not in a git repository"
+  end
+  local cmd = CommandBuilder.set_remote_url(name, url)
+  return CommandExecutor.run(cmd)
 end
 
----Fetch from remote
----@param remote? string Remote name (default: all remotes)
----@param branch? string Specific branch to fetch
----@param prune? boolean Remove remote-tracking references that no longer exist
----@return boolean success, string output
 function GitTool.fetch(remote, branch, prune)
-  local cmd = "git fetch"
-  if prune then
-    cmd = cmd .. " --prune"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  if remote then
-    cmd = cmd .. " " .. vim.fn.shellescape(remote)
-    if branch then
-      cmd = cmd .. " " .. vim.fn.shellescape(branch)
-    end
-  else
-    cmd = cmd .. " --all"
-  end
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.fetch(remote, branch, prune)
+  return CommandExecutor.run(cmd)
 end
 
----Pull from remote
----@param remote? string Remote name (default: origin)
----@param branch? string Branch to pull (default: current branch)
----@param rebase? boolean Use rebase instead of merge
----@return boolean success, string output
 function GitTool.pull(remote, branch, rebase)
-  local cmd = "git pull"
-  if rebase then
-    cmd = cmd .. " --rebase"
+  if not is_git_repo() then
+    return false, "Not in a git repository"
   end
-  if remote then
-    cmd = cmd .. " " .. vim.fn.shellescape(remote)
-    if branch then
-      cmd = cmd .. " " .. vim.fn.shellescape(branch)
-    end
-  end
-  return execute_git_command(cmd)
+  local cmd = CommandBuilder.pull(remote, branch, rebase)
+  return CommandExecutor.run(cmd)
 end
 
 M.GitTool = GitTool

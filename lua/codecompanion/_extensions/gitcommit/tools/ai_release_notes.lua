@@ -1,4 +1,7 @@
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
+local git_utils = require("codecompanion._extensions.gitcommit.git_utils")
+
+local shell_quote = git_utils.shell_quote
 
 ---@class CodeCompanion.GitCommit.Tools.AIReleaseNotes: CodeCompanion.Tools.Tool
 local AIReleaseNotes = {}
@@ -57,7 +60,8 @@ local function get_detailed_commits(from_ref, to_ref)
   local escaped_range = vim.fn.shellescape(range)
 
   local separator = "---COMMIT_SEPARATOR---"
-  local commit_cmd = string.format("git log --pretty=format:'%%H||%%s||%%an||%%b%s' %s", separator, escaped_range)
+  local format_str = shell_quote("%H||%s||%an||%b" .. separator)
+  local commit_cmd = string.format("git log --pretty=format:%s %s", format_str, escaped_range)
 
   local success, output = pcall(vim.fn.system, commit_cmd)
   if not success or vim.v.shell_error ~= 0 then

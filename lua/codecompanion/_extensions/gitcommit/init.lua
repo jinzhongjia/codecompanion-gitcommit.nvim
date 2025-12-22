@@ -6,6 +6,7 @@ local Langs = require("codecompanion._extensions.gitcommit.langs")
 local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
 local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
 local Config = require("codecompanion._extensions.gitcommit.config")
+local ConfigValidation = require("codecompanion._extensions.gitcommit.config_validation")
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 
 local M = {}
@@ -336,6 +337,11 @@ return
 {
   --- @param opts CodeCompanion.GitCommit.ExtensionOpts
   setup = function(opts)
+    -- Validate user config before merging with defaults
+    if opts then
+      ConfigValidation.validate_and_report(opts, "codecompanion-gitcommit")
+    end
+
     opts = vim.tbl_deep_extend("force", Config.default_opts, opts or {})
 
     Git.setup({
