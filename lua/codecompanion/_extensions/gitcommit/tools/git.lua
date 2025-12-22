@@ -414,8 +414,19 @@ function GitTool.get_contributors(count)
       "✗ Not in a git repository",
       "<gitContributorsTool>fail: Not in a git repository</gitContributorsTool>"
   end
-  local cmd = CommandBuilder.contributors(count)
+  count = count or 10
+  local cmd = CommandBuilder.contributors()
   local success, output = CommandExecutor.run(cmd)
+  if success and output then
+    local lines = vim.split(output, "\n")
+    local limited_lines = {}
+    for i = 1, math.min(count, #lines) do
+      if lines[i] and lines[i] ~= "" then
+        table.insert(limited_lines, lines[i])
+      end
+    end
+    output = table.concat(limited_lines, "\n")
+  end
   local user_msg, llm_msg = format_git_response("contributors", success, output)
   return success, output, user_msg, llm_msg
 end

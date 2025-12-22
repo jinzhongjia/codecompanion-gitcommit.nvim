@@ -4,24 +4,10 @@
 
 local M = {}
 
---- Check if running on Windows
----@return boolean
-local function is_windows()
-  return vim.loop.os_uname().sysname == "Windows_NT"
-end
+local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
 
---- Quote a string for shell command (Windows uses double quotes, Unix uses single quotes)
----@param str string The string to quote
----@return string
-local function shell_quote(str)
-  if is_windows() then
-    -- Windows CMD: use double quotes, escape internal double quotes with \"
-    return '"' .. str:gsub('"', '\\"') .. '"'
-  else
-    -- Unix: use single quotes, escape internal single quotes
-    return "'" .. str:gsub("'", "'\\''") .. "'"
-  end
-end
+local is_windows = GitUtils.is_windows
+local shell_quote = GitUtils.shell_quote
 
 --------------------------------------------------------------------------------
 -- CommandBuilder: Pure functions for generating git command strings
@@ -244,15 +230,9 @@ function CommandBuilder.diff_commits(commit1, commit2, file_path)
 end
 
 ---Build git shortlog (contributors) command
----@param count? number Number of top contributors
 ---@return string command
-function CommandBuilder.contributors(count)
-  count = count or 10
-  if is_windows() then
-    return string.format("git shortlog -sn | Select-Object -First %d", count)
-  else
-    return string.format("git shortlog -sn | head -%d", count)
-  end
+function CommandBuilder.contributors()
+  return "git shortlog -sn"
 end
 
 ---Build git log search command

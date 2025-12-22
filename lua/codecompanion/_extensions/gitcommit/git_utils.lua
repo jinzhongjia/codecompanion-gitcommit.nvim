@@ -118,27 +118,12 @@ function M.filter_diff(diff_content, exclude_patterns)
   local skip_current_file = false
 
   for _, line in ipairs(lines) do
-    local file_match = line:match("^diff %-%-git a/(.*) b/")
-    if file_match then
-      current_file = file_match
-      table.insert(all_files, current_file)
-      skip_current_file = M.should_exclude_file(current_file, exclude_patterns)
-      if skip_current_file then
-        table.insert(excluded_files, current_file)
-      end
-    end
+    local file_path = line:match("^diff %-%-git a/(.*) b/")
+      or line:match("^%+%+%+ b/(.*)")
+      or line:match("^%-%-%-a/(.*)")
 
-    local plus_file = line:match("^%+%+%+ b/(.*)")
-    local minus_file = line:match("^%-%-%-a/(.*)")
-    if plus_file then
-      current_file = plus_file
-      table.insert(all_files, current_file)
-      skip_current_file = M.should_exclude_file(current_file, exclude_patterns)
-      if skip_current_file then
-        table.insert(excluded_files, current_file)
-      end
-    elseif minus_file then
-      current_file = minus_file
+    if file_path then
+      current_file = file_path
       table.insert(all_files, current_file)
       skip_current_file = M.should_exclude_file(current_file, exclude_patterns)
       if skip_current_file then
