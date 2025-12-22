@@ -12,7 +12,7 @@
 - Smart buffer integration for gitcommit filetype
 
 ### Compatibility
-- Supports CodeCompanion **v17.x** and **v18.0+** (compatibility handled automatically)
+- Requires CodeCompanion **v18.0+**
 - Lua 5.1+ / LuaJIT
 - Neovim 0.9+
 - Multi-platform (Linux, macOS, WSL, Native Windows)
@@ -79,13 +79,11 @@ The main module that:
 - Adds slash commands (`/gitcommit`)
 - Exposes programmatic API via `exports`
 
-**Version Compatibility Pattern:**
+**Chat Config Access:**
 ```lua
--- v18+ uses interactions, v17.x uses strategies
+-- v18+ uses interactions
 if codecompanion_config.interactions and codecompanion_config.interactions.chat then
   return codecompanion_config.interactions.chat
-elseif codecompanion_config.strategies and codecompanion_config.strategies.chat then
-  return codecompanion_config.strategies.chat
 end
 ```
 
@@ -132,7 +130,7 @@ Tool.system_prompt = [[...]]  -- LLM context
 Tool.cmds = { function(self, args) ... end }  -- Execution
 Tool.handlers = { setup, on_exit }
 Tool.output = { prompt, success, error, rejected }
-Tool.opts = { require_approval_before, requires_approval }  -- v18/v17 compat
+Tool.opts = { require_approval_before }  -- Tool options
 ```
 
 ### 5. Validation (`tools/validation.lua`)
@@ -191,22 +189,16 @@ return true, output
 
 ---
 
-## Version Compatibility
+## Requirements
 
-The codebase maintains compatibility with CodeCompanion v17.x and v18+:
+This extension requires CodeCompanion **v18.0+**. The codebase uses:
+- `interactions.chat` for chat configuration
+- `require_approval_before` for tool approval
 
-| Feature | v17.x | v18+ |
-|---------|-------|------|
-| Chat config | `strategies.chat` | `interactions.chat` |
-| Approval | `requires_approval` | `require_approval_before` |
-
-**Pattern for dual compatibility:**
+**Tool Options Pattern:**
 ```lua
 Tool.opts = {
-  -- v18+ uses require_approval_before
-  require_approval_before = function(_self, _agent) return true end,
-  -- COMPAT(v17): Remove when dropping v17 support
-  requires_approval = function(_self, _agent) return true end,
+  require_approval_before = function(_self, _tools) return true end,
 }
 ```
 
@@ -359,7 +351,7 @@ gitcommit.exports.git_tool.generate_release_notes("v1.0", "v1.1", "markdown")
 
 1. **Always run `stylua --check .`** after making changes to ensure StyLua compliance
 2. **Always run `stylua .`** after modifying code to auto-format
-3. **Maintain v17/v18 compatibility** when modifying tool options
+3. **Use v18+ patterns** when modifying tool options (use `require_approval_before`)
 4. **Use validation.lua** for all parameter validation in tools
 5. **Follow existing patterns** - this codebase is consistent; match the style
 6. **Test with actual CodeCompanion** - the extension requires the parent plugin

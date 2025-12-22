@@ -3,7 +3,7 @@
 A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit messages following the Conventional Commits specification, with comprehensive Git workflow integration.
 
 > [!IMPORTANT]
-> Supports CodeCompanion **v17.x** and **v18.0+** (compatibility handled automatically)
+> Requires CodeCompanion **v18.0+**
 
 ## ✨ Features
 

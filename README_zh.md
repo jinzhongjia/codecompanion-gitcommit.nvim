@@ -3,7 +3,7 @@
 一个为 CodeCompanion 开发的 Neovim 插件扩展，用于生成遵循约定式提交规范的 AI 驱动 Git 提交信息，并提供全面的 Git 工作流集成。
 
 > [!IMPORTANT]
-> 从 CodeCompanion v17.5.0 开始，变量和工具必须用花括号包裹，例如 `@{git_read}` 或 `#{buffer}`
+> 需要 CodeCompanion **v18.0+**
 
 ## ✨ 功能特性
 
