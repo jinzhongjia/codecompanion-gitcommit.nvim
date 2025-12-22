@@ -13,6 +13,20 @@ local GitTool = {
   description = "Execute git operations and commands",
 }
 
+local NOT_IN_REPO_MSG = "Not in a git repository"
+
+local function not_in_repo_error()
+  return false, NOT_IN_REPO_MSG
+end
+
+local function not_in_repo_error_formatted(tool_name)
+  local tag = "git" .. tool_name:gsub("^%l", string.upper) .. "Tool"
+  return false,
+    NOT_IN_REPO_MSG,
+    "✗ " .. NOT_IN_REPO_MSG,
+    "<" .. tag .. ">fail: " .. NOT_IN_REPO_MSG .. "</" .. tag .. ">"
+end
+
 local function get_gitignore_path()
   local success, output = CommandExecutor.run(CommandBuilder.repo_root())
   if not success then
@@ -202,10 +216,7 @@ end
 
 function GitTool.get_status()
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitStatusTool>fail: Not in a git repository</gitStatusTool>"
+    return not_in_repo_error_formatted("status")
   end
   local cmd = CommandBuilder.status()
   local success, output = CommandExecutor.run(cmd)
@@ -215,10 +226,7 @@ end
 
 function GitTool.get_log(count, format)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitLogTool>fail: Not in a git repository</gitLogTool>"
+    return not_in_repo_error_formatted("log")
   end
   local cmd = CommandBuilder.log(count, format)
   local success, output = CommandExecutor.run(cmd)
@@ -228,10 +236,7 @@ end
 
 function GitTool.get_diff(staged, file)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitDiffTool>fail: Not in a git repository</gitDiffTool>"
+    return not_in_repo_error_formatted("diff")
   end
   local cmd = CommandBuilder.diff(staged, file)
   local success, output = CommandExecutor.run(cmd)
@@ -243,10 +248,7 @@ end
 
 function GitTool.get_current_branch()
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitBranchTool>fail: Not in a git repository</gitBranchTool>"
+    return not_in_repo_error_formatted("branch")
   end
   local cmd = CommandBuilder.current_branch()
   local success, output = CommandExecutor.run(cmd)
@@ -256,10 +258,7 @@ end
 
 function GitTool.get_branches(remote_only)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitBranchTool>fail: Not in a git repository</gitBranchTool>"
+    return not_in_repo_error_formatted("branch")
   end
   local cmd = CommandBuilder.branches(remote_only)
   local success, output = CommandExecutor.run(cmd)
@@ -271,7 +270,7 @@ end
 
 function GitTool.stage_files(files)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   if type(files) == "string" then
     files = { files }
@@ -282,7 +281,7 @@ end
 
 function GitTool.unstage_files(files)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   if type(files) == "string" then
     files = { files }
@@ -293,7 +292,7 @@ end
 
 function GitTool.commit(message, amend)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   if not message or vim.trim(message) == "" then
     return false, "Commit message is required"
@@ -304,7 +303,7 @@ end
 
 function GitTool.create_branch(branch_name, checkout)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.create_branch(branch_name, checkout)
   return CommandExecutor.run(cmd)
@@ -312,7 +311,7 @@ end
 
 function GitTool.checkout(target)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.checkout(target)
   return CommandExecutor.run(cmd)
@@ -320,10 +319,7 @@ end
 
 function GitTool.get_remotes()
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitRemoteTool>fail: Not in a git repository</gitRemoteTool>"
+    return not_in_repo_error_formatted("remote")
   end
   local cmd = CommandBuilder.remotes()
   local success, output = CommandExecutor.run(cmd)
@@ -333,10 +329,7 @@ end
 
 function GitTool.show_commit(commit_hash)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitShowTool>fail: Not in a git repository</gitShowTool>"
+    return not_in_repo_error_formatted("show")
   end
   local cmd = CommandBuilder.show(commit_hash)
   local success, output = CommandExecutor.run(cmd)
@@ -346,10 +339,7 @@ end
 
 function GitTool.get_blame(file_path, line_start, line_end)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitBlameTool>fail: Not in a git repository</gitBlameTool>"
+    return not_in_repo_error_formatted("blame")
   end
   local cmd = CommandBuilder.blame(file_path, line_start, line_end)
   local success, output = CommandExecutor.run(cmd)
@@ -359,7 +349,7 @@ end
 
 function GitTool.stash(message, include_untracked)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.stash(message, include_untracked)
   return CommandExecutor.run(cmd)
@@ -367,10 +357,7 @@ end
 
 function GitTool.list_stashes()
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitStashTool>fail: Not in a git repository</gitStashTool>"
+    return not_in_repo_error_formatted("stash")
   end
   local cmd = CommandBuilder.stash_list()
   local success, output = CommandExecutor.run(cmd)
@@ -380,7 +367,7 @@ end
 
 function GitTool.apply_stash(stash_ref)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.stash_apply(stash_ref)
   return CommandExecutor.run(cmd)
@@ -388,7 +375,7 @@ end
 
 function GitTool.reset(commit_hash, mode)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.reset(commit_hash, mode)
   return CommandExecutor.run(cmd)
@@ -396,10 +383,7 @@ end
 
 function GitTool.diff_commits(commit1, commit2, file_path)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitDiff_commitsTool>fail: Not in a git repository</gitDiff_commitsTool>"
+    return not_in_repo_error_formatted("diff_commits")
   end
   local cmd = CommandBuilder.diff_commits(commit1, commit2, file_path)
   local success, output = CommandExecutor.run(cmd)
@@ -409,10 +393,7 @@ end
 
 function GitTool.get_contributors(count)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitContributorsTool>fail: Not in a git repository</gitContributorsTool>"
+    return not_in_repo_error_formatted("contributors")
   end
   count = count or 10
   local cmd = CommandBuilder.contributors()
@@ -433,10 +414,7 @@ end
 
 function GitTool.search_commits(pattern, count)
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitSearch_commitsTool>fail: Not in a git repository</gitSearch_commitsTool>"
+    return not_in_repo_error_formatted("search_commits")
   end
   local cmd = CommandBuilder.search_commits(pattern, count)
   local success, output = CommandExecutor.run(cmd)
@@ -446,7 +424,7 @@ end
 
 function GitTool.push(remote, branch, force, set_upstream, tags, tag_name)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.push(remote, branch, force, set_upstream, tags, tag_name)
   return CommandExecutor.run(cmd)
@@ -454,7 +432,7 @@ end
 
 function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name, on_exit)
   if not is_git_repo() then
-    on_exit({ status = "error", data = "Not in a git repository" })
+    on_exit({ status = "error", data = NOT_IN_REPO_MSG })
     return
   end
   local cmd = CommandBuilder.push_array(remote, branch, force, set_upstream, tags, tag_name)
@@ -463,7 +441,7 @@ end
 
 function GitTool.rebase(onto, base, interactive)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.rebase(onto, base, interactive)
   return CommandExecutor.run(cmd)
@@ -474,7 +452,7 @@ function GitTool.cherry_pick(commit_hash)
     return false, "Commit hash is required for cherry-pick"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.cherry_pick(commit_hash)
   local output = vim.fn.system(cmd)
@@ -498,7 +476,7 @@ end
 
 function GitTool.cherry_pick_abort()
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.cherry_pick_abort()
   local output = vim.fn.system(cmd)
@@ -516,7 +494,7 @@ end
 
 function GitTool.cherry_pick_continue()
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.cherry_pick_continue()
   local output = vim.fn.system(cmd)
@@ -536,7 +514,7 @@ end
 
 function GitTool.cherry_pick_skip()
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.cherry_pick_skip()
   local output = vim.fn.system(cmd)
@@ -557,7 +535,7 @@ function GitTool.revert(commit_hash)
     return false, "Commit hash is required for revert"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.revert(commit_hash)
   return CommandExecutor.run(cmd)
@@ -565,10 +543,7 @@ end
 
 function GitTool.get_tags()
   if not is_git_repo() then
-    return false,
-      "Not in a git repository",
-      "✗ Not in a git repository",
-      "<gitTagTool>fail: Not in a git repository</gitTagTool>"
+    return not_in_repo_error_formatted("tag")
   end
   local cmd = CommandBuilder.tags()
   local success, output = CommandExecutor.run(cmd)
@@ -581,7 +556,7 @@ function GitTool.create_tag(tag_name, message, commit_hash)
     return false, "Tag name is required"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.create_tag(tag_name, message, commit_hash)
   return CommandExecutor.run(cmd)
@@ -592,7 +567,7 @@ function GitTool.delete_tag(tag_name, remote)
     return false, "Tag name is required for deletion"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.delete_tag(tag_name, remote)
   return CommandExecutor.run(cmd)
@@ -603,7 +578,7 @@ function GitTool.merge(branch)
     return false, "Branch name is required for merge"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.merge(branch)
   local output = vim.fn.system(cmd)
@@ -626,7 +601,7 @@ end
 
 function GitTool.merge_abort()
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.merge_abort()
   local output = vim.fn.system(cmd)
@@ -644,7 +619,7 @@ end
 
 function GitTool.merge_continue()
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.merge_continue()
   local output = vim.fn.system(cmd)
@@ -664,8 +639,7 @@ end
 
 function GitTool.get_conflict_status()
   if not is_git_repo() then
-    local msg = "Not in a git repository"
-    return false, msg, "✗ " .. msg, "<gitConflictStatus>fail: " .. msg .. "</gitConflictStatus>"
+    return not_in_repo_error_formatted("conflictStatus")
   end
 
   local cmd = CommandBuilder.conflict_status()
@@ -703,8 +677,7 @@ end
 
 function GitTool.show_conflict(file_path)
   if not is_git_repo() then
-    local msg = "Not in a git repository"
-    return false, msg, "✗ " .. msg, "<gitConflictShow>fail: " .. msg .. "</gitConflictShow>"
+    return not_in_repo_error_formatted("conflictShow")
   end
 
   if not file_path or vim.trim(file_path) == "" then
@@ -966,7 +939,7 @@ function GitTool.add_remote(name, url)
     return false, "Remote URL is required"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.add_remote(name, url)
   return CommandExecutor.run(cmd)
@@ -977,7 +950,7 @@ function GitTool.remove_remote(name)
     return false, "Remote name is required"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.remove_remote(name)
   return CommandExecutor.run(cmd)
@@ -991,7 +964,7 @@ function GitTool.rename_remote(old_name, new_name)
     return false, "New remote name is required"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.rename_remote(old_name, new_name)
   return CommandExecutor.run(cmd)
@@ -1005,7 +978,7 @@ function GitTool.set_remote_url(name, url)
     return false, "Remote URL is required"
   end
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.set_remote_url(name, url)
   return CommandExecutor.run(cmd)
@@ -1013,7 +986,7 @@ end
 
 function GitTool.fetch(remote, branch, prune)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.fetch(remote, branch, prune)
   return CommandExecutor.run(cmd)
@@ -1021,7 +994,7 @@ end
 
 function GitTool.pull(remote, branch, rebase)
   if not is_git_repo() then
-    return false, "Not in a git repository"
+    return not_in_repo_error()
   end
   local cmd = CommandBuilder.pull(remote, branch, rebase)
   return CommandExecutor.run(cmd)

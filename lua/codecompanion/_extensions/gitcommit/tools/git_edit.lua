@@ -6,6 +6,40 @@ local GitEdit = {}
 
 GitEdit.name = "git_edit"
 
+local VALID_OPERATIONS = {
+  "stage",
+  "unstage",
+  "commit",
+  "create_branch",
+  "checkout",
+  "stash",
+  "apply_stash",
+  "reset",
+  "gitignore_add",
+  "gitignore_remove",
+  "push",
+  "fetch",
+  "pull",
+  "add_remote",
+  "remove_remote",
+  "rename_remote",
+  "set_remote_url",
+  "cherry_pick",
+  "cherry_pick_abort",
+  "cherry_pick_continue",
+  "cherry_pick_skip",
+  "revert",
+  "create_tag",
+  "delete_tag",
+  "merge",
+  "merge_abort",
+  "merge_continue",
+  "help",
+}
+
+local VALID_RESET_MODES = { "soft", "mixed", "hard" }
+local TOOL_NAME = "gitEdit"
+
 GitEdit.schema = {
   type = "function",
   ["function"] = {
@@ -16,36 +50,7 @@ GitEdit.schema = {
       properties = {
         operation = {
           type = "string",
-          enum = {
-            "stage",
-            "unstage",
-            "commit",
-            "create_branch",
-            "checkout",
-            "stash",
-            "apply_stash",
-            "reset",
-            "gitignore_add",
-            "gitignore_remove",
-            "push",
-            "fetch",
-            "pull",
-            "add_remote",
-            "remove_remote",
-            "rename_remote",
-            "set_remote_url",
-            "cherry_pick",
-            "cherry_pick_abort",
-            "cherry_pick_continue",
-            "cherry_pick_skip",
-            "revert",
-            "create_tag",
-            "delete_tag",
-            "merge",
-            "merge_abort",
-            "merge_continue",
-            "help",
-          },
+          enum = VALID_OPERATIONS,
           description = "The write-access Git operation to perform.",
         },
         args = {
@@ -238,39 +243,6 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 ## RESPONSE
 - Only invoke this tool when modifying Git repository state.
 - For commit messages, use Conventional Commit format: type(scope): description.]]
-
-local TOOL_NAME = "gitEdit"
-local VALID_OPERATIONS = {
-  "stage",
-  "unstage",
-  "commit",
-  "create_branch",
-  "checkout",
-  "stash",
-  "apply_stash",
-  "reset",
-  "gitignore_add",
-  "gitignore_remove",
-  "push",
-  "fetch",
-  "pull",
-  "add_remote",
-  "remove_remote",
-  "rename_remote",
-  "set_remote_url",
-  "cherry_pick",
-  "cherry_pick_abort",
-  "cherry_pick_continue",
-  "cherry_pick_skip",
-  "revert",
-  "create_tag",
-  "delete_tag",
-  "merge",
-  "merge_abort",
-  "merge_continue",
-  "help",
-}
-local VALID_RESET_MODES = { "soft", "mixed", "hard" }
 
 GitEdit.cmds = {
   function(self, args, input, output_handler)

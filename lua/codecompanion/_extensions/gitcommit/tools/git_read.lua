@@ -6,6 +6,31 @@ local GitRead = {}
 
 GitRead.name = "git_read"
 
+local VALID_OPERATIONS = {
+  "status",
+  "log",
+  "diff",
+  "branch",
+  "remotes",
+  "show",
+  "blame",
+  "stash_list",
+  "diff_commits",
+  "contributors",
+  "search_commits",
+  "tags",
+  "generate_release_notes",
+  "conflict_status",
+  "conflict_show",
+  "help",
+  "gitignore_get",
+  "gitignore_check",
+}
+
+local VALID_LOG_FORMATS = { "oneline", "short", "medium", "full", "fuller" }
+local VALID_RELEASE_FORMATS = { "markdown", "plain", "json" }
+local TOOL_NAME = "gitRead"
+
 GitRead.schema = {
   type = "function",
   ["function"] = {
@@ -16,26 +41,7 @@ GitRead.schema = {
       properties = {
         operation = {
           type = "string",
-          enum = {
-            "status",
-            "log",
-            "diff",
-            "branch",
-            "remotes",
-            "show",
-            "blame",
-            "stash_list",
-            "diff_commits",
-            "contributors",
-            "search_commits",
-            "tags",
-            "generate_release_notes",
-            "conflict_status",
-            "conflict_show",
-            "help",
-            "gitignore_get",
-            "gitignore_check",
-          },
+          enum = VALID_OPERATIONS,
           description = "The read-only Git operation to perform.",
         },
         args = {
@@ -151,30 +157,6 @@ GitRead.system_prompt = [[# Git Read Tool (`git_read`)
 - Only invoke this tool when examining Git repository state.
 - Choose the most appropriate operation for the user's request.
 - For operations requiring file paths, use relative paths from the repository root.]]
-
-local TOOL_NAME = "gitRead"
-local VALID_OPERATIONS = {
-  "status",
-  "log",
-  "diff",
-  "branch",
-  "remotes",
-  "show",
-  "blame",
-  "stash_list",
-  "diff_commits",
-  "contributors",
-  "search_commits",
-  "tags",
-  "generate_release_notes",
-  "conflict_status",
-  "conflict_show",
-  "help",
-  "gitignore_get",
-  "gitignore_check",
-}
-local VALID_LOG_FORMATS = { "oneline", "short", "medium", "full", "fuller" }
-local VALID_RELEASE_FORMATS = { "markdown", "plain", "json" }
 
 GitRead.cmds = {
   function(self, args, _input)

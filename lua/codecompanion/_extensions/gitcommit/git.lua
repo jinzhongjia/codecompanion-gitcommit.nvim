@@ -5,6 +5,9 @@ local Git = {}
 
 local config = {}
 
+local REPO_CACHE_TTL_MS = 1000
+local _repo_cache = { valid = false, timestamp = 0, result = false, cwd = nil }
+
 ---@param opts? table Configuration options
 function Git.setup(opts)
   config = vim.tbl_deep_extend("force", {
@@ -27,6 +30,13 @@ function Git._should_exclude_file(filepath)
 end
 
 function Git.is_repository()
+  local current_cwd = vim.fn.getcwd()
+  local now = vim.uv.now()
+
+  if _repo_cache.valid and _repo_cache.cwd == current_cwd and (now - _repo_cache.timestamp) < REPO_CACHE_TTL_MS then
+    return _repo_cache.result
+  end
+
   local function check_git_dir(path)
     local sep = package.config:sub(1, 1)
     local git_path = path .. sep .. ".git"
@@ -34,23 +44,27 @@ function Git.is_repository()
     return stat ~= nil
   end
 
-  local current_dir = vim.fn.getcwd()
-  while current_dir do
-    if check_git_dir(current_dir) then
+  local check_dir = current_cwd
+  while check_dir do
+    if check_git_dir(check_dir) then
+      _repo_cache = { valid = true, timestamp = now, result = true, cwd = current_cwd }
       return true
     end
 
-    local parent = vim.fn.fnamemodify(current_dir, ":h")
-    if parent == current_dir then
+    local parent = vim.fn.fnamemodify(check_dir, ":h")
+    if parent == check_dir then
       break
     end
-    current_dir = parent
+    check_dir = parent
   end
 
-  local redirect = (vim.loop.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
+  local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
   local cmd = "git rev-parse --is-inside-work-tree" .. redirect
   local result = vim.fn.system(cmd)
-  return vim.v.shell_error == 0 and vim.trim(result) == "true"
+  local is_repo = vim.v.shell_error == 0 and vim.trim(result) == "true"
+
+  _repo_cache = { valid = true, timestamp = now, result = is_repo, cwd = current_cwd }
+  return is_repo
 end
 
 function Git.is_amending()
@@ -137,7 +151,7 @@ end
 ---@return string|nil diff The diff content or nil if no changes
 ---@return string|nil context The context describing the diff type
 function Git.get_contextual_diff()
-  local ok, result = pcall(function()
+  local ok, diff, context = pcall(function()
     if not Git.is_repository() then
       return nil, "not_in_repo"
     end
@@ -187,7 +201,7 @@ function Git.get_contextual_diff()
     return nil, "git_operation_failed"
   end
 
-  return result
+  return diff, context
 end
 
 function Git.commit_changes(message)
