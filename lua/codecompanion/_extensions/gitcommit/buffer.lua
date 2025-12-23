@@ -259,8 +259,11 @@ function Buffer._insert_commit_message(bufnr, message)
     vim.api.nvim_buf_set_lines(bufnr, #message_lines, #message_lines, false, { "" })
   end
 
-  -- Move cursor to beginning of commit message
-  vim.api.nvim_win_set_cursor(0, { 1, 0 })
+  -- Move cursor to beginning of commit message if buffer is visible
+  local winid = vim.fn.bufwinid(bufnr)
+  if winid ~= -1 then
+    vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+  end
 
   vim.notify("Commit message generated and inserted!", vim.log.levels.INFO)
 end

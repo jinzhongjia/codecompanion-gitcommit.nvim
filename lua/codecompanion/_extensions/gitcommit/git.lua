@@ -185,7 +185,13 @@ function Git.get_contextual_diff()
     end
 
     local all_local_diff = vim.fn.system("git diff --no-ext-diff HEAD")
-    if vim.v.shell_error == 0 and GitUtils.trim(all_local_diff) ~= "" then
+    if vim.v.shell_error ~= 0 then
+      all_local_diff = vim.fn.system("git diff --no-ext-diff")
+      if vim.v.shell_error ~= 0 then
+        return nil, "git_operation_failed"
+      end
+    end
+    if GitUtils.trim(all_local_diff) ~= "" then
       local filtered_diff = Git._filter_diff(all_local_diff)
       if GitUtils.trim(filtered_diff) ~= "" then
         return filtered_diff, "unstaged_or_all_local"

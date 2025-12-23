@@ -803,4 +803,40 @@ T["shell_quote_windows"]["robustness"]["handles percent signs"] = function()
   h.eq(true, result)
 end
 
+T["conflict_markers"] = new_set()
+
+T["conflict_markers"]["detects conflict markers"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = table.concat({
+      "<<<<<<< HEAD",
+      "ours",
+      "=======",
+      "theirs",
+      ">>>>>>> branch",
+    }, "\n")
+    return GitUtils.has_conflicts(content)
+  ]])
+  h.eq(true, result)
+end
+
+T["conflict_markers"]["parses conflict blocks"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local content = table.concat({
+      "<<<<<<< HEAD",
+      "ours",
+      "=======",
+      "theirs",
+      ">>>>>>> branch",
+      "after",
+    }, "\n")
+    local conflicts = GitUtils.parse_conflicts(content)
+    return { count = #conflicts, block = conflicts[1] }
+  ]])
+  h.eq(1, result.count)
+  h.expect_match("<<<<<<<", result.block)
+  h.expect_match(">>>>>>>", result.block)
+end
+
 return T

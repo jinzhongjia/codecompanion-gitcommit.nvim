@@ -36,6 +36,7 @@ T["validate"]["returns valid for correct types"] = function()
       model = "gpt-4",
       languages = { "English", "Chinese" },
       exclude_files = { "*.log" },
+      buffer = { window_stability_delay = 200 },
       add_slash_command = true,
       gitcommit_select_count = 100,
       use_commit_history = true,

@@ -90,6 +90,7 @@ T["diff"]["adds file path"] = function()
     local Command = require("codecompanion._extensions.gitcommit.tools.command")
     return Command.CommandBuilder.diff(false, "test.lua")
   ]])
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("test.lua") ~= nil)
 end
 
@@ -99,6 +100,7 @@ T["diff"]["adds both staged and file"] = function()
     return Command.CommandBuilder.diff(true, "test.lua")
   ]])
   h.eq(true, result:find("--cached") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("test.lua") ~= nil)
 end
 
@@ -136,6 +138,7 @@ T["stage"]["handles single file as string"] = function()
     return Command.CommandBuilder.stage("test.lua")
   ]])
   h.eq(true, result:find("git add") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("test.lua") ~= nil)
 end
 
@@ -145,6 +148,7 @@ T["stage"]["handles multiple files"] = function()
     return Command.CommandBuilder.stage({"a.lua", "b.lua"})
   ]])
   h.eq(true, result:find("git add") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("a.lua") ~= nil)
   h.eq(true, result:find("b.lua") ~= nil)
 end
@@ -157,6 +161,7 @@ T["unstage"]["returns correct command"] = function()
     return Command.CommandBuilder.unstage("test.lua")
   ]])
   h.eq(true, result:find("git reset HEAD") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("test.lua") ~= nil)
 end
 
@@ -248,6 +253,7 @@ T["blame"]["returns basic command"] = function()
     return Command.CommandBuilder.blame("test.lua")
   ]])
   h.eq(true, result:find("git blame") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
   h.eq(true, result:find("test.lua") ~= nil)
 end
 
@@ -258,6 +264,7 @@ T["blame"]["adds line range"] = function()
   ]])
   h.eq(true, result:find("-L") ~= nil)
   h.eq(true, result:find("10,20") ~= nil)
+  h.eq(true, result:find("%-%-") ~= nil)
 end
 
 T["blame"]["adds line start with default range"] = function()
@@ -730,7 +737,11 @@ T["utility"]["check_ignore returns array"] = function()
   local result = child.lua([[
     local Command = require("codecompanion._extensions.gitcommit.tools.command")
     local cmd = Command.CommandBuilder.check_ignore("test.lua")
-    return type(cmd) == "table" and cmd[1] == "git" and cmd[2] == "check-ignore" and cmd[3] == "test.lua"
+    return type(cmd) == "table"
+      and cmd[1] == "git"
+      and cmd[2] == "check-ignore"
+      and cmd[3] == "--"
+      and cmd[4] == "test.lua"
   ]])
   h.eq(true, result)
 end
