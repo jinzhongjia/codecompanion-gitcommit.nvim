@@ -30,7 +30,7 @@ T["gitignore"]["reads existing .gitignore"] = function()
     vim.uv.fs_close(fd)
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.repo_root() then
+      if vim.deep_equal(cmd, CommandBuilder.repo_root()) then
         return true, dir
       end
       return false, "unexpected"
@@ -54,7 +54,7 @@ T["gitignore"]["handles missing .gitignore"] = function()
     vim.fn.mkdir(dir, "p")
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.repo_root() then
+      if vim.deep_equal(cmd, CommandBuilder.repo_root()) then
         return true, dir
       end
       return false, "unexpected"
@@ -83,7 +83,7 @@ T["gitignore"]["adds and removes rules"] = function()
     vim.uv.fs_close(fd)
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.repo_root() then
+      if vim.deep_equal(cmd, CommandBuilder.repo_root()) then
         return true, dir
       end
       return false, "unexpected"
@@ -597,7 +597,8 @@ T["write_ops"]["commit uses executor when in repo"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git commit", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("commit", result.output)
 end
 
 T["write_ops"]["push delegates to executor"] = function()
@@ -616,7 +617,8 @@ T["write_ops"]["push delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git push", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("push", result.output)
 end
 
 T["write_ops"]["fetch delegates to executor"] = function()
@@ -635,7 +637,8 @@ T["write_ops"]["fetch delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git fetch", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("fetch", result.output)
 end
 
 T["write_ops"]["pull delegates to executor"] = function()
@@ -654,7 +657,8 @@ T["write_ops"]["pull delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git pull", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("pull", result.output)
 end
 
 T["write_ops"]["stash delegates to executor"] = function()
@@ -673,7 +677,8 @@ T["write_ops"]["stash delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git stash", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("stash", result.output)
 end
 
 T["write_ops"]["reset delegates to executor"] = function()
@@ -692,7 +697,8 @@ T["write_ops"]["reset delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git reset", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("reset", result.output)
 end
 
 T["write_ops"]["rebase delegates to executor"] = function()
@@ -711,7 +717,8 @@ T["write_ops"]["rebase delegates to executor"] = function()
     return { success = success, output = output }
   ]])
   h.eq(true, result.success)
-  h.expect_match("git rebase", result.output)
+  h.expect_array_contains("git", result.output)
+  h.expect_array_contains("rebase", result.output)
 end
 
 T["read_ops"] = new_set()
@@ -846,7 +853,7 @@ T["release_notes"]["returns error when no tags"] = function()
     local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.tags_sorted() then
+      if vim.deep_equal(cmd, CommandBuilder.tags_sorted()) then
         return true, ""
       end
       return false, "unexpected"
@@ -867,10 +874,10 @@ T["release_notes"]["defaults tags and builds markdown"] = function()
     local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.tags_sorted() then
+      if vim.deep_equal(cmd, CommandBuilder.tags_sorted()) then
         return true, "v2.0\nv1.0\n"
       end
-      if cmd == CommandBuilder.release_notes_log("v1.0", "v2.0") then
+      if vim.deep_equal(cmd, CommandBuilder.release_notes_log("v1.0", "v2.0")) then
         local line1 = table.concat({ "abc123", "feat: add api", "me", "2024-01-01" }, "\x01")
         local line2 = table.concat({ "def456", "fix: repair bug", "you", "2024-01-02" }, "\x01")
         return true, line1 .. "\n" .. line2
@@ -895,10 +902,10 @@ T["release_notes"]["returns json output"] = function()
     local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 
     CommandExecutor.run = function(cmd)
-      if cmd == CommandBuilder.tags_sorted() then
+      if vim.deep_equal(cmd, CommandBuilder.tags_sorted()) then
         return true, "v2.0\nv1.0\n"
       end
-      if cmd == CommandBuilder.release_notes_log("v1.0", "v2.0") then
+      if vim.deep_equal(cmd, CommandBuilder.release_notes_log("v1.0", "v2.0")) then
         local line1 = table.concat({ "abc123", "feat: add api", "me", "2024-01-01" }, "\x01")
         return true, line1
       end

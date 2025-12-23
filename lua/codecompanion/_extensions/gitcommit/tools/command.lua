@@ -1,16 +1,16 @@
 ---@class CodeCompanion.GitCommit.Tools.Command
 ---Command building and execution utilities for git operations.
 ---Separates pure command generation (testable) from side-effectful execution.
+---All command builders return arrays for cross-platform compatibility.
 
 local M = {}
 
 local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
 
 local is_windows = GitUtils.is_windows
-local shell_quote = GitUtils.shell_quote
 
 --------------------------------------------------------------------------------
--- CommandBuilder: Pure functions for generating git command strings
+-- CommandBuilder: Pure functions for generating git command arrays
 -- These are easily testable without requiring a git repository
 --------------------------------------------------------------------------------
 
@@ -35,216 +35,218 @@ CommandBuilder.RESET_MODES = {
 }
 
 ---Build git status command
----@return string command
+---@return string[] command array
 function CommandBuilder.status()
-  return "git status --porcelain"
+  return { "git", "status", "--porcelain" }
 end
 
 ---Build git log command
 ---@param count? number Number of commits (default: 10)
 ---@param format? string Log format (default: "oneline")
----@return string command
+---@return string[] command array
 function CommandBuilder.log(count, format)
   count = count or 10
   format = format or "oneline"
   local format_option = CommandBuilder.LOG_FORMATS[format] or "--oneline"
-  return string.format("git log -%d %s", count, format_option)
+  return { "git", "log", "-" .. count, format_option }
 end
 
 ---Build git diff command
 ---@param staged? boolean Show staged changes
 ---@param file? string Specific file path
----@return string command
+---@return string[] command array
 function CommandBuilder.diff(staged, file)
-  local parts = { "git", "diff" }
+  local cmd = { "git", "diff" }
   if staged then
-    table.insert(parts, "--cached")
+    table.insert(cmd, "--cached")
   end
   if file then
-    table.insert(parts, "--")
-    table.insert(parts, vim.fn.shellescape(file))
+    table.insert(cmd, "--")
+    table.insert(cmd, file)
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git branch command (show current)
----@return string command
+---@return string[] command array
 function CommandBuilder.current_branch()
-  return "git branch --show-current"
+  return { "git", "branch", "--show-current" }
 end
 
 ---Build git branch list command
 ---@param remote_only? boolean Show only remote branches
----@return string command
+---@return string[] command array
 function CommandBuilder.branches(remote_only)
-  return remote_only and "git branch -r" or "git branch -a"
+  if remote_only then
+    return { "git", "branch", "-r" }
+  else
+    return { "git", "branch", "-a" }
+  end
 end
 
 ---Build git add command
 ---@param files string|string[] Files to stage
----@return string command
+---@return string[] command array
 function CommandBuilder.stage(files)
   if type(files) == "string" then
     files = { files }
   end
-  local escaped_files = {}
+  local cmd = { "git", "add", "--" }
   for _, file in ipairs(files) do
-    table.insert(escaped_files, vim.fn.shellescape(file))
+    table.insert(cmd, file)
   end
-  return "git add -- " .. table.concat(escaped_files, " ")
+  return cmd
 end
 
 ---Build git reset (unstage) command
 ---@param files string|string[] Files to unstage
----@return string command
+---@return string[] command array
 function CommandBuilder.unstage(files)
   if type(files) == "string" then
     files = { files }
   end
-  local escaped_files = {}
+  local cmd = { "git", "reset", "HEAD", "--" }
   for _, file in ipairs(files) do
-    table.insert(escaped_files, vim.fn.shellescape(file))
+    table.insert(cmd, file)
   end
-  return "git reset HEAD -- " .. table.concat(escaped_files, " ")
+  return cmd
 end
 
 ---Build git commit command
 ---@param message string Commit message
 ---@param amend? boolean Amend the last commit
----@return string command
+---@return string[] command array
 function CommandBuilder.commit(message, amend)
-  local parts = { "git", "commit" }
+  local cmd = { "git", "commit" }
   if amend then
-    table.insert(parts, "--amend")
+    table.insert(cmd, "--amend")
   end
-  table.insert(parts, "-m")
-  table.insert(parts, vim.fn.shellescape(message))
-  return table.concat(parts, " ")
+  table.insert(cmd, "-m")
+  table.insert(cmd, message)
+  return cmd
 end
 
 ---Build git create branch command
 ---@param branch_name string Name of the new branch
 ---@param checkout? boolean Whether to checkout the new branch (default: true)
----@return string command
+---@return string[] command array
 function CommandBuilder.create_branch(branch_name, checkout)
   checkout = checkout ~= false
-  local cmd = checkout and "git checkout -b " or "git branch "
-  return cmd .. vim.fn.shellescape(branch_name)
+  if checkout then
+    return { "git", "checkout", "-b", branch_name }
+  else
+    return { "git", "branch", branch_name }
+  end
 end
 
 ---Build git checkout command
 ---@param target string Branch name or commit hash
----@return string command
+---@return string[] command array
 function CommandBuilder.checkout(target)
-  return "git checkout " .. vim.fn.shellescape(target)
+  return { "git", "checkout", target }
 end
 
 ---Build git remote command
----@return string command
+---@return string[] command array
 function CommandBuilder.remotes()
-  return "git remote -v"
+  return { "git", "remote", "-v" }
 end
 
 ---Build git show command
 ---@param commit_hash? string Commit hash (default: HEAD)
----@return string command
+---@return string[] command array
 function CommandBuilder.show(commit_hash)
   commit_hash = commit_hash or "HEAD"
-  return "git show " .. vim.fn.shellescape(commit_hash)
+  return { "git", "show", commit_hash }
 end
 
 ---Build git blame command
 ---@param file_path string Path to the file
 ---@param line_start? number Start line number
 ---@param line_end? number End line number
----@return string command
+---@return string[] command array
 function CommandBuilder.blame(file_path, line_start, line_end)
-  local parts = { "git", "blame" }
+  local cmd = { "git", "blame" }
   if line_start and line_end then
-    table.insert(parts, "-L")
-    table.insert(parts, line_start .. "," .. line_end)
+    table.insert(cmd, "-L")
+    table.insert(cmd, line_start .. "," .. line_end)
   elseif line_start then
-    table.insert(parts, "-L")
-    table.insert(parts, line_start .. ",+10")
+    table.insert(cmd, "-L")
+    table.insert(cmd, line_start .. ",+10")
   end
-  table.insert(parts, "--")
-  table.insert(parts, vim.fn.shellescape(file_path))
-  return table.concat(parts, " ")
+  table.insert(cmd, "--")
+  table.insert(cmd, file_path)
+  return cmd
 end
 
 ---Build git stash command
 ---@param message? string Stash message
 ---@param include_untracked? boolean Include untracked files
----@return string command
+---@return string[] command array
 function CommandBuilder.stash(message, include_untracked)
-  local parts = { "git", "stash" }
+  local cmd = { "git", "stash" }
   if include_untracked then
-    table.insert(parts, "-u")
+    table.insert(cmd, "-u")
   end
   if message then
-    table.insert(parts, "-m")
-    table.insert(parts, vim.fn.shellescape(message))
+    table.insert(cmd, "-m")
+    table.insert(cmd, message)
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git stash list command
----@return string command
+---@return string[] command array
 function CommandBuilder.stash_list()
-  return "git stash list"
+  return { "git", "stash", "list" }
 end
 
 ---Build git stash apply command
 ---@param stash_ref? string Stash reference (default: stash@{0})
----@return string command
+---@return string[] command array
 function CommandBuilder.stash_apply(stash_ref)
   stash_ref = stash_ref or "stash@{0}"
-  return "git stash apply " .. vim.fn.shellescape(stash_ref)
+  return { "git", "stash", "apply", stash_ref }
 end
 
 ---Build git reset command
 ---@param commit_hash string Commit hash or reference
 ---@param mode? string Reset mode (soft, mixed, hard)
----@return string command
+---@return string[] command array
 function CommandBuilder.reset(commit_hash, mode)
   mode = mode or "mixed"
   local mode_flag = CommandBuilder.RESET_MODES[mode] or "--mixed"
-  return string.format("git reset %s %s", mode_flag, vim.fn.shellescape(commit_hash))
+  return { "git", "reset", mode_flag, commit_hash }
 end
 
 ---Build git diff between commits command
 ---@param commit1 string First commit
 ---@param commit2? string Second commit (default: HEAD)
 ---@param file_path? string Specific file path
----@return string command
+---@return string[] command array
 function CommandBuilder.diff_commits(commit1, commit2, file_path)
   commit2 = commit2 or "HEAD"
-  local parts = {
-    "git",
-    "diff",
-    vim.fn.shellescape(commit1),
-    vim.fn.shellescape(commit2),
-  }
+  local cmd = { "git", "diff", commit1, commit2 }
   if file_path then
-    table.insert(parts, "--")
-    table.insert(parts, vim.fn.shellescape(file_path))
+    table.insert(cmd, "--")
+    table.insert(cmd, file_path)
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git shortlog (contributors) command
----@return string command
+---@return string[] command array
 function CommandBuilder.contributors()
-  return "git shortlog -sn"
+  return { "git", "shortlog", "-sn" }
 end
 
 ---Build git log search command
 ---@param pattern string Search pattern
 ---@param count? number Maximum number of results
----@return string command
+---@return string[] command array
 function CommandBuilder.search_commits(pattern, count)
   count = count or 20
-  return string.format("git log --grep=%s --oneline -%d", vim.fn.shellescape(pattern), count)
+  return { "git", "log", "--grep=" .. pattern, "--oneline", "-" .. count }
 end
 
 ---Build git push command
@@ -254,45 +256,8 @@ end
 ---@param set_upstream? boolean Set upstream
 ---@param tags? boolean Push all tags
 ---@param tag_name? string Single tag to push
----@return string command
-function CommandBuilder.push(remote, branch, force, set_upstream, tags, tag_name)
-  local parts = { "git", "push" }
-  if force then
-    table.insert(parts, "--force")
-  end
-  if set_upstream then
-    table.insert(parts, "--set-upstream")
-  end
-
-  -- Handle tag pushing - single tag takes priority over all tags
-  if tag_name and vim.trim(tag_name) ~= "" then
-    local push_remote = remote or "origin"
-    table.insert(parts, vim.fn.shellescape(push_remote))
-    table.insert(parts, vim.fn.shellescape(tag_name))
-  elseif tags then
-    local push_remote = remote or "origin"
-    table.insert(parts, vim.fn.shellescape(push_remote))
-    table.insert(parts, "--tags")
-  else
-    if remote then
-      table.insert(parts, vim.fn.shellescape(remote))
-    end
-    if branch then
-      table.insert(parts, vim.fn.shellescape(branch))
-    end
-  end
-  return table.concat(parts, " ")
-end
-
----Build git push command as array (for async jobstart)
----@param remote? string Remote name
----@param branch? string Branch name
----@param force? boolean Force push
----@param set_upstream? boolean Set upstream
----@param tags? boolean Push all tags
----@param tag_name? string Single tag to push
 ---@return string[] command array
-function CommandBuilder.push_array(remote, branch, force, set_upstream, tags, tag_name)
+function CommandBuilder.push(remote, branch, force, set_upstream, tags, tag_name)
   local cmd = { "git", "push" }
   if force then
     table.insert(cmd, "--force")
@@ -301,6 +266,7 @@ function CommandBuilder.push_array(remote, branch, force, set_upstream, tags, ta
     table.insert(cmd, "--set-upstream")
   end
 
+  -- Handle tag pushing - single tag takes priority over all tags
   if tag_name and vim.trim(tag_name) ~= "" then
     table.insert(cmd, remote or "origin")
     table.insert(cmd, tag_name)
@@ -322,204 +288,202 @@ end
 ---@param onto? string Branch to rebase onto
 ---@param base? string Upstream branch
 ---@param interactive? boolean Interactive rebase
----@return string command
+---@return string[] command array
 function CommandBuilder.rebase(onto, base, interactive)
-  local parts = { "git", "rebase" }
+  local cmd = { "git", "rebase" }
   if interactive then
-    table.insert(parts, "--interactive")
+    table.insert(cmd, "--interactive")
   end
   if onto then
-    table.insert(parts, "--onto")
-    table.insert(parts, vim.fn.shellescape(onto))
+    table.insert(cmd, "--onto")
+    table.insert(cmd, onto)
   end
   if base then
-    table.insert(parts, vim.fn.shellescape(base))
+    table.insert(cmd, base)
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git cherry-pick command
 ---@param commit_hash string Commit hash
----@return string command
+---@return string[] command array
 function CommandBuilder.cherry_pick(commit_hash)
-  return "git cherry-pick --no-edit " .. vim.fn.shellescape(commit_hash)
+  return { "git", "cherry-pick", "--no-edit", commit_hash }
 end
 
 ---Build git cherry-pick abort command
----@return string command
+---@return string[] command array
 function CommandBuilder.cherry_pick_abort()
-  return "git cherry-pick --abort"
+  return { "git", "cherry-pick", "--abort" }
 end
 
 ---Build git cherry-pick continue command
----@return string command
+---@return string[] command array
 function CommandBuilder.cherry_pick_continue()
-  return "git cherry-pick --continue"
+  return { "git", "cherry-pick", "--continue" }
 end
 
 ---Build git cherry-pick skip command
----@return string command
+---@return string[] command array
 function CommandBuilder.cherry_pick_skip()
-  return "git cherry-pick --skip"
+  return { "git", "cherry-pick", "--skip" }
 end
 
 ---Build git revert command
 ---@param commit_hash string Commit hash
----@return string command
+---@return string[] command array
 function CommandBuilder.revert(commit_hash)
-  return "git revert --no-edit " .. vim.fn.shellescape(commit_hash)
+  return { "git", "revert", "--no-edit", commit_hash }
 end
 
 ---Build git tag list command
----@return string command
+---@return string[] command array
 function CommandBuilder.tags()
-  return "git tag"
+  return { "git", "tag" }
 end
 
 ---Build git tag sorted command
----@return string command
+---@return string[] command array
 function CommandBuilder.tags_sorted()
-  return "git tag --sort=-version:refname"
+  return { "git", "tag", "--sort=-version:refname" }
 end
 
 ---Build git create tag command
 ---@param tag_name string Tag name
 ---@param message? string Annotated tag message
 ---@param commit_hash? string Commit to tag
----@return string command
+---@return string[] command array
 function CommandBuilder.create_tag(tag_name, message, commit_hash)
-  local parts = { "git", "tag" }
+  local cmd = { "git", "tag" }
   if message then
-    table.insert(parts, "-a")
-    table.insert(parts, vim.fn.shellescape(tag_name))
-    table.insert(parts, "-m")
-    table.insert(parts, vim.fn.shellescape(message))
+    table.insert(cmd, "-a")
+    table.insert(cmd, tag_name)
+    table.insert(cmd, "-m")
+    table.insert(cmd, message)
   else
-    table.insert(parts, vim.fn.shellescape(tag_name))
+    table.insert(cmd, tag_name)
   end
   if commit_hash then
-    table.insert(parts, vim.fn.shellescape(commit_hash))
+    table.insert(cmd, commit_hash)
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git delete tag command
 ---@param tag_name string Tag name
 ---@param remote? string Remote to delete from
----@return string command
+---@return string[] command array
 function CommandBuilder.delete_tag(tag_name, remote)
   if remote then
-    return "git push --delete " .. vim.fn.shellescape(remote) .. " " .. vim.fn.shellescape(tag_name)
+    return { "git", "push", "--delete", remote, tag_name }
   else
-    return "git tag -d " .. vim.fn.shellescape(tag_name)
+    return { "git", "tag", "-d", tag_name }
   end
 end
 
 ---Build git merge command
 ---@param branch string Branch to merge
----@return string command
+---@return string[] command array
 function CommandBuilder.merge(branch)
-  return "git merge " .. vim.fn.shellescape(branch) .. " --no-edit"
+  return { "git", "merge", branch, "--no-edit" }
 end
 
 ---Build git merge abort command
----@return string command
+---@return string[] command array
 function CommandBuilder.merge_abort()
-  return "git merge --abort"
+  return { "git", "merge", "--abort" }
 end
 
 ---Build git merge continue command
----@return string command
+---@return string[] command array
 function CommandBuilder.merge_continue()
-  return "git merge --continue"
+  return { "git", "merge", "--continue" }
 end
 
 ---Build git diff conflict status command
----@return string command
+---@return string[] command array
 function CommandBuilder.conflict_status()
-  return "git diff --name-only --diff-filter=U"
+  return { "git", "diff", "--name-only", "--diff-filter=U" }
 end
 
 ---Build git log for release notes command
 ---@param from_tag string Starting tag
 ---@param to_tag string Ending tag
----@return string command
+---@return string[] command array
 function CommandBuilder.release_notes_log(from_tag, to_tag)
   local range = from_tag .. ".." .. to_tag
-  local escaped_range = vim.fn.shellescape(range)
-  local format_str = shell_quote("%h\x01%s\x01%an\x01%ad")
-  return "git log --pretty=format:" .. format_str .. " --date=short " .. escaped_range
+  return { "git", "log", "--pretty=format:%h\x01%s\x01%an\x01%ad", "--date=short", range }
 end
 
 ---Build git remote add command
 ---@param name string Remote name
 ---@param url string Remote URL
----@return string command
+---@return string[] command array
 function CommandBuilder.add_remote(name, url)
-  return "git remote add " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
+  return { "git", "remote", "add", name, url }
 end
 
 ---Build git remote remove command
 ---@param name string Remote name
----@return string command
+---@return string[] command array
 function CommandBuilder.remove_remote(name)
-  return "git remote remove " .. vim.fn.shellescape(name)
+  return { "git", "remote", "remove", name }
 end
 
 ---Build git remote rename command
 ---@param old_name string Current name
 ---@param new_name string New name
----@return string command
+---@return string[] command array
 function CommandBuilder.rename_remote(old_name, new_name)
-  return "git remote rename " .. vim.fn.shellescape(old_name) .. " " .. vim.fn.shellescape(new_name)
+  return { "git", "remote", "rename", old_name, new_name }
 end
 
 ---Build git remote set-url command
 ---@param name string Remote name
 ---@param url string New URL
----@return string command
+---@return string[] command array
 function CommandBuilder.set_remote_url(name, url)
-  return "git remote set-url " .. vim.fn.shellescape(name) .. " " .. vim.fn.shellescape(url)
+  return { "git", "remote", "set-url", name, url }
 end
 
 ---Build git fetch command
 ---@param remote? string Remote name
 ---@param branch? string Branch name
 ---@param prune? boolean Prune deleted branches
----@return string command
+---@return string[] command array
 function CommandBuilder.fetch(remote, branch, prune)
-  local parts = { "git", "fetch" }
+  local cmd = { "git", "fetch" }
   if prune then
-    table.insert(parts, "--prune")
+    table.insert(cmd, "--prune")
   end
   if remote then
-    table.insert(parts, vim.fn.shellescape(remote))
+    table.insert(cmd, remote)
     if branch then
-      table.insert(parts, vim.fn.shellescape(branch))
+      table.insert(cmd, branch)
     end
   else
-    table.insert(parts, "--all")
+    table.insert(cmd, "--all")
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git pull command
 ---@param remote? string Remote name
 ---@param branch? string Branch name
 ---@param rebase? boolean Use rebase
----@return string command
+---@return string[] command array
 function CommandBuilder.pull(remote, branch, rebase)
-  local parts = { "git", "pull" }
+  local cmd = { "git", "pull" }
   if rebase then
-    table.insert(parts, "--rebase")
+    table.insert(cmd, "--rebase")
   end
   if remote then
-    table.insert(parts, vim.fn.shellescape(remote))
+    table.insert(cmd, remote)
     if branch then
-      table.insert(parts, vim.fn.shellescape(branch))
+      table.insert(cmd, branch)
     end
   end
-  return table.concat(parts, " ")
+  return cmd
 end
 
 ---Build git rev-parse command (check repo)
@@ -535,20 +499,20 @@ function CommandBuilder.verify_head()
 end
 
 ---Build git rev-parse git-dir command
----@return string command
+---@return string[] command array
 function CommandBuilder.git_dir()
-  return "git rev-parse --git-dir"
+  return { "git", "rev-parse", "--git-dir" }
 end
 
 ---Build git rev-parse show-toplevel command
----@return string command
+---@return string[] command array
 function CommandBuilder.repo_root()
-  return "git rev-parse --show-toplevel"
+  return { "git", "rev-parse", "--show-toplevel" }
 end
 
 ---Build git check-ignore command
 ---@param file string File to check
----@return string[] command array for system call
+---@return string[] command array
 function CommandBuilder.check_ignore(file)
   return { "git", "check-ignore", "--", file }
 end
@@ -560,8 +524,8 @@ end
 ---@class CodeCompanion.GitCommit.Tools.CommandExecutor
 local CommandExecutor = {}
 
----Execute a git command string
----@param cmd string Command to execute
+---Execute a git command (string or array)
+---@param cmd string|string[] Command to execute
 ---@return boolean success
 ---@return string output
 function CommandExecutor.run(cmd)
@@ -578,22 +542,12 @@ function CommandExecutor.run(cmd)
   return true, output or ""
 end
 
----Execute a git command array (for better escaping)
+---Execute a git command array (alias for run, kept for compatibility)
 ---@param cmd string[] Command array
 ---@return boolean success
 ---@return string output
 function CommandExecutor.run_array(cmd)
-  local ok, output = pcall(vim.fn.system, cmd)
-  if not ok then
-    return false, "Command execution failed: " .. tostring(output)
-  end
-
-  local exit_code = vim.v.shell_error
-  if exit_code ~= 0 then
-    return false, output or "Git command failed"
-  end
-
-  return true, output or ""
+  return CommandExecutor.run(cmd)
 end
 
 ---Execute a git command asynchronously
@@ -636,12 +590,12 @@ end
 ---@return boolean
 function CommandExecutor.is_git_repo()
   local cmd = CommandBuilder.is_inside_work_tree()
-  local ok, result = CommandExecutor.run_array(cmd)
+  local ok, result = CommandExecutor.run(cmd)
   return ok and vim.trim(result) == "true"
 end
 
 ---Execute a git command with repo check
----@param cmd string Command to execute
+---@param cmd string|string[] Command to execute
 ---@return boolean success
 ---@return string output
 function CommandExecutor.run_in_repo(cmd)
@@ -654,6 +608,5 @@ end
 M.CommandBuilder = CommandBuilder
 M.CommandExecutor = CommandExecutor
 M.is_windows = is_windows
-M.shell_quote = shell_quote
 
 return M

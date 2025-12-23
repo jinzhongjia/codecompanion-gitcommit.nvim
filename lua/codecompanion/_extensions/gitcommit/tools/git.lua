@@ -435,7 +435,7 @@ function GitTool.push_async(remote, branch, force, set_upstream, tags, tag_name,
     on_exit({ status = "error", data = NOT_IN_REPO_MSG })
     return
   end
-  local cmd = CommandBuilder.push_array(remote, branch, force, set_upstream, tags, tag_name)
+  local cmd = CommandBuilder.push(remote, branch, force, set_upstream, tags, tag_name)
   CommandExecutor.run_async(cmd, on_exit)
 end
 
