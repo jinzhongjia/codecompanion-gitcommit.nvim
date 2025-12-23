@@ -230,22 +230,54 @@ function M.path_join(...)
     return ""
   end
 
-  -- Normalize all parts to use forward slashes
-  local normalized = {}
+  local windows_style = M.is_windows()
+  for _, part in ipairs(parts) do
+    if type(part) == "string" then
+      if part:find("\\") or part:match("^%a:[\\/]") then
+        windows_style = true
+        break
+      end
+    end
+  end
+
+  local cleaned = {}
+  local prefix = ""
+
   for i, part in ipairs(parts) do
-    normalized[i] = part:gsub("\\+", "/")
+    local raw_part = tostring(part or "")
+    local has_unc_prefix = i == 1 and (raw_part:match("^\\\\") or raw_part:match("^//"))
+
+    part = raw_part:gsub("\\+", "/")
+
+    if i == 1 then
+      if has_unc_prefix then
+        prefix = "//"
+        part = part:gsub("^/+", "")
+      elseif part:match("^/+") then
+        prefix = "/"
+        part = part:gsub("^/+", "")
+      end
+      part = part:gsub("/+$", "")
+    else
+      part = part:gsub("^/+", "")
+      part = part:gsub("/+$", "")
+    end
+
+    if part ~= "" then
+      table.insert(cleaned, part)
+    end
   end
 
-  -- Remove leading/trailing slashes from middle parts
-  for i = 2, #normalized - 1 do
-    normalized[i] = normalized[i]:gsub("^/", ""):gsub("/$", "")
+  if #cleaned == 0 then
+    return prefix
   end
 
-  -- Join with forward slashes
-  local result = table.concat(normalized, "/")
+  local result = table.concat(cleaned, "/")
+  if prefix ~= "" then
+    result = prefix .. result
+  end
 
-  -- Convert to Windows backslashes if on Windows
-  if M.is_windows() then
+  if windows_style then
     result = result:gsub("/", "\\")
   end
 

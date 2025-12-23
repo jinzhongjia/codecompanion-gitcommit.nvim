@@ -194,6 +194,28 @@ T["conflicts"]["merge reports conflict"] = function()
   h.expect_match("Merge conflict detected", result.output)
 end
 
+T["conflicts"]["rebase reports conflict"] = function()
+  local result = child.lua([[
+    local Git = require("codecompanion._extensions.gitcommit.git")
+    local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
+    Git.is_repository = function() return true end
+
+    local orig_system = vim.fn.system
+    vim.fn.system = function(_cmd)
+      local fail_cmd = (vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1)
+        and "cmd /c exit 1"
+        or "false"
+      orig_system(fail_cmd)
+      return "CONFLICT (content): conflict"
+    end
+
+    local success, output = GitTool.rebase(nil, "develop")
+    return { success = success, output = output }
+  ]])
+  h.eq(false, result.success)
+  h.expect_match("Rebase conflict detected", result.output)
+end
+
 T["conflicts"]["conflict status reports none"] = function()
   local result = child.lua([[
     local Git = require("codecompanion._extensions.gitcommit.git")

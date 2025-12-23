@@ -113,7 +113,8 @@ CodeCompanion tool implementations following the tool schema pattern:
 | Tool | File | Purpose |
 |------|------|---------|
 | `git_read` | `git_read.lua` | 16 read-only operations (status, log, diff, etc.) |
-| `git_edit` | `git_edit.lua` | 17 write operations (stage, commit, push, etc.) |
+| `git_edit` | `git_edit.lua` | 20 write operations (stage, commit, push, etc.) |
+
 | `ai_release_notes` | `ai_release_notes.lua` | AI-powered release notes from commit history |
 
 **Tool Schema Structure:**

@@ -213,6 +213,20 @@ T["cmds"]["merge requires branch"] = function()
   h.eq(true, result.has_msg)
 end
 
+T["cmds"]["rebase requires base"] = function()
+  local result = child.lua([[
+    local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
+    local cmd_fn = GitEdit.cmds[1]
+    local result = cmd_fn({}, { operation = "rebase", args = {} }, nil, function() end)
+    return {
+      status = result.status,
+      has_msg = result.data.output:find("base is required") ~= nil,
+    }
+  ]])
+  h.eq("error", result.status)
+  h.eq(true, result.has_msg)
+end
+
 T["cmds"]["gitignore_add requires rules"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")

@@ -20,8 +20,12 @@ local VALID_OPERATIONS = {
   "push",
   "fetch",
   "pull",
+  "rebase",
+  "rebase_abort",
+  "rebase_continue",
   "add_remote",
   "remove_remote",
+
   "rename_remote",
   "set_remote_url",
   "cherry_pick",
@@ -119,8 +123,21 @@ GitEdit.schema = {
               type = "string",
               description = "The name of the branch to push or merge",
             },
+            base = {
+              type = "string",
+              description = "Base branch for rebase",
+            },
+            onto = {
+              type = "string",
+              description = "Branch to rebase onto",
+            },
+            interactive = {
+              type = "boolean",
+              description = "Use interactive rebase",
+            },
             force = {
               type = "boolean",
+
               description = "Force push (DANGEROUS: overwrites remote history)",
             },
             set_upstream = {
@@ -214,9 +231,13 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 | `push` | Push to remote | remote?, branch?, set_upstream?, tags?, single_tag_name? |
 | `fetch` | Fetch from remote | remote?, branch?, prune? |
 | `pull` | Pull from remote | remote?, branch?, rebase? |
+| `rebase` | Rebase current branch | base (required), onto?, interactive? |
+| `rebase_abort` | Abort rebase | - |
+| `rebase_continue` | Continue rebase | - |
 | `add_remote` | Add new remote | remote_name (required), remote_url (required) |
 | `remove_remote` | Remove remote | remote_name (required) |
 | `rename_remote` | Rename remote | remote_name (required), new_remote_name (required) |
+
 | `set_remote_url` | Change remote URL | remote_name (required), remote_url (required) |
 | `cherry_pick` | Apply commit | cherry_pick_commit_hash (required) |
 | `cherry_pick_abort` | Abort cherry-pick | - |
@@ -276,10 +297,14 @@ Available write-access Git operations:
 • push: Push changes to a remote repository (WARNING: force push is dangerous)
 • fetch: Fetch from remote (prune option available)
 • pull: Pull from remote (rebase option available)
+• rebase: Rebase current branch (requires base parameter)
+• rebase_abort: Abort rebase in progress
+• rebase_continue: Continue rebase after resolving conflicts
 • add_remote: Add a new remote repository
 • remove_remote: Remove a remote repository
 • rename_remote: Rename a remote repository
 • set_remote_url: Change URL of a remote repository
+
 • cherry_pick: Apply changes from existing commits
 • cherry_pick_abort: Abort cherry-pick in progress
 • cherry_pick_continue: Continue cherry-pick after resolving conflicts
@@ -495,6 +520,20 @@ Available write-access Git operations:
           return param_err
         end
         success, output = GitTool.pull(op_args.remote, op_args.branch, op_args.rebase)
+      elseif operation == "rebase" then
+        param_err = validation.first_error({
+          validation.require_string(op_args.base, "base", TOOL_NAME),
+          validation.optional_string(op_args.onto, "onto", TOOL_NAME),
+          validation.optional_boolean(op_args.interactive, "interactive", TOOL_NAME),
+        })
+        if param_err then
+          return param_err
+        end
+        success, output = GitTool.rebase(op_args.onto, op_args.base, op_args.interactive)
+      elseif operation == "rebase_abort" then
+        success, output = GitTool.rebase_abort()
+      elseif operation == "rebase_continue" then
+        success, output = GitTool.rebase_continue()
       elseif operation == "add_remote" then
         param_err = validation.first_error({
           validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),

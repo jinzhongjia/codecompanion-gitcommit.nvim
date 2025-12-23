@@ -8,7 +8,8 @@ A Neovim plugin extension for CodeCompanion that generates AI-powered Git commit
 ## ✨ Features
 
 - 🤖 **AI Commit Generation** - Generate Conventional Commits compliant messages using CodeCompanion's LLM adapters
-- 🛠️ **Git Tool Integration** - Execute Git operations through `@{git_read}` (16 read operations) and `@{git_edit}` (17 write operations) tools in chat
+- 🛠️ **Git Tool Integration** - Execute Git operations through `@{git_read}` (16 read operations) and `@{git_edit}` (20 write operations) tools in chat
+
 - 🤖 **Git Assistant** - Intelligent Git workflow assistance via `@{git_bot}` combining read/write operations
 - 🌍 **Multi-language Support** - Generate commit messages in multiple languages
 - 📝 **Smart Buffer Integration** - Auto-generate commit messages in gitcommit buffers with configurable keymaps
@@ -123,7 +124,11 @@ Use Git tools in CodeCompanion chat:
 @{git_edit} revert --revert_commit_hash "abc123"
 @{git_edit} create_tag --tag_name "v1.0.0" --tag_message "Release v1.0.0"
 @{git_edit} delete_tag --tag_name "v0.9.0"
+@{git_edit} rebase --base "main"
+@{git_edit} rebase_continue
+@{git_edit} rebase_abort
 @{git_edit} merge --branch "feature/new-ui"
+
 ```
 
 #### 🤖 Git Assistant (`@{git_bot}`)

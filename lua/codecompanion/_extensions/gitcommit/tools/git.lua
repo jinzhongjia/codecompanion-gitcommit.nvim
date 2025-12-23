@@ -443,7 +443,61 @@ function GitTool.rebase(onto, base, interactive)
     return not_in_repo_error()
   end
   local cmd = CommandBuilder.rebase(onto, base, interactive)
-  return CommandExecutor.run(cmd)
+  local success, output = CommandExecutor.run(cmd)
+
+  if success then
+    return true, output
+  else
+    local output_text = output or ""
+    if output_text:match("CONFLICT") or output_text:match("conflict") then
+      return false,
+        "Rebase conflict detected. Please resolve the conflicts manually.\n"
+          .. "Options:\n"
+          .. "  • Use 'rebase_continue' after resolving conflicts\n"
+          .. "  • Use 'rebase_abort' to cancel the rebase"
+    end
+    return false, output_text
+  end
+end
+
+function GitTool.rebase_abort()
+  if not is_git_repo() then
+    return not_in_repo_error()
+  end
+  local cmd = CommandBuilder.rebase_abort()
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Rebase aborted successfully"
+  else
+    local output_text = output or ""
+    if output_text:match("no rebase") or output_text:match("not in progress") then
+      return false, "No rebase in progress to abort"
+    end
+    return false, output_text
+  end
+end
+
+function GitTool.rebase_continue()
+  if not is_git_repo() then
+    return not_in_repo_error()
+  end
+  local cmd = CommandBuilder.rebase_continue()
+  local output = vim.fn.system(cmd)
+  local exit_code = vim.v.shell_error
+
+  if exit_code == 0 then
+    return true, "Rebase continued successfully"
+  else
+    local output_text = output or ""
+    if output_text:match("CONFLICT") or output_text:match("conflict") then
+      return false, "Conflicts still exist. Please resolve all conflicts before continuing."
+    elseif output_text:match("no rebase") or output_text:match("not in progress") then
+      return false, "No rebase in progress to continue"
+    end
+    return false, output_text
+  end
 end
 
 function GitTool.cherry_pick(commit_hash)

@@ -619,12 +619,26 @@ end
 T["path_join"]["handles windows backslashes"] = function()
   local result = child.lua([[
     local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
-    local result = GitUtils.path_join("C:\\\\Users", "test", "file.lua")
+    local result = GitUtils.path_join("C:\\Users", "test", "file.lua")
     local has_backslash = result:find("\\") ~= nil
     local has_users = result:find("Users") ~= nil
     local has_test = result:find("test") ~= nil
     local has_file = result:find("file%.lua") ~= nil
     return has_backslash and has_users and has_test and has_file
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles UNC paths"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("\\\\server\\share", "dir", "file.lua")
+    local has_prefix = result:find("\\\\server", 1, true) == 1
+    local has_share = result:find("share") ~= nil
+
+    local has_dir = result:find("dir") ~= nil
+    local has_file = result:find("file%.lua") ~= nil
+    return has_prefix and has_share and has_dir and has_file
   ]])
   h.eq(true, result)
 end
@@ -651,7 +665,9 @@ T["path_join"]["handles leading slashes in middle parts"] = function()
   local result = child.lua([[
     local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
     local result = GitUtils.path_join("src", "/utils.lua")
-    return not result:match("/utils") and result:match("utils%.lua") ~= nil
+    local has_double = result:find("//", 1, true) ~= nil
+      or result:find(string.rep("\\", 2), 1, true) ~= nil
+    return not has_double and result:match("src") ~= nil and result:match("utils%.lua") ~= nil
   ]])
   h.eq(true, result)
 end

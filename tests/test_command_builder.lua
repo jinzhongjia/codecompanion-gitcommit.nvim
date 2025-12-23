@@ -780,6 +780,26 @@ T["rebase"]["adds base branch"] = function()
   h.eq({ "git", "rebase", "develop" }, result)
 end
 
+T["rebase_abort"] = new_set()
+
+T["rebase_abort"]["returns correct command"] = function()
+  local result = child.lua([[
+    local Command = require("codecompanion._extensions.gitcommit.tools.command")
+    return Command.CommandBuilder.rebase_abort()
+  ]])
+  h.eq({ "git", "rebase", "--abort" }, result)
+end
+
+T["rebase_continue"] = new_set()
+
+T["rebase_continue"]["returns correct command"] = function()
+  local result = child.lua([[
+    local Command = require("codecompanion._extensions.gitcommit.tools.command")
+    return Command.CommandBuilder.rebase_continue()
+  ]])
+  h.eq({ "git", "rebase", "--continue" }, result)
+end
+
 T["release_notes_log"] = new_set()
 
 T["release_notes_log"]["returns correct command"] = function()

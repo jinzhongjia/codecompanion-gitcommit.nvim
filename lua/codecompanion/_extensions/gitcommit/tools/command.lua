@@ -304,6 +304,18 @@ function CommandBuilder.rebase(onto, base, interactive)
   return cmd
 end
 
+---Build git rebase continue command
+---@return string[] command array
+function CommandBuilder.rebase_continue()
+  return { "git", "rebase", "--continue" }
+end
+
+---Build git rebase abort command
+---@return string[] command array
+function CommandBuilder.rebase_abort()
+  return { "git", "rebase", "--abort" }
+end
+
 ---Build git cherry-pick command
 ---@param commit_hash string Commit hash
 ---@return string[] command array
