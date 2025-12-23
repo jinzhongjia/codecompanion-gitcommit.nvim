@@ -217,7 +217,7 @@ end
 ---Check if running on Windows
 ---@return boolean
 function M.is_windows()
-  return vim.loop.os_uname().sysname == "Windows_NT"
+  return vim.uv.os_uname().sysname == "Windows_NT"
 end
 
 ---Quote a string for shell command (cross-platform)
