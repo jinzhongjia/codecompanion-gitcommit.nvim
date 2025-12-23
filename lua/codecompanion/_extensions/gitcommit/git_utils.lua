@@ -266,38 +266,48 @@ end
 function M.build_commit_prompt(diff, lang, commit_history)
   local history_context = ""
   if commit_history and #commit_history > 0 then
-    history_context = "\nRECENT COMMIT HISTORY (for style reference):\n"
+    history_context = "BEGIN HISTORY (style reference only):\n"
     for i, commit_msg in ipairs(commit_history) do
       history_context = history_context .. string.format("%d. %s\n", i, commit_msg)
     end
     history_context = history_context
-      .. "\nAnalyze commit history to understand project style, tone, and format patterns. Use this for consistency.\n"
+      .. "END HISTORY\nStyle reference only. Do not copy content or topics; base the message ONLY on the diff.\n"
   end
 
   return string.format(
-    [[You are a commit message generator. Generate exactly ONE Conventional Commit message for the provided git diff.%s
+    [[You are a commit message generator. Produce exactly ONE Conventional Commit message for the provided git diff.
 
 FORMAT:
-type(scope): specific description of WHAT changed
+type(scope): concise, imperative description of WHAT changed
 
-[Optional body - only for non-obvious changes]
+Optional body (only if needed for non-obvious changes)
 
 Allowed types: feat, fix, docs, style, refactor, perf, test, chore
-Language: %s
+Language: %s (type/scope stay in English)
 
 CRITICAL RULES:
-1. Respond with ONLY the commit message - no markdown blocks, no explanations
-2. Description must state WHAT was done, not WHY or the effect
-3. AVOID vague verbs: "update", "improve", "clarify", "adjust", "enhance", "fix issues"
-   USE specific verbs: "add", "remove", "rename", "move", "replace", "extract", "inline"
-4. Subject line under 50 chars, body lines under 72 chars
-5. Body is OPTIONAL - omit if subject is self-explanatory
+1. Output ONLY the commit message; no markdown, no quotes, no extra text
+2. Subject is imperative, present tense, no trailing period
+3. Be specific about WHAT changed; avoid WHY or impact
+4. Avoid vague verbs: "update", "improve", "clarify", "adjust", "enhance", "fix issues"
+   Prefer concrete verbs: "add", "remove", "rename", "move", "replace", "extract", "inline"
+5. Scope is optional; include only if clearly implied by the diff
+6. Subject <= 50 chars; body lines <= 72 chars
+7. Add body only when the subject alone is not enough
+8. If the diff introduces a breaking change, mark with "!" and add "BREAKING CHANGE:" in body
+9. Do not invent issue references, ticket IDs, or files not in the diff
+10. If the diff includes multiple unrelated changes, pick the single most important one
+11. When body is present, reference concrete entities from the diff (module, file, function, setting)
 
-DIFF:
+DIFF (source of truth):
+```diff
+%s
+```
+END DIFF
 %s]],
-    history_context,
     lang or "English",
-    diff
+    diff,
+    history_context
   )
 end
 
