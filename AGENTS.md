@@ -308,6 +308,13 @@ vim.fn.jobstart(cmd, {
 })
 ```
 
+### Tool Output Normalization
+```lua
+local normalize_output = require("codecompanion._extensions.gitcommit.tools.output").normalize_output
+local output = normalize_output(stdout)
+local errors = normalize_output(stderr, "Unknown error")
+```
+
 ### Buffer Content Manipulation
 ```lua
 local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)

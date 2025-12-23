@@ -1,5 +1,6 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local validation = require("codecompanion._extensions.gitcommit.tools.validation")
+local normalize_output = require("codecompanion._extensions.gitcommit.tools.output").normalize_output
 
 ---@class CodeCompanion.GitCommit.Tools.GitEdit: CodeCompanion.Tools.Tool
 local GitEdit = {}
@@ -622,7 +623,7 @@ GitEdit.output = {
   success = function(self, tools, cmd, stdout)
     local chat = tools.chat
     local operation = self.args and self.args.operation or "unknown"
-    local output = stdout and #stdout > 0 and vim.iter(stdout):flatten():join("\n") or ""
+    local output = normalize_output(stdout)
     local user_msg = string.format("Git %s completed", operation)
     chat:add_tool_output(self, output, user_msg)
   end,
@@ -630,7 +631,7 @@ GitEdit.output = {
   error = function(self, tools, cmd, stderr, stdout)
     local chat = tools.chat
     local operation = self.args and self.args.operation or "unknown"
-    local errors = stderr and #stderr > 0 and vim.iter(stderr):flatten():join("\n") or "Unknown error"
+    local errors = normalize_output(stderr, "Unknown error")
     local user_msg = string.format("Git %s failed", operation)
     chat:add_tool_output(self, errors, user_msg)
   end,

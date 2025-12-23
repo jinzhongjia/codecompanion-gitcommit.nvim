@@ -1,6 +1,7 @@
 local prompts = require("codecompanion._extensions.gitcommit.prompts.release_notes")
 local git_utils = require("codecompanion._extensions.gitcommit.git_utils")
 local Command = require("codecompanion._extensions.gitcommit.tools.command")
+local normalize_output = require("codecompanion._extensions.gitcommit.tools.output").normalize_output
 
 local CommandExecutor = Command.CommandExecutor
 local shell_quote = git_utils.shell_quote
@@ -222,13 +223,13 @@ AIReleaseNotes.handlers = {
 AIReleaseNotes.output = {
   success = function(self, tools, cmd, stdout)
     local chat = tools.chat
-    local output = stdout and #stdout > 0 and vim.iter(stdout):flatten():join("\n") or ""
+    local output = normalize_output(stdout)
     local user_msg = "Release notes generated"
     chat:add_tool_output(self, output, user_msg)
   end,
   error = function(self, tools, cmd, stderr, stdout)
     local chat = tools.chat
-    local errors = stderr and #stderr > 0 and vim.iter(stderr):flatten():join("\n") or "Unknown error"
+    local errors = normalize_output(stderr, "Unknown error")
     local user_msg = "Release notes generation failed"
     chat:add_tool_output(self, errors, user_msg)
   end,
