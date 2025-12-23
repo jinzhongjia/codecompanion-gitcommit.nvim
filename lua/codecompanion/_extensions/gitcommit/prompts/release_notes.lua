@@ -1,5 +1,26 @@
 local M = {}
 
+---@alias ReleaseNotesStyle "detailed" | "concise" | "changelog" | "marketing"
+
+---@class CommitInfo
+---@field hash string Full commit hash
+---@field subject string Commit subject line
+---@field body string|nil Commit body (optional)
+---@field author string|nil Author name (optional)
+---@field type string|nil Commit type from subject (feat, fix, etc.)
+
+---@class CommitAnalysis
+---@field features CommitInfo[]
+---@field fixes CommitInfo[]
+---@field breaking_changes CommitInfo[]
+---@field performance CommitInfo[]
+---@field documentation CommitInfo[]
+---@field refactoring CommitInfo[]
+---@field tests CommitInfo[]
+---@field chore CommitInfo[]
+---@field other CommitInfo[]
+---@field contributors table<string, number> Author -> commit count
+
 M.style_guides = {
   detailed = [[You are creating comprehensive release notes for developers.
 Write thorough explanations of changes with technical context.
@@ -37,7 +58,14 @@ WRITING GUIDELINES:
 - Merge similar commits into single entries when appropriate
 ]]
 
+---@param commit CommitInfo Commit information to format
+---@param include_hash boolean Whether to include commit hash
+---@return string Formatted commit entry
 local function format_commit(commit, include_hash)
+  if not commit or not commit.subject then
+    return "- (invalid commit data)"
+  end
+
   local parts = { "- ", commit.subject }
   if include_hash and commit.hash then
     table.insert(parts, string.format(" (%s)", commit.hash:sub(1, 7)))
@@ -51,8 +79,12 @@ local function format_commit(commit, include_hash)
   return table.concat(parts)
 end
 
+---@param name string Category name
+---@param commits CommitInfo[] List of commits in this category
+---@param include_hash boolean Whether to include commit hashes
+---@return string|nil Formatted category section or nil if empty
 local function format_category(name, commits, include_hash)
-  if #commits == 0 then
+  if not commits or #commits == 0 then
     return nil
   end
   local lines = { string.format("\n### %s", name) }
@@ -62,7 +94,24 @@ local function format_category(name, commits, include_hash)
   return table.concat(lines, "\n")
 end
 
+---@param commits CommitInfo[] List of commits to analyze
+---@return CommitAnalysis Analysis results with categorized commits and contributor counts
 function M.analyze_commits(commits)
+  if type(commits) ~= "table" then
+    return {
+      features = {},
+      fixes = {},
+      breaking_changes = {},
+      performance = {},
+      documentation = {},
+      refactoring = {},
+      tests = {},
+      chore = {},
+      other = {},
+      contributors = {},
+    }
+  end
+
   local analysis = {
     features = {},
     fixes = {},
@@ -77,11 +126,18 @@ function M.analyze_commits(commits)
   }
 
   for _, commit in ipairs(commits) do
-    analysis.contributors[commit.author] = (analysis.contributors[commit.author] or 0) + 1
+    -- Track contributors (skip nil authors)
+    if commit.author then
+      analysis.contributors[commit.author] = (analysis.contributors[commit.author] or 0) + 1
+    end
 
-    local is_breaking = commit.subject:match("^%w+!:") -- feat!: xxx
-      or commit.subject:match("^%w+%b()!:") -- feat(scope)!: xxx
-      or commit.subject:upper():match("BREAKING")
+    -- Check for breaking changes (nil-safe)
+    local is_breaking = false
+    if commit.subject then
+      is_breaking = commit.subject:match("^%w+!:") -- feat!: xxx
+        or commit.subject:match("^%w+%b()!:") -- feat(scope)!: xxx
+        or commit.subject:upper():match("BREAKING")
+    end
 
     if is_breaking then
       table.insert(analysis.breaking_changes, commit)
@@ -107,7 +163,20 @@ function M.analyze_commits(commits)
   return analysis
 end
 
+---@param commits CommitInfo[] List of commits to analyze
+---@param style ReleaseNotesStyle Style of release notes to generate
+---@param version_info table { from: string, to: string } Version range information
+---@return string Generated prompt for AI release notes generation
 function M.create_smart_prompt(commits, style, version_info)
+  -- Input validation
+  if type(commits) ~= "table" then
+    commits = {}
+  end
+
+  if not version_info or type(version_info) ~= "table" or not version_info.from or not version_info.to then
+    version_info = { from = "unknown", to = "unknown" }
+  end
+
   local analysis = M.analyze_commits(commits)
   local guide = M.style_guides[style] or M.style_guides.detailed
 
