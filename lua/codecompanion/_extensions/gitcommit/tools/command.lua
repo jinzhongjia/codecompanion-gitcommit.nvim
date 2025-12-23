@@ -61,6 +61,7 @@ function CommandBuilder.diff(staged, file)
     table.insert(parts, "--cached")
   end
   if file then
+    table.insert(parts, "--")
     table.insert(parts, vim.fn.shellescape(file))
   end
   return table.concat(parts, " ")
@@ -90,7 +91,7 @@ function CommandBuilder.stage(files)
   for _, file in ipairs(files) do
     table.insert(escaped_files, vim.fn.shellescape(file))
   end
-  return "git add " .. table.concat(escaped_files, " ")
+  return "git add -- " .. table.concat(escaped_files, " ")
 end
 
 ---Build git reset (unstage) command
@@ -104,7 +105,7 @@ function CommandBuilder.unstage(files)
   for _, file in ipairs(files) do
     table.insert(escaped_files, vim.fn.shellescape(file))
   end
-  return "git reset HEAD " .. table.concat(escaped_files, " ")
+  return "git reset HEAD -- " .. table.concat(escaped_files, " ")
 end
 
 ---Build git commit command
@@ -158,7 +159,7 @@ end
 ---@param line_end? number End line number
 ---@return string command
 function CommandBuilder.blame(file_path, line_start, line_end)
-  local parts = { "git", "blame", vim.fn.shellescape(file_path) }
+  local parts = { "git", "blame" }
   if line_start and line_end then
     table.insert(parts, "-L")
     table.insert(parts, line_start .. "," .. line_end)
@@ -166,6 +167,8 @@ function CommandBuilder.blame(file_path, line_start, line_end)
     table.insert(parts, "-L")
     table.insert(parts, line_start .. ",+10")
   end
+  table.insert(parts, "--")
+  table.insert(parts, vim.fn.shellescape(file_path))
   return table.concat(parts, " ")
 end
 
@@ -542,7 +545,7 @@ end
 ---@param file string File to check
 ---@return string[] command array for system call
 function CommandBuilder.check_ignore(file)
-  return { "git", "check-ignore", file }
+  return { "git", "check-ignore", "--", file }
 end
 
 --------------------------------------------------------------------------------
@@ -563,7 +566,7 @@ function CommandExecutor.run(cmd)
   end
 
   local exit_code = vim.v.shell_error
-  if exit_code ~= 0 or (output and output:match("fatal: ")) then
+  if exit_code ~= 0 then
     return false, output or "Git command failed"
   end
 

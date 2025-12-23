@@ -34,6 +34,7 @@ M.schema = {
       keymap = { "string", "nil" },
       auto_generate = { "boolean", "nil" },
       auto_generate_delay = { "number", "nil" },
+      window_stability_delay = { "number", "nil" },
       skip_auto_generate_on_amend = { "boolean", "nil" },
     },
   },

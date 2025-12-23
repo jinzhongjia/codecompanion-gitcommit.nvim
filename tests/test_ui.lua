@@ -155,4 +155,23 @@ T["_calculate_dimensions"]["height includes padding"] = function()
   h.eq(true, result)
 end
 
+T["_prepare_content"]["handles empty message"] = function()
+  local result = child.lua([[
+    local UI = require("codecompanion._extensions.gitcommit.ui")
+    local content = UI._prepare_content("")
+    return content[4]
+  ]])
+  h.eq("", result)
+end
+
+T["_prepare_content"]["preserves long single line"] = function()
+  local result = child.lua([[
+    local UI = require("codecompanion._extensions.gitcommit.ui")
+    local msg = string.rep("x", 200)
+    local content = UI._prepare_content(msg)
+    return content[4]
+  ]])
+  h.eq(string.rep("x", 200), result)
+end
+
 return T
