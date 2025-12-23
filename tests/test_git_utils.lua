@@ -592,6 +592,104 @@ T["shell_quote_windows"]["handles spaces"] = function()
   h.eq('"hello world"', result)
 end
 
+T["path_join"] = new_set()
+
+T["path_join"]["joins two path parts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("src", "main.lua")
+    local has_sep = GitUtils.is_windows() and result:find("\\") ~= nil or result:find("/") ~= nil
+    return has_sep and result:match("main%.lua") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["joins multiple path parts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("src", "components", "ui", "Button.tsx")
+    return result:match("src") ~= nil
+        and result:match("components") ~= nil
+        and result:match("ui") ~= nil
+        and result:match("Button%.tsx") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles windows backslashes"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("C:\\\\Users", "test", "file.lua")
+    local has_backslash = result:find("\\") ~= nil
+    local has_users = result:find("Users") ~= nil
+    local has_test = result:find("test") ~= nil
+    local has_file = result:find("file%.lua") ~= nil
+    return has_backslash and has_users and has_test and has_file
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles mixed separators"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("C:/project", "src", "main.lua")
+    return result:match("src") ~= nil and result:match("main%.lua") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles trailing slashes"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("src/", "test/")
+    return not result:match("//") and result:match("src") ~= nil and result:match("test") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles leading slashes in middle parts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("src", "/utils.lua")
+    return not result:match("/utils") and result:match("utils%.lua") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles single part"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    return GitUtils.path_join("test.lua") == "test.lua"
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["returns empty string for no parts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    return GitUtils.path_join() == ""
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["handles empty middle parts"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("src", "", "test.lua")
+    return not result:match("//") and result:match("test%.lua") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["path_join"]["preserves dots in path"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local result = GitUtils.path_join("..", "utils.lua")
+    return result:match("%.%.") ~= nil and result:match("utils%.lua") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
 T["is_windows"] = new_set()
 
 T["is_windows"]["returns boolean"] = function()
