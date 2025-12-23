@@ -3,6 +3,10 @@ local M = {}
 
 local fmt = string.format
 
+local function is_nil_or_null(value)
+  return value == nil or value == vim.NIL
+end
+
 ---Format error response for tool output
 ---@param tool_name string The tool name for XML tag
 ---@param error_msg string The error message
@@ -24,7 +28,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.require_string(value, param_name, tool_name)
-  if value == nil then
+  if is_nil_or_null(value) then
     return M.format_error(tool_name, fmt("%s is required", param_name))
   end
   if type(value) ~= "string" then
@@ -42,7 +46,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.optional_string(value, param_name, tool_name)
-  if value == nil then
+  if is_nil_or_null(value) then
     return nil
   end
   if type(value) ~= "string" then
@@ -57,7 +61,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.require_array(value, param_name, tool_name)
-  if value == nil then
+  if is_nil_or_null(value) then
     return M.format_error(tool_name, fmt("%s is required", param_name))
   end
   if type(value) ~= "table" then
@@ -77,7 +81,7 @@ end
 ---@param max? number Maximum value (optional)
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.optional_integer(value, param_name, tool_name, min, max)
-  if value == nil then
+  if is_nil_or_null(value) then
     return nil
   end
   if type(value) ~= "number" then
@@ -101,7 +105,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.optional_boolean(value, param_name, tool_name)
-  if value == nil then
+  if is_nil_or_null(value) then
     return nil
   end
   if type(value) ~= "boolean" then
@@ -117,7 +121,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.require_enum(value, param_name, allowed, tool_name)
-  if value == nil then
+  if is_nil_or_null(value) then
     return M.format_error(tool_name, fmt("%s is required", param_name))
   end
   for _, v in ipairs(allowed) do
@@ -136,7 +140,7 @@ end
 ---@param tool_name string The tool name for error formatting
 ---@return table|nil error_response Returns error response if invalid, nil if valid
 function M.require_args(args, tool_name)
-  if args == nil then
+  if is_nil_or_null(args) then
     return M.format_error(tool_name, "args parameter is required")
   end
   if type(args) ~= "table" then

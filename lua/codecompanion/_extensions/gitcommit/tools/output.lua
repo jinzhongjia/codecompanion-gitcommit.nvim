@@ -1,5 +1,31 @@
 local M = {}
 
+---Convert vim.NIL to nil for a single value
+---@param value any
+---@return any
+local function nil_or_value(value)
+  if value == vim.NIL then
+    return nil
+  end
+  return value
+end
+
+---Normalize args table by converting vim.NIL values to nil
+---This is needed because JSON null becomes vim.NIL in Neovim,
+---but vim.NIL is truthy in Lua conditionals (it's userdata, not nil)
+---@param args table The args table to normalize
+---@return table The normalized args table
+function M.normalize_args(args)
+  if args == nil or type(args) ~= "table" then
+    return args
+  end
+  local normalized = {}
+  for k, v in pairs(args) do
+    normalized[k] = nil_or_value(v)
+  end
+  return normalized
+end
+
 ---@param out any
 ---@param fallback? string
 ---@return string

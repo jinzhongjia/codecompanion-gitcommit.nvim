@@ -1,6 +1,8 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local validation = require("codecompanion._extensions.gitcommit.tools.validation")
-local normalize_output = require("codecompanion._extensions.gitcommit.tools.output").normalize_output
+local output_utils = require("codecompanion._extensions.gitcommit.tools.output")
+local normalize_output = output_utils.normalize_output
+local normalize_args = output_utils.normalize_args
 
 ---@class CodeCompanion.GitCommit.Tools.GitEdit: CodeCompanion.Tools.Tool
 local GitEdit = {}
@@ -58,146 +60,173 @@ GitEdit.schema = {
           enum = VALID_OPERATIONS,
           description = "The write-access Git operation to perform.",
         },
-        args = {
-          type = "object",
-          properties = {
-            files = {
-              type = "array",
-              items = { type = "string" },
-              description = "Required: List of files to stage/unstage (can use '.' for all files)",
-            },
-            branch_name = {
-              type = "string",
-              description = "Name of the branch",
-            },
-            checkout = {
-              type = "boolean",
-              description = "Whether to checkout new branch",
-            },
-            target = {
-              type = "string",
-              description = "Target branch or commit for checkout",
-            },
-            message = {
-              type = "string",
-              description = "Message for stash or commit",
-            },
-            commit_message = {
-              type = "string",
-              description = "Optional commit message for the commit operation. If not provided, will automatically analyze staged diff and generate Conventional Commit compliant message using format: type(scope): description with types: feat,fix,docs,style,refactor,perf,test,chore.",
-            },
-            amend = {
-              type = "boolean",
-              description = "Amend the last commit instead of creating a new one",
-            },
-            include_untracked = {
-              type = "boolean",
-              description = "Include untracked files in stash",
-            },
-            stash_ref = {
-              type = "string",
-              description = "Stash reference (e.g., stash@{0})",
-            },
-            commit_hash = {
-              type = "string",
-              description = "Commit hash or reference for reset",
-            },
-            mode = {
-              type = "string",
-              enum = { "soft", "mixed", "hard" },
-              description = "Reset mode",
-            },
-            gitignore_rule = {
-              type = "string",
-              description = "Rule to add or remove from .gitignore",
-            },
-            gitignore_rules = {
-              type = "array",
-              items = { type = "string" },
-              description = "Multiple rules to add or remove from .gitignore",
-            },
-            remote = {
-              type = "string",
-              description = "The name of the remote to push to (e.g., origin)",
-            },
-            branch = {
-              type = "string",
-              description = "The name of the branch to push or merge",
-            },
-            base = {
-              type = "string",
-              description = "Base branch for rebase",
-            },
-            onto = {
-              type = "string",
-              description = "Branch to rebase onto",
-            },
-            interactive = {
-              type = "boolean",
-              description = "Use interactive rebase",
-            },
-            force = {
-              type = "boolean",
-
-              description = "Force push (DANGEROUS: overwrites remote history)",
-            },
-            set_upstream = {
-              type = "boolean",
-              description = "Set the upstream branch for the current local branch",
-            },
-            tags = {
-              type = "boolean",
-              description = "Push all tags",
-            },
-            single_tag_name = {
-              type = "string",
-              description = "The name of a single tag to push",
-            },
-            cherry_pick_commit_hash = {
-              type = "string",
-              description = "The commit hash to cherry-pick",
-            },
-            revert_commit_hash = {
-              type = "string",
-              description = "The commit hash to revert",
-            },
-            tag_name = {
-              type = "string",
-              description = "The name of the tag",
-            },
-            tag_message = {
-              type = "string",
-              description = "An optional message for an annotated tag",
-            },
-            tag_commit_hash = {
-              type = "string",
-              description = "An optional commit hash to tag",
-            },
-            remote_name = {
-              type = "string",
-              description = "Name of the remote",
-            },
-            remote_url = {
-              type = "string",
-              description = "URL of the remote repository",
-            },
-            new_remote_name = {
-              type = "string",
-              description = "New name for the remote (used in rename_remote)",
-            },
-            prune = {
-              type = "boolean",
-              description = "Remove remote-tracking references that no longer exist (for fetch)",
-            },
-            rebase = {
-              type = "boolean",
-              description = "Use rebase instead of merge (for pull)",
-            },
-          },
-          additionalProperties = false,
+        files = {
+          type = { "array", "null" },
+          items = { type = "string" },
+          description = "List of files to stage/unstage (can use '.' for all files)",
+        },
+        branch_name = {
+          type = { "string", "null" },
+          description = "Name of the branch",
+        },
+        checkout = {
+          type = { "boolean", "null" },
+          description = "Whether to checkout new branch",
+        },
+        target = {
+          type = { "string", "null" },
+          description = "Target branch or commit for checkout",
+        },
+        message = {
+          type = { "string", "null" },
+          description = "Message for stash or commit",
+        },
+        commit_message = {
+          type = { "string", "null" },
+          description = "Optional commit message. If not provided, will auto-generate Conventional Commit message.",
+        },
+        amend = {
+          type = { "boolean", "null" },
+          description = "Amend the last commit instead of creating a new one",
+        },
+        include_untracked = {
+          type = { "boolean", "null" },
+          description = "Include untracked files in stash",
+        },
+        stash_ref = {
+          type = { "string", "null" },
+          description = "Stash reference (e.g., stash@{0})",
+        },
+        commit_hash = {
+          type = { "string", "null" },
+          description = "Commit hash or reference for reset",
+        },
+        mode = {
+          type = { "string", "null" },
+          enum = { "soft", "mixed", "hard" },
+          description = "Reset mode",
+        },
+        gitignore_rule = {
+          type = { "string", "null" },
+          description = "Rule to add or remove from .gitignore",
+        },
+        gitignore_rules = {
+          type = { "array", "null" },
+          items = { type = "string" },
+          description = "Multiple rules to add or remove from .gitignore",
+        },
+        remote = {
+          type = { "string", "null" },
+          description = "The name of the remote (e.g., origin)",
+        },
+        branch = {
+          type = { "string", "null" },
+          description = "The name of the branch to push or merge",
+        },
+        base = {
+          type = { "string", "null" },
+          description = "Base branch for rebase",
+        },
+        onto = {
+          type = { "string", "null" },
+          description = "Branch to rebase onto",
+        },
+        interactive = {
+          type = { "boolean", "null" },
+          description = "Use interactive rebase",
+        },
+        force = {
+          type = { "boolean", "null" },
+          description = "Force push (DANGEROUS: overwrites remote history)",
+        },
+        set_upstream = {
+          type = { "boolean", "null" },
+          description = "Set the upstream branch for the current local branch",
+        },
+        tags = {
+          type = { "boolean", "null" },
+          description = "Push all tags",
+        },
+        single_tag_name = {
+          type = { "string", "null" },
+          description = "The name of a single tag to push",
+        },
+        cherry_pick_commit_hash = {
+          type = { "string", "null" },
+          description = "The commit hash to cherry-pick",
+        },
+        revert_commit_hash = {
+          type = { "string", "null" },
+          description = "The commit hash to revert",
+        },
+        tag_name = {
+          type = { "string", "null" },
+          description = "The name of the tag",
+        },
+        tag_message = {
+          type = { "string", "null" },
+          description = "An optional message for an annotated tag",
+        },
+        tag_commit_hash = {
+          type = { "string", "null" },
+          description = "An optional commit hash to tag",
+        },
+        remote_name = {
+          type = { "string", "null" },
+          description = "Name of the remote",
+        },
+        remote_url = {
+          type = { "string", "null" },
+          description = "URL of the remote repository",
+        },
+        new_remote_name = {
+          type = { "string", "null" },
+          description = "New name for the remote (used in rename_remote)",
+        },
+        prune = {
+          type = { "boolean", "null" },
+          description = "Remove remote-tracking references that no longer exist (for fetch)",
+        },
+        rebase_flag = {
+          type = { "boolean", "null" },
+          description = "Use rebase instead of merge (for pull)",
         },
       },
-      required = { "operation" },
+      required = {
+        "operation",
+        "files",
+        "branch_name",
+        "checkout",
+        "target",
+        "message",
+        "commit_message",
+        "amend",
+        "include_untracked",
+        "stash_ref",
+        "commit_hash",
+        "mode",
+        "gitignore_rule",
+        "gitignore_rules",
+        "remote",
+        "branch",
+        "base",
+        "onto",
+        "interactive",
+        "force",
+        "set_upstream",
+        "tags",
+        "single_tag_name",
+        "cherry_pick_commit_hash",
+        "revert_commit_hash",
+        "tag_name",
+        "tag_message",
+        "tag_commit_hash",
+        "remote_name",
+        "remote_url",
+        "new_remote_name",
+        "prune",
+        "rebase_flag",
+      },
       additionalProperties = false,
     },
     strict = true,
@@ -213,15 +242,16 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 
 ## OBJECTIVE
 - Follow the tool's schema strictly.
-- Use the appropriate operation for the task.
+- All parameters are passed at the top level (not nested).
+- Pass null for unused optional parameters.
 - For commits without a message, analyze staged changes and generate Conventional Commit format.
 
 ## AVAILABLE OPERATIONS
-| Operation | Description | Required Args |
-|-----------|-------------|---------------|
+| Operation | Description | Parameters |
+|-----------|-------------|------------|
 | `stage` | Stage files for commit | files (required) |
 | `unstage` | Unstage files | files (required) |
-| `commit` | Commit staged changes | commit_message? (auto-generates if empty) |
+| `commit` | Commit staged changes | commit_message?, amend? |
 | `create_branch` | Create new branch | branch_name (required), checkout? |
 | `checkout` | Switch branch/commit | target (required) |
 | `stash` | Stash changes | message?, include_untracked? |
@@ -229,33 +259,32 @@ GitEdit.system_prompt = [[# Git Edit Tool (`git_edit`)
 | `reset` | Reset to commit | commit_hash (required), mode? |
 | `gitignore_add` | Add .gitignore rules | gitignore_rules (required) |
 | `gitignore_remove` | Remove .gitignore rules | gitignore_rule (required) |
-| `push` | Push to remote | remote?, branch?, set_upstream?, tags?, single_tag_name? |
+| `push` | Push to remote | remote?, branch?, set_upstream?, force?, tags?, single_tag_name? |
 | `fetch` | Fetch from remote | remote?, branch?, prune? |
-| `pull` | Pull from remote | remote?, branch?, rebase? |
+| `pull` | Pull from remote | remote?, branch?, rebase_flag? |
 | `rebase` | Rebase current branch | base (required), onto?, interactive? |
-| `rebase_abort` | Abort rebase | - |
-| `rebase_continue` | Continue rebase | - |
+| `rebase_abort` | Abort rebase | (none) |
+| `rebase_continue` | Continue rebase | (none) |
 | `add_remote` | Add new remote | remote_name (required), remote_url (required) |
 | `remove_remote` | Remove remote | remote_name (required) |
 | `rename_remote` | Rename remote | remote_name (required), new_remote_name (required) |
-
 | `set_remote_url` | Change remote URL | remote_name (required), remote_url (required) |
 | `cherry_pick` | Apply commit | cherry_pick_commit_hash (required) |
-| `cherry_pick_abort` | Abort cherry-pick | - |
-| `cherry_pick_continue` | Continue cherry-pick | - |
-| `cherry_pick_skip` | Skip current commit | - |
+| `cherry_pick_abort` | Abort cherry-pick | (none) |
+| `cherry_pick_continue` | Continue cherry-pick | (none) |
+| `cherry_pick_skip` | Skip current commit | (none) |
 | `revert` | Revert commit | revert_commit_hash (required) |
-| `create_tag` | Create tag | tag_name (required), tag_message? |
-| `delete_tag` | Delete tag | tag_name (required) |
+| `create_tag` | Create tag | tag_name (required), tag_message?, tag_commit_hash? |
+| `delete_tag` | Delete tag | tag_name (required), remote? |
 | `merge` | Merge branch | branch (required) |
-| `merge_abort` | Abort merge | - |
-| `merge_continue` | Continue merge | - |
-| `help` | Show help | - |
+| `merge_abort` | Abort merge | (none) |
+| `merge_continue` | Continue merge | (none) |
+| `help` | Show help | (none) |
 
-## PUSH OPERATION NOTES
-- To push a single tag: use `single_tag_name` parameter (remote defaults to "origin")
-- To push all tags: use `tags: true` parameter
-- Do NOT use `single_tag_name` as the `branch` parameter
+## EXAMPLE CALLS
+- Stage: `{ "operation": "stage", "files": ["file1.txt"], ... (other params as null) }`
+- Commit: `{ "operation": "commit", "commit_message": "feat: add feature", ... }`
+- Push: `{ "operation": "push", "remote": "origin", "branch": "main", ... }`
 
 ## SAFETY RESTRICTIONS
 - Never use force push without explicit user confirmation.
@@ -272,166 +301,145 @@ GitEdit.cmds = {
       return validation.format_error(TOOL_NAME, "Invalid arguments: expected object")
     end
 
+    args = normalize_args(args) -- JSON null → vim.NIL (truthy) → nil
+
     local operation = args.operation
     local err = validation.require_enum(operation, "operation", VALID_OPERATIONS, TOOL_NAME)
     if err then
       return err
     end
 
-    local op_args = args.args
-    if op_args ~= nil and type(op_args) ~= "table" then
-      return validation.format_error(TOOL_NAME, "args must be an object")
-    end
-    op_args = op_args or {}
-
     if operation == "help" then
       local help_text = [[
 Available write-access Git operations:
 • stage/unstage: Stage/unstage files (requires files parameter)
-• commit: Commit staged changes (automatically generates AI message from staged diff if no message provided)
+• commit: Commit staged changes (auto-generates AI message if no message provided)
 • create_branch: Create new branch
 • checkout: Switch branch/commit
 • stash/apply_stash: Stash operations
 • reset: Reset to specific commit
-• gitignore_add: Add rule to .gitignore
-• gitignore_remove: Remove rule from .gitignore
-• push: Push changes to a remote repository (WARNING: force push is dangerous)
-• fetch: Fetch from remote (prune option available)
-• pull: Pull from remote (rebase option available)
-• rebase: Rebase current branch (requires base parameter)
-• rebase_abort: Abort rebase in progress
-• rebase_continue: Continue rebase after resolving conflicts
-• add_remote: Add a new remote repository
-• remove_remote: Remove a remote repository
-• rename_remote: Rename a remote repository
-• set_remote_url: Change URL of a remote repository
-
-• cherry_pick: Apply changes from existing commits
-• cherry_pick_abort: Abort cherry-pick in progress
-• cherry_pick_continue: Continue cherry-pick after resolving conflicts
-• cherry_pick_skip: Skip current commit in cherry-pick
+• gitignore_add/gitignore_remove: Manage .gitignore rules
+• push: Push changes to remote (WARNING: force push is dangerous)
+• fetch: Fetch from remote
+• pull: Pull from remote
+• rebase/rebase_abort/rebase_continue: Rebase operations
+• add_remote/remove_remote/rename_remote/set_remote_url: Remote management
+• cherry_pick/cherry_pick_abort/cherry_pick_continue/cherry_pick_skip: Cherry-pick operations
 • revert: Revert a commit
-• create_tag: Create a new tag
-• delete_tag: Delete a tag
-• merge: Merge a branch into the current branch (requires branch parameter)
-• merge_abort: Abort merge in progress
-• merge_continue: Continue merge after resolving conflicts
+• create_tag/delete_tag: Tag management
+• merge/merge_abort/merge_continue: Merge operations
       ]]
       return { status = "success", data = help_text }
     end
 
     if operation == "push" then
       local param_err = validation.first_error({
-        validation.optional_string(op_args.remote, "remote", TOOL_NAME),
-        validation.optional_string(op_args.branch, "branch", TOOL_NAME),
-        validation.optional_boolean(op_args.force, "force", TOOL_NAME),
-        validation.optional_boolean(op_args.set_upstream, "set_upstream", TOOL_NAME),
-        validation.optional_boolean(op_args.tags, "tags", TOOL_NAME),
-        validation.optional_string(op_args.single_tag_name, "single_tag_name", TOOL_NAME),
+        validation.optional_string(args.remote, "remote", TOOL_NAME),
+        validation.optional_string(args.branch, "branch", TOOL_NAME),
+        validation.optional_boolean(args.force, "force", TOOL_NAME),
+        validation.optional_boolean(args.set_upstream, "set_upstream", TOOL_NAME),
+        validation.optional_boolean(args.tags, "tags", TOOL_NAME),
+        validation.optional_string(args.single_tag_name, "single_tag_name", TOOL_NAME),
       })
       if param_err then
         return param_err
       end
-      -- If set_upstream is not explicitly specified, default to true for automatic remote tracking
-      if op_args.set_upstream == nil then
-        op_args.set_upstream = true
+      local set_upstream = args.set_upstream
+      if set_upstream == nil then
+        set_upstream = true
       end
       return GitTool.push_async(
-        op_args.remote,
-        op_args.branch,
-        op_args.force,
-        op_args.set_upstream,
-        op_args.tags,
-        op_args.single_tag_name,
+        args.remote,
+        args.branch,
+        args.force,
+        set_upstream,
+        args.tags,
+        args.single_tag_name,
         output_handler
       )
     end
 
-    -- Safely execute operations through pcall to ensure there's always a response
     local ok, result = pcall(function()
       local success, output
       local param_err
 
       if operation == "stage" then
-        param_err = validation.require_array(op_args.files, "files", TOOL_NAME)
+        param_err = validation.require_array(args.files, "files", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.stage_files(op_args.files)
+        success, output = GitTool.stage_files(args.files)
       elseif operation == "unstage" then
-        param_err = validation.require_array(op_args.files, "files", TOOL_NAME)
+        param_err = validation.require_array(args.files, "files", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.unstage_files(op_args.files)
+        success, output = GitTool.unstage_files(args.files)
       elseif operation == "commit" then
         param_err = validation.first_error({
-          validation.optional_string(op_args.commit_message, "commit_message", TOOL_NAME),
-          validation.optional_string(op_args.message, "message", TOOL_NAME),
-          validation.optional_boolean(op_args.amend, "amend", TOOL_NAME),
+          validation.optional_string(args.commit_message, "commit_message", TOOL_NAME),
+          validation.optional_string(args.message, "message", TOOL_NAME),
+          validation.optional_boolean(args.amend, "amend", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        local message = op_args.commit_message or op_args.message
-        if not message then
-          -- Check if there are staged changes
-          local diff_success, diff_output = GitTool.get_diff(true) -- staged changes
+        local commit_msg = args.commit_message or args.message
+        if not commit_msg then
+          local diff_success, diff_output = GitTool.get_diff(true)
           if not diff_success or not diff_output or vim.trim(diff_output) == "" then
             return {
               status = "error",
               data = "No staged changes found for commit. Please stage your changes first using the stage operation.",
             }
           end
-
-          -- Return success with instruction for AI to use the diff tool
           return {
             status = "success",
-            data = "No commit message provided. I need to generate a Conventional Commit compliant message. Please use the `@{git_read} diff --staged` tool to see the changes and then create an appropriate commit message.",
+            data = "No commit message provided. Please use git_read with operation 'diff' and staged=true to see changes, then create an appropriate commit message.",
           }
         end
-        success, output = GitTool.commit(message, op_args.amend)
+        success, output = GitTool.commit(commit_msg, args.amend)
       elseif operation == "create_branch" then
         param_err = validation.first_error({
-          validation.require_string(op_args.branch_name, "branch_name", TOOL_NAME),
-          validation.optional_boolean(op_args.checkout, "checkout", TOOL_NAME),
+          validation.require_string(args.branch_name, "branch_name", TOOL_NAME),
+          validation.optional_boolean(args.checkout, "checkout", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.create_branch(op_args.branch_name, op_args.checkout)
+        success, output = GitTool.create_branch(args.branch_name, args.checkout)
       elseif operation == "checkout" then
-        param_err = validation.require_string(op_args.target, "target", TOOL_NAME)
+        param_err = validation.require_string(args.target, "target", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.checkout(op_args.target)
+        success, output = GitTool.checkout(args.target)
       elseif operation == "stash" then
         param_err = validation.first_error({
-          validation.optional_string(op_args.message, "message", TOOL_NAME),
-          validation.optional_boolean(op_args.include_untracked, "include_untracked", TOOL_NAME),
+          validation.optional_string(args.message, "message", TOOL_NAME),
+          validation.optional_boolean(args.include_untracked, "include_untracked", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.stash(op_args.message, op_args.include_untracked)
+        success, output = GitTool.stash(args.message, args.include_untracked)
       elseif operation == "apply_stash" then
-        param_err = validation.optional_string(op_args.stash_ref, "stash_ref", TOOL_NAME)
+        param_err = validation.optional_string(args.stash_ref, "stash_ref", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.apply_stash(op_args.stash_ref)
+        success, output = GitTool.apply_stash(args.stash_ref)
       elseif operation == "reset" then
         param_err = validation.first_error({
-          validation.require_string(op_args.commit_hash, "commit_hash", TOOL_NAME),
-          op_args.mode and validation.require_enum(op_args.mode, "mode", VALID_RESET_MODES, TOOL_NAME) or nil,
+          validation.require_string(args.commit_hash, "commit_hash", TOOL_NAME),
+          args.mode and validation.require_enum(args.mode, "mode", VALID_RESET_MODES, TOOL_NAME) or nil,
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.reset(op_args.commit_hash, op_args.mode)
+        success, output = GitTool.reset(args.commit_hash, args.mode)
       elseif operation == "gitignore_add" then
-        local rules = op_args.gitignore_rules or op_args.gitignore_rule
+        local rules = args.gitignore_rules or args.gitignore_rule
         if rules == nil then
           return validation.format_error(TOOL_NAME, "gitignore_rules or gitignore_rule is required")
         end
@@ -443,7 +451,7 @@ Available write-access Git operations:
         end
         success, output = GitTool.add_gitignore_rule(rules)
       elseif operation == "gitignore_remove" then
-        local rules = op_args.gitignore_rules or op_args.gitignore_rule
+        local rules = args.gitignore_rules or args.gitignore_rule
         if rules == nil then
           return validation.format_error(TOOL_NAME, "gitignore_rules or gitignore_rule is required")
         end
@@ -455,11 +463,11 @@ Available write-access Git operations:
         end
         success, output = GitTool.remove_gitignore_rule(rules)
       elseif operation == "cherry_pick" then
-        param_err = validation.require_string(op_args.cherry_pick_commit_hash, "cherry_pick_commit_hash", TOOL_NAME)
+        param_err = validation.require_string(args.cherry_pick_commit_hash, "cherry_pick_commit_hash", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.cherry_pick(op_args.cherry_pick_commit_hash)
+        success, output = GitTool.cherry_pick(args.cherry_pick_commit_hash)
       elseif operation == "cherry_pick_abort" then
         success, output = GitTool.cherry_pick_abort()
       elseif operation == "cherry_pick_continue" then
@@ -467,107 +475,107 @@ Available write-access Git operations:
       elseif operation == "cherry_pick_skip" then
         success, output = GitTool.cherry_pick_skip()
       elseif operation == "revert" then
-        param_err = validation.require_string(op_args.revert_commit_hash, "revert_commit_hash", TOOL_NAME)
+        param_err = validation.require_string(args.revert_commit_hash, "revert_commit_hash", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.revert(op_args.revert_commit_hash)
+        success, output = GitTool.revert(args.revert_commit_hash)
       elseif operation == "create_tag" then
         param_err = validation.first_error({
-          validation.require_string(op_args.tag_name, "tag_name", TOOL_NAME),
-          validation.optional_string(op_args.tag_message, "tag_message", TOOL_NAME),
-          validation.optional_string(op_args.tag_commit_hash, "tag_commit_hash", TOOL_NAME),
+          validation.require_string(args.tag_name, "tag_name", TOOL_NAME),
+          validation.optional_string(args.tag_message, "tag_message", TOOL_NAME),
+          validation.optional_string(args.tag_commit_hash, "tag_commit_hash", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.create_tag(op_args.tag_name, op_args.tag_message, op_args.tag_commit_hash)
+        success, output = GitTool.create_tag(args.tag_name, args.tag_message, args.tag_commit_hash)
       elseif operation == "delete_tag" then
         param_err = validation.first_error({
-          validation.require_string(op_args.tag_name, "tag_name", TOOL_NAME),
-          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
+          validation.require_string(args.tag_name, "tag_name", TOOL_NAME),
+          validation.optional_string(args.remote, "remote", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.delete_tag(op_args.tag_name, op_args.remote)
+        success, output = GitTool.delete_tag(args.tag_name, args.remote)
       elseif operation == "merge" then
-        param_err = validation.require_string(op_args.branch, "branch", TOOL_NAME)
+        param_err = validation.require_string(args.branch, "branch", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.merge(op_args.branch)
+        success, output = GitTool.merge(args.branch)
       elseif operation == "merge_abort" then
         success, output = GitTool.merge_abort()
       elseif operation == "merge_continue" then
         success, output = GitTool.merge_continue()
       elseif operation == "fetch" then
         param_err = validation.first_error({
-          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
-          validation.optional_string(op_args.branch, "branch", TOOL_NAME),
-          validation.optional_boolean(op_args.prune, "prune", TOOL_NAME),
+          validation.optional_string(args.remote, "remote", TOOL_NAME),
+          validation.optional_string(args.branch, "branch", TOOL_NAME),
+          validation.optional_boolean(args.prune, "prune", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.fetch(op_args.remote, op_args.branch, op_args.prune)
+        success, output = GitTool.fetch(args.remote, args.branch, args.prune)
       elseif operation == "pull" then
         param_err = validation.first_error({
-          validation.optional_string(op_args.remote, "remote", TOOL_NAME),
-          validation.optional_string(op_args.branch, "branch", TOOL_NAME),
-          validation.optional_boolean(op_args.rebase, "rebase", TOOL_NAME),
+          validation.optional_string(args.remote, "remote", TOOL_NAME),
+          validation.optional_string(args.branch, "branch", TOOL_NAME),
+          validation.optional_boolean(args.rebase_flag, "rebase_flag", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.pull(op_args.remote, op_args.branch, op_args.rebase)
+        success, output = GitTool.pull(args.remote, args.branch, args.rebase_flag)
       elseif operation == "rebase" then
         param_err = validation.first_error({
-          validation.require_string(op_args.base, "base", TOOL_NAME),
-          validation.optional_string(op_args.onto, "onto", TOOL_NAME),
-          validation.optional_boolean(op_args.interactive, "interactive", TOOL_NAME),
+          validation.require_string(args.base, "base", TOOL_NAME),
+          validation.optional_string(args.onto, "onto", TOOL_NAME),
+          validation.optional_boolean(args.interactive, "interactive", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.rebase(op_args.onto, op_args.base, op_args.interactive)
+        success, output = GitTool.rebase(args.onto, args.base, args.interactive)
       elseif operation == "rebase_abort" then
         success, output = GitTool.rebase_abort()
       elseif operation == "rebase_continue" then
         success, output = GitTool.rebase_continue()
       elseif operation == "add_remote" then
         param_err = validation.first_error({
-          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
-          validation.require_string(op_args.remote_url, "remote_url", TOOL_NAME),
+          validation.require_string(args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(args.remote_url, "remote_url", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.add_remote(op_args.remote_name, op_args.remote_url)
+        success, output = GitTool.add_remote(args.remote_name, args.remote_url)
       elseif operation == "remove_remote" then
-        param_err = validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME)
+        param_err = validation.require_string(args.remote_name, "remote_name", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output = GitTool.remove_remote(op_args.remote_name)
+        success, output = GitTool.remove_remote(args.remote_name)
       elseif operation == "rename_remote" then
         param_err = validation.first_error({
-          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
-          validation.require_string(op_args.new_remote_name, "new_remote_name", TOOL_NAME),
+          validation.require_string(args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(args.new_remote_name, "new_remote_name", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.rename_remote(op_args.remote_name, op_args.new_remote_name)
+        success, output = GitTool.rename_remote(args.remote_name, args.new_remote_name)
       elseif operation == "set_remote_url" then
         param_err = validation.first_error({
-          validation.require_string(op_args.remote_name, "remote_name", TOOL_NAME),
-          validation.require_string(op_args.remote_url, "remote_url", TOOL_NAME),
+          validation.require_string(args.remote_name, "remote_name", TOOL_NAME),
+          validation.require_string(args.remote_url, "remote_url", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output = GitTool.set_remote_url(op_args.remote_name, op_args.remote_url)
+        success, output = GitTool.set_remote_url(args.remote_name, args.remote_url)
       else
         return validation.format_error(TOOL_NAME, "Unknown Git edit operation: " .. tostring(operation))
       end
@@ -575,20 +583,17 @@ Available write-access Git operations:
       return { success = success, output = output }
     end)
 
-    -- Handle unexpected execution errors
     if not ok then
       local error_msg = "Git edit operation failed unexpectedly: " .. tostring(result)
       return { status = "error", data = error_msg }
     end
 
-    -- Check if this is an early return case
     if result.status then
       return result
     end
 
     local success, output = result.success, result.output
 
-    -- Ensure proper response even if operation fails
     if success then
       return { status = "success", data = output }
     else

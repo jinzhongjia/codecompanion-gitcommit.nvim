@@ -116,7 +116,7 @@ T["cmds"]["stage requires files array"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "stage", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "stage" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("files is required") ~= nil,
@@ -130,7 +130,7 @@ T["cmds"]["stage requires non-empty files array"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "stage", args = { files = {} } }, nil, function() end)
+    local result = cmd_fn({}, { operation = "stage", files = {} }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("files cannot be empty") ~= nil,
@@ -144,7 +144,7 @@ T["cmds"]["create_branch requires branch_name"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "create_branch", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "create_branch" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("branch_name is required") ~= nil,
@@ -158,7 +158,7 @@ T["cmds"]["checkout requires target"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "checkout", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "checkout" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("target is required") ~= nil,
@@ -172,7 +172,7 @@ T["cmds"]["reset requires commit_hash"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "reset", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "reset" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("commit_hash is required") ~= nil,
@@ -188,7 +188,8 @@ T["cmds"]["reset validates mode enum"] = function()
     local cmd_fn = GitEdit.cmds[1]
     local result = cmd_fn({}, {
       operation = "reset",
-      args = { commit_hash = "abc123", mode = "invalid" },
+      commit_hash = "abc123",
+      mode = "invalid",
     }, nil, function() end)
     return {
       status = result.status,
@@ -203,7 +204,7 @@ T["cmds"]["merge requires branch"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "merge", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "merge" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("branch is required") ~= nil,
@@ -217,7 +218,7 @@ T["cmds"]["rebase requires base"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "rebase", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "rebase" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("base is required") ~= nil,
@@ -231,7 +232,7 @@ T["cmds"]["gitignore_add requires rules"] = function()
   local result = child.lua([[
     local GitEdit = require("codecompanion._extensions.gitcommit.tools.git_edit")
     local cmd_fn = GitEdit.cmds[1]
-    local result = cmd_fn({}, { operation = "gitignore_add", args = {} }, nil, function() end)
+    local result = cmd_fn({}, { operation = "gitignore_add" }, nil, function() end)
     return {
       status = result.status,
       has_msg = result.data.output:find("gitignore_rules or gitignore_rule is required") ~= nil,

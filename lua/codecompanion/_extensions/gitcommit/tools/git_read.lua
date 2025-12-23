@@ -1,6 +1,8 @@
 local GitTool = require("codecompanion._extensions.gitcommit.tools.git").GitTool
 local validation = require("codecompanion._extensions.gitcommit.tools.validation")
-local normalize_output = require("codecompanion._extensions.gitcommit.tools.output").normalize_output
+local output_utils = require("codecompanion._extensions.gitcommit.tools.output")
+local normalize_output = output_utils.normalize_output
+local normalize_args = output_utils.normalize_args
 
 ---@class CodeCompanion.GitCommit.Tools.GitRead: CodeCompanion.Tools.Tool
 local GitRead = {}
@@ -45,75 +47,85 @@ GitRead.schema = {
           enum = VALID_OPERATIONS,
           description = "The read-only Git operation to perform.",
         },
-        args = {
-          type = "object",
-          properties = {
-            count = {
-              type = "integer",
-              description = "Number of items to show (for log, contributors, etc.)",
-            },
-            format = {
-              type = "string",
-              description = "Format for log output (oneline, short, medium, full, fuller)",
-            },
-            staged = {
-              type = "boolean",
-              description = "Whether to show staged changes for diff",
-            },
-            file_path = {
-              type = "string",
-              description = "Path to a specific file",
-            },
-            remote_only = {
-              type = "boolean",
-              description = "Show only remote branches",
-            },
-            commit_hash = {
-              type = "string",
-              description = "Commit hash or reference",
-            },
-            line_start = {
-              type = "integer",
-              description = "Start line number for blame",
-            },
-            line_end = {
-              type = "integer",
-              description = "End line number for blame",
-            },
-            commit1 = {
-              type = "string",
-              description = "First commit for diff",
-            },
-            commit2 = {
-              type = "string",
-              description = "Second commit for diff",
-            },
-            pattern = {
-              type = "string",
-              description = "Search pattern for commits",
-            },
-            gitignore_file = {
-              type = "string",
-              description = "File to check if ignored",
-            },
-            from_tag = {
-              type = "string",
-              description = "Starting tag for release notes generation (if not provided, uses second latest tag)",
-            },
-            to_tag = {
-              type = "string",
-              description = "Ending tag for release notes generation (if not provided, uses latest tag)",
-            },
-            release_format = {
-              type = "string",
-              description = "Format for release notes (markdown, plain, json)",
-              default = "markdown",
-            },
-          },
-          additionalProperties = false,
+        count = {
+          type = { "integer", "null" },
+          description = "Number of items to show (for log, contributors, etc.)",
+        },
+        format = {
+          type = { "string", "null" },
+          description = "Format for log output (oneline, short, medium, full, fuller)",
+        },
+        staged = {
+          type = { "boolean", "null" },
+          description = "Whether to show staged changes for diff",
+        },
+        file_path = {
+          type = { "string", "null" },
+          description = "Path to a specific file",
+        },
+        remote_only = {
+          type = { "boolean", "null" },
+          description = "Show only remote branches",
+        },
+        commit_hash = {
+          type = { "string", "null" },
+          description = "Commit hash or reference",
+        },
+        line_start = {
+          type = { "integer", "null" },
+          description = "Start line number for blame",
+        },
+        line_end = {
+          type = { "integer", "null" },
+          description = "End line number for blame",
+        },
+        commit1 = {
+          type = { "string", "null" },
+          description = "First commit for diff_commits",
+        },
+        commit2 = {
+          type = { "string", "null" },
+          description = "Second commit for diff_commits",
+        },
+        pattern = {
+          type = { "string", "null" },
+          description = "Search pattern for commits",
+        },
+        gitignore_file = {
+          type = { "string", "null" },
+          description = "File to check if ignored",
+        },
+        from_tag = {
+          type = { "string", "null" },
+          description = "Starting tag for release notes generation (if not provided, uses second latest tag)",
+        },
+        to_tag = {
+          type = { "string", "null" },
+          description = "Ending tag for release notes generation (if not provided, uses latest tag)",
+        },
+        release_format = {
+          type = { "string", "null" },
+          description = "Format for release notes (markdown, plain, json). Default: markdown",
         },
       },
-      required = { "operation" },
+      required = {
+        "operation",
+        "count",
+        "format",
+        "staged",
+        "file_path",
+        "remote_only",
+        "commit_hash",
+        "line_start",
+        "line_end",
+        "commit1",
+        "commit2",
+        "pattern",
+        "gitignore_file",
+        "from_tag",
+        "to_tag",
+        "release_format",
+      },
       additionalProperties = false,
     },
     strict = true,
@@ -131,28 +143,36 @@ GitRead.system_prompt = [[# Git Read Tool (`git_read`)
 - Follow the tool's schema strictly.
 - Use the appropriate operation for the task.
 - Provide clear and accurate Git information to the user.
+- All parameters are passed at the top level (not nested in args).
+- Pass null for unused optional parameters.
 
 ## AVAILABLE OPERATIONS
-| Operation | Description | Required Args |
-|-----------|-------------|---------------|
-| `status` | Show repository status | - |
+| Operation | Description | Parameters |
+|-----------|-------------|------------|
+| `status` | Show repository status | (none) |
 | `log` | Show commit history | count?, format? |
 | `diff` | Show file differences | staged?, file_path? |
 | `branch` | List branches | remote_only? |
-| `remotes` | Show remote repositories | - |
+| `remotes` | Show remote repositories | (none) |
 | `show` | Show commit details | commit_hash? |
-| `blame` | Show file blame info | file_path (required) |
-| `stash_list` | List stashes | - |
-| `diff_commits` | Compare commits | commit1 (required), commit2? |
+| `blame` | Show file blame info | file_path (required), line_start?, line_end? |
+| `stash_list` | List stashes | (none) |
+| `diff_commits` | Compare commits | commit1 (required), commit2?, file_path? |
 | `contributors` | Show contributors | count? |
-| `search_commits` | Search commit messages | pattern (required) |
-| `tags` | List all tags | - |
-| `generate_release_notes` | Generate release notes | from_tag?, to_tag? |
-| `conflict_status` | List files with conflicts | - |
+| `search_commits` | Search commit messages | pattern (required), count? |
+| `tags` | List all tags | (none) |
+| `generate_release_notes` | Generate release notes | from_tag?, to_tag?, release_format? |
+| `conflict_status` | List files with conflicts | (none) |
 | `conflict_show` | Show conflict markers in file | file_path (required) |
-| `gitignore_get` | Get .gitignore content | - |
+| `gitignore_get` | Get .gitignore content | (none) |
 | `gitignore_check` | Check if file is ignored | gitignore_file (required) |
-| `help` | Show help information | - |
+| `help` | Show help information | (none) |
+
+## EXAMPLE CALLS
+- Status: `{ "operation": "status", "count": null, "format": null, ... }`
+- Log: `{ "operation": "log", "count": 5, "format": "oneline", ... }`
+- Diff: `{ "operation": "diff", "staged": true, ... }`
+- Blame: `{ "operation": "blame", "file_path": "src/main.lua", ... }`
 
 ## RESPONSE
 - Only invoke this tool when examining Git repository state.
@@ -165,17 +185,13 @@ GitRead.cmds = {
       return validation.format_error(TOOL_NAME, "Invalid arguments: expected object")
     end
 
+    args = normalize_args(args) -- JSON null → vim.NIL (truthy) → nil
+
     local operation = args.operation
     local err = validation.require_enum(operation, "operation", VALID_OPERATIONS, TOOL_NAME)
     if err then
       return err
     end
-
-    local op_args = args.args
-    if op_args ~= nil and type(op_args) ~= "table" then
-      return validation.format_error(TOOL_NAME, "args must be an object")
-    end
-    op_args = op_args or {}
 
     if operation == "help" then
       local help_text =
@@ -191,116 +207,114 @@ GitRead.cmds = {
         success, output, user_msg, llm_msg = GitTool.get_status()
       elseif operation == "log" then
         param_err = validation.first_error({
-          validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000),
-          op_args.format and validation.require_enum(op_args.format, "format", VALID_LOG_FORMATS, TOOL_NAME) or nil,
+          validation.optional_integer(args.count, "count", TOOL_NAME, 1, 1000),
+          args.format and validation.require_enum(args.format, "format", VALID_LOG_FORMATS, TOOL_NAME) or nil,
         })
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.get_log(op_args.count, op_args.format)
+        success, output, user_msg, llm_msg = GitTool.get_log(args.count, args.format)
       elseif operation == "diff" then
         param_err = validation.first_error({
-          validation.optional_boolean(op_args.staged, "staged", TOOL_NAME),
-          validation.optional_string(op_args.file_path, "file_path", TOOL_NAME),
+          validation.optional_boolean(args.staged, "staged", TOOL_NAME),
+          validation.optional_string(args.file_path, "file_path", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.get_diff(op_args.staged, op_args.file_path)
+        success, output, user_msg, llm_msg = GitTool.get_diff(args.staged, args.file_path)
       elseif operation == "branch" then
-        param_err = validation.optional_boolean(op_args.remote_only, "remote_only", TOOL_NAME)
+        param_err = validation.optional_boolean(args.remote_only, "remote_only", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.get_branches(op_args.remote_only)
+        success, output, user_msg, llm_msg = GitTool.get_branches(args.remote_only)
       elseif operation == "remotes" then
         success, output, user_msg, llm_msg = GitTool.get_remotes()
       elseif operation == "show" then
-        param_err = validation.optional_string(op_args.commit_hash, "commit_hash", TOOL_NAME)
+        param_err = validation.optional_string(args.commit_hash, "commit_hash", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.show_commit(op_args.commit_hash)
+        success, output, user_msg, llm_msg = GitTool.show_commit(args.commit_hash)
       elseif operation == "blame" then
         param_err = validation.first_error({
-          validation.require_string(op_args.file_path, "file_path", TOOL_NAME),
-          validation.optional_integer(op_args.line_start, "line_start", TOOL_NAME, 1),
-          validation.optional_integer(op_args.line_end, "line_end", TOOL_NAME, 1),
+          validation.require_string(args.file_path, "file_path", TOOL_NAME),
+          validation.optional_integer(args.line_start, "line_start", TOOL_NAME, 1),
+          validation.optional_integer(args.line_end, "line_end", TOOL_NAME, 1),
         })
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.get_blame(op_args.file_path, op_args.line_start, op_args.line_end)
+        success, output, user_msg, llm_msg = GitTool.get_blame(args.file_path, args.line_start, args.line_end)
       elseif operation == "stash_list" then
         success, output, user_msg, llm_msg = GitTool.list_stashes()
       elseif operation == "diff_commits" then
         param_err = validation.first_error({
-          validation.require_string(op_args.commit1, "commit1", TOOL_NAME),
-          validation.optional_string(op_args.commit2, "commit2", TOOL_NAME),
-          validation.optional_string(op_args.file_path, "file_path", TOOL_NAME),
+          validation.require_string(args.commit1, "commit1", TOOL_NAME),
+          validation.optional_string(args.commit2, "commit2", TOOL_NAME),
+          validation.optional_string(args.file_path, "file_path", TOOL_NAME),
         })
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.diff_commits(op_args.commit1, op_args.commit2, op_args.file_path)
+        success, output, user_msg, llm_msg = GitTool.diff_commits(args.commit1, args.commit2, args.file_path)
       elseif operation == "contributors" then
-        param_err = validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000)
+        param_err = validation.optional_integer(args.count, "count", TOOL_NAME, 1, 1000)
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.get_contributors(op_args.count)
+        success, output, user_msg, llm_msg = GitTool.get_contributors(args.count)
       elseif operation == "search_commits" then
         param_err = validation.first_error({
-          validation.require_string(op_args.pattern, "pattern", TOOL_NAME),
-          validation.optional_integer(op_args.count, "count", TOOL_NAME, 1, 1000),
+          validation.require_string(args.pattern, "pattern", TOOL_NAME),
+          validation.optional_integer(args.count, "count", TOOL_NAME, 1, 1000),
         })
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.search_commits(op_args.pattern, op_args.count)
+        success, output, user_msg, llm_msg = GitTool.search_commits(args.pattern, args.count)
       elseif operation == "tags" then
         success, output, user_msg, llm_msg = GitTool.get_tags()
       elseif operation == "generate_release_notes" then
         param_err = validation.first_error({
-          validation.optional_string(op_args.from_tag, "from_tag", TOOL_NAME),
-          validation.optional_string(op_args.to_tag, "to_tag", TOOL_NAME),
-          op_args.release_format
-              and validation.require_enum(op_args.release_format, "release_format", VALID_RELEASE_FORMATS, TOOL_NAME)
+          validation.optional_string(args.from_tag, "from_tag", TOOL_NAME),
+          validation.optional_string(args.to_tag, "to_tag", TOOL_NAME),
+          args.release_format
+              and validation.require_enum(args.release_format, "release_format", VALID_RELEASE_FORMATS, TOOL_NAME)
             or nil,
         })
         if param_err then
           return param_err
         end
         success, output, user_msg, llm_msg =
-          GitTool.generate_release_notes(op_args.from_tag, op_args.to_tag, op_args.release_format)
+          GitTool.generate_release_notes(args.from_tag, args.to_tag, args.release_format)
       elseif operation == "conflict_status" then
         success, output, user_msg, llm_msg = GitTool.get_conflict_status()
       elseif operation == "conflict_show" then
-        param_err = validation.require_string(op_args.file_path, "file_path", TOOL_NAME)
+        param_err = validation.require_string(args.file_path, "file_path", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.show_conflict(op_args.file_path)
+        success, output, user_msg, llm_msg = GitTool.show_conflict(args.file_path)
       elseif operation == "gitignore_get" then
         success, output, user_msg, llm_msg = GitTool.get_gitignore()
       elseif operation == "gitignore_check" then
-        param_err = validation.require_string(op_args.gitignore_file, "gitignore_file", TOOL_NAME)
+        param_err = validation.require_string(args.gitignore_file, "gitignore_file", TOOL_NAME)
         if param_err then
           return param_err
         end
-        success, output, user_msg, llm_msg = GitTool.is_ignored(op_args.gitignore_file)
+        success, output, user_msg, llm_msg = GitTool.is_ignored(args.gitignore_file)
       end
 
       return { success = success, output = output, user_msg = user_msg, llm_msg = llm_msg }
     end)
 
-    -- Handle unexpected execution errors
     if not ok then
       local error_msg = "Git read operation failed unexpectedly: " .. tostring(result)
       return { status = "error", data = error_msg }
     end
 
-    -- Check if this is an early return case (validation error)
     if result.status then
       return result
     end

@@ -62,29 +62,32 @@ T["schema"]["parameters has object type"] = function()
   h.eq("object", result)
 end
 
-T["schema"]["has from_tag property"] = function()
+T["schema"]["has from_tag property with nullable type"] = function()
   local result = child.lua([[
     local AIReleaseNotes = require("codecompanion._extensions.gitcommit.tools.ai_release_notes")
     local props = AIReleaseNotes.schema["function"].parameters.properties
-    return props.from_tag ~= nil and props.from_tag.type == "string"
+    local t = props.from_tag.type
+    return props.from_tag ~= nil and type(t) == "table" and vim.tbl_contains(t, "null")
   ]])
   h.eq(true, result)
 end
 
-T["schema"]["has to_tag property"] = function()
+T["schema"]["has to_tag property with nullable type"] = function()
   local result = child.lua([[
     local AIReleaseNotes = require("codecompanion._extensions.gitcommit.tools.ai_release_notes")
     local props = AIReleaseNotes.schema["function"].parameters.properties
-    return props.to_tag ~= nil and props.to_tag.type == "string"
+    local t = props.to_tag.type
+    return props.to_tag ~= nil and type(t) == "table" and vim.tbl_contains(t, "null")
   ]])
   h.eq(true, result)
 end
 
-T["schema"]["has style property with enum"] = function()
+T["schema"]["has style property with nullable type and enum"] = function()
   local result = child.lua([[
     local AIReleaseNotes = require("codecompanion._extensions.gitcommit.tools.ai_release_notes")
     local props = AIReleaseNotes.schema["function"].parameters.properties
-    return props.style ~= nil and props.style.type == "string" and props.style.enum ~= nil
+    local t = props.style.type
+    return props.style ~= nil and type(t) == "table" and vim.tbl_contains(t, "null") and props.style.enum ~= nil
   ]])
   h.eq(true, result)
 end
@@ -92,7 +95,8 @@ end
 T["schema"]["style enum has all valid values"] = function()
   local result = child.lua([[
     local AIReleaseNotes = require("codecompanion._extensions.gitcommit.tools.ai_release_notes")
-    local enum = AIReleaseNotes.schema["function"].parameters.properties.style.enum
+    local style_prop = AIReleaseNotes.schema["function"].parameters.properties.style
+    local enum = style_prop.enum
     local expected = { "detailed", "concise", "changelog", "marketing" }
     if #enum ~= #expected then return false end
     for i, v in ipairs(expected) do

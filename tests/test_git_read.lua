@@ -116,7 +116,7 @@ T["cmds"]["blame requires file_path"] = function()
   local result = child.lua([[
     local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
     local cmd_fn = GitRead.cmds[1]
-    local result = cmd_fn({}, { operation = "blame", args = {} }, nil)
+    local result = cmd_fn({}, { operation = "blame" }, nil)
     return {
       status = result.status,
       has_msg = result.data.output:find("file_path is required") ~= nil,
@@ -130,7 +130,7 @@ T["cmds"]["diff_commits requires commit1"] = function()
   local result = child.lua([[
     local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
     local cmd_fn = GitRead.cmds[1]
-    local result = cmd_fn({}, { operation = "diff_commits", args = {} }, nil)
+    local result = cmd_fn({}, { operation = "diff_commits" }, nil)
     return {
       status = result.status,
       has_msg = result.data.output:find("commit1 is required") ~= nil,
@@ -144,7 +144,7 @@ T["cmds"]["validates log count range"] = function()
   local result = child.lua([[
     local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
     local cmd_fn = GitRead.cmds[1]
-    local result = cmd_fn({}, { operation = "log", args = { count = 10000 } }, nil)
+    local result = cmd_fn({}, { operation = "log", count = 10000 }, nil)
     return {
       status = result.status,
       has_msg = result.data.output:find("count must be at most 1000") ~= nil,
@@ -158,7 +158,7 @@ T["cmds"]["validates log format enum"] = function()
   local result = child.lua([[
     local GitRead = require("codecompanion._extensions.gitcommit.tools.git_read")
     local cmd_fn = GitRead.cmds[1]
-    local result = cmd_fn({}, { operation = "log", args = { format = "invalid" } }, nil)
+    local result = cmd_fn({}, { operation = "log", format = "invalid" }, nil)
     return {
       status = result.status,
       has_msg = result.data.output:find("format must be one of") ~= nil,

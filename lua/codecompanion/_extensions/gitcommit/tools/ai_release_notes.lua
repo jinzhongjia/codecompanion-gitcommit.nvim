@@ -20,19 +20,20 @@ AIReleaseNotes.schema = {
       type = "object",
       properties = {
         from_tag = {
-          type = "string",
+          type = { "string", "null" },
           description = "Starting tag/version (if not provided, uses second latest tag)",
         },
         to_tag = {
-          type = "string",
+          type = { "string", "null" },
           description = "Ending tag/version (if not provided, uses latest tag or HEAD)",
         },
         style = {
-          type = "string",
+          type = { "string", "null" },
           enum = { "detailed", "concise", "changelog", "marketing" },
-          description = "Style of release notes to generate",
+          description = "Style of release notes to generate. Default: detailed",
         },
       },
+      required = { "from_tag", "to_tag", "style" },
       additionalProperties = false,
     },
     strict = true,
