@@ -38,8 +38,7 @@ function Git.is_repository()
   end
 
   local function check_git_dir(path)
-    local sep = package.config:sub(1, 1)
-    local git_path = path .. sep .. ".git"
+    local git_path = GitUtils.path_join(path, ".git")
     local stat = vim.uv.fs_stat(git_path)
     return stat ~= nil
   end
@@ -77,8 +76,7 @@ function Git.is_amending()
       return false
     end
 
-    local path_sep = package.config:sub(1, 1)
-    local commit_editmsg = git_dir .. path_sep .. "COMMIT_EDITMSG"
+    local commit_editmsg = GitUtils.path_join(git_dir, "COMMIT_EDITMSG")
     local stat = vim.uv.fs_stat(commit_editmsg)
     if not stat then
       return false

@@ -220,6 +220,38 @@ function M.is_windows()
   return vim.uv.os_uname().sysname == "Windows_NT"
 end
 
+---Join path parts with platform-specific separator
+---Normalizes all parts to forward slashes internally, then converts to platform format
+---@param ... string Path parts to join
+---@return string joined_path
+function M.path_join(...)
+  local parts = { ... }
+  if #parts == 0 then
+    return ""
+  end
+
+  -- Normalize all parts to use forward slashes
+  local normalized = {}
+  for i, part in ipairs(parts) do
+    normalized[i] = part:gsub("\\+", "/")
+  end
+
+  -- Remove leading/trailing slashes from middle parts
+  for i = 2, #normalized - 1 do
+    normalized[i] = normalized[i]:gsub("^/", ""):gsub("/$", "")
+  end
+
+  -- Join with forward slashes
+  local result = table.concat(normalized, "/")
+
+  -- Convert to Windows backslashes if on Windows
+  if M.is_windows() then
+    result = result:gsub("/", "\\")
+  end
+
+  return result
+end
+
 ---Quote a string for shell command (cross-platform)
 ---@param str string The string to quote
 ---@param force_windows? boolean Force Windows quoting style (for testing)

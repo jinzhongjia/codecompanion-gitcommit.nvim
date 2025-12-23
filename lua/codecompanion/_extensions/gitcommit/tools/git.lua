@@ -36,8 +36,7 @@ local function get_gitignore_path()
   if not git_dir or git_dir == "" then
     return nil
   end
-  local sep = package.config:sub(1, 1)
-  return git_dir .. sep .. ".gitignore"
+  return GitUtils.path_join(git_dir, ".gitignore")
 end
 
 function GitTool.get_gitignore()
