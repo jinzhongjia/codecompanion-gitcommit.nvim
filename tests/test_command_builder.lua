@@ -714,7 +714,15 @@ T["utility"]["is_inside_work_tree"] = function()
     local Command = require("codecompanion._extensions.gitcommit.tools.command")
     return Command.CommandBuilder.is_inside_work_tree()
   ]])
-  h.eq(true, result:find("git rev%-parse %-%-is%-inside%-work%-tree") ~= nil)
+  h.eq({ "git", "rev-parse", "--is-inside-work-tree" }, result)
+end
+
+T["utility"]["verify_head"] = function()
+  local result = child.lua([[
+    local Command = require("codecompanion._extensions.gitcommit.tools.command")
+    return Command.CommandBuilder.verify_head()
+  ]])
+  h.eq({ "git", "rev-parse", "--verify", "HEAD" }, result)
 end
 
 T["utility"]["git_dir"] = function()

@@ -58,8 +58,7 @@ function Git.is_repository()
     check_dir = parent
   end
 
-  local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
-  local cmd = "git rev-parse --is-inside-work-tree" .. redirect
+  local cmd = { "git", "rev-parse", "--is-inside-work-tree" }
   local result = vim.fn.system(cmd)
   local is_repo = vim.v.shell_error == 0 and vim.trim(result) == "true"
 
@@ -85,8 +84,7 @@ function Git.is_amending()
       return false
     end
 
-    local redirect = (vim.uv.os_uname().sysname == "Windows_NT") and " 2>nul" or " 2>/dev/null"
-    vim.fn.system("git rev-parse --verify HEAD" .. redirect)
+    vim.fn.system({ "git", "rev-parse", "--verify", "HEAD" })
     if vim.v.shell_error ~= 0 then
       return false
     end

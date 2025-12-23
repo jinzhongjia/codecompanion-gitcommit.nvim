@@ -523,10 +523,15 @@ function CommandBuilder.pull(remote, branch, rebase)
 end
 
 ---Build git rev-parse command (check repo)
----@return string command
+---@return string[] command array
 function CommandBuilder.is_inside_work_tree()
-  local redirect = is_windows() and " 2>nul" or " 2>/dev/null"
-  return "git rev-parse --is-inside-work-tree" .. redirect
+  return { "git", "rev-parse", "--is-inside-work-tree" }
+end
+
+---Build git rev-parse --verify HEAD command
+---@return string[] command array
+function CommandBuilder.verify_head()
+  return { "git", "rev-parse", "--verify", "HEAD" }
 end
 
 ---Build git rev-parse git-dir command
@@ -631,8 +636,8 @@ end
 ---@return boolean
 function CommandExecutor.is_git_repo()
   local cmd = CommandBuilder.is_inside_work_tree()
-  local ok, output = pcall(vim.fn.system, cmd)
-  return ok and vim.v.shell_error == 0 and vim.trim(output) == "true"
+  local ok, result = CommandExecutor.run_array(cmd)
+  return ok and vim.trim(result) == "true"
 end
 
 ---Execute a git command with repo check
