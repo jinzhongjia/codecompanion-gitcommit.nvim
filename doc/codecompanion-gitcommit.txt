@@ -338,6 +338,23 @@ Marketing Style:
 	The specific model to use. If not specified, defaults to the model
 	configured for CodeCompanion's chat strategy.
 
+*prompt_template*				Type: string
+	Custom prompt template for commit message generation. When specified,
+	replaces the default prompt. Supports the following placeholders:
+	• %{language} - Target language for the commit message
+	• %{diff} - Git diff content
+	• %{history_context} - Recent commit history (if enabled)
+
+	Example: >
+		prompt_template = [[Generate a commit message.
+		Language: %{language}
+		Diff:
+		%{diff}
+		%{history_context}]]
+<
+	See lua/codecompanion/_extensions/gitcommit/config.lua for the default
+	template.
+
 *languages*					Type: table
 	A list of languages for generating commit messages. When specified,
 	the extension will prompt you to select a language before generating.

@@ -349,7 +349,7 @@ return
       use_commit_history = opts.use_commit_history,
       commit_history_count = opts.commit_history_count,
     })
-    Generator.setup(opts.adapter, opts.model)
+    Generator.setup(opts.adapter, opts.model, opts.prompt_template)
     Buffer.setup(opts.buffer)
     Langs.setup(opts.languages)
 

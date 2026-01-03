@@ -180,6 +180,7 @@ opts = {
   adapter = "openai",                         -- LLM adapter
   model = "gpt-4",                           -- Model name
   languages = { "English", "Chinese", "Japanese", "French" }, -- Supported languages list
+  prompt_template = nil,                     -- Custom prompt template (see below)
   exclude_files = {                          -- Excluded file patterns
     "*.pb.go", "*.min.js", "*.min.css",
     "package-lock.json", "yarn.lock", "*.log",
@@ -208,6 +209,36 @@ opts = {
 ```
 
 </details>
+
+### Custom Prompt Template
+
+You can customize the commit message generation prompt using the `prompt_template` option. The template supports the following placeholders:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `%{language}` | Target language for the commit message |
+| `%{diff}` | Git diff content |
+| `%{history_context}` | Recent commit history (if enabled) |
+
+**Example:**
+
+```lua
+opts = {
+  prompt_template = [[Generate a commit message for this diff.
+Language: %{language}
+
+Rules:
+1. Use conventional commits format
+2. Be concise
+
+Diff:
+%{diff}
+
+%{history_context}]],
+}
+```
+
+To see the default template, check `lua/codecompanion/_extensions/gitcommit/config.lua`.
 
 ## 🔌 Programmatic API
 

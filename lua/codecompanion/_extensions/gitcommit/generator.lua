@@ -9,6 +9,8 @@ local Generator = {}
 local _adapter_name = nil
 --- @type string? Model name
 local _model_name = nil
+--- @type string? Prompt template
+local _prompt_template = nil
 
 local CONSTANTS = {
   STATUS_ERROR = "error",
@@ -17,9 +19,11 @@ local CONSTANTS = {
 
 --- @param adapter string?  The adapter to use for generation
 --- @param model string? The model of the adapter to use for generation
-function Generator.setup(adapter, model)
+--- @param prompt_template string? Custom prompt template
+function Generator.setup(adapter, model, prompt_template)
   _adapter_name = adapter
   _model_name = model
+  _prompt_template = prompt_template
 end
 
 ---Create a client for both HTTP and ACP adapters
@@ -226,7 +230,7 @@ end
 ---@param diff string The git diff to include in prompt
 ---@param commit_history? string[] Recent commit messages for context (optional)
 function Generator._create_prompt(diff, lang, commit_history)
-  return git_utils.build_commit_prompt(diff, lang, commit_history)
+  return git_utils.build_commit_prompt(diff, lang, commit_history, _prompt_template)
 end
 
 return Generator

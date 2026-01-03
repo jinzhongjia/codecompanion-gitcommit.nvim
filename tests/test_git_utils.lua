@@ -953,4 +953,98 @@ T["conflict_markers"]["parses conflict blocks"] = function()
   h.expect_match(">>>>>>>", result.block)
 end
 
+T["build_commit_prompt"] = new_set()
+
+T["build_commit_prompt"]["uses default template when no custom template"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local prompt = GitUtils.build_commit_prompt("test diff", "English", nil, nil)
+    return prompt:find("commit message generator") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["uses default template when empty template"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local prompt = GitUtils.build_commit_prompt("test diff", "English", nil, "")
+    return prompt:find("commit message generator") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["replaces language placeholder"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "Generate in %{language}"
+    local prompt = GitUtils.build_commit_prompt("diff", "Chinese", nil, template)
+    return prompt == "Generate in Chinese"
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["replaces diff placeholder"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "Diff: %{diff}"
+    local prompt = GitUtils.build_commit_prompt("my changes", "English", nil, template)
+    return prompt == "Diff: my changes"
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["replaces history_context placeholder"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "History: %{history_context}"
+    local prompt = GitUtils.build_commit_prompt("diff", "English", {"commit 1", "commit 2"}, template)
+    return prompt:find("BEGIN HISTORY") ~= nil and prompt:find("commit 1") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["handles empty history_context"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "History: [%{history_context}]"
+    local prompt = GitUtils.build_commit_prompt("diff", "English", nil, template)
+    return prompt == "History: []"
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["replaces all placeholders in custom template"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "Lang: %{language}, Diff: %{diff}, Ctx: %{history_context}"
+    local prompt = GitUtils.build_commit_prompt("my diff", "Japanese", {"hist1"}, template)
+    local has_lang = prompt:find("Lang: Japanese") ~= nil
+    local has_diff = prompt:find("Diff: my diff") ~= nil
+    local has_ctx = prompt:find("Ctx: BEGIN HISTORY") ~= nil
+    return has_lang and has_diff and has_ctx
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["handles diff with special characters"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "Diff: %{diff}"
+    local diff_content = "+hello %{language} world"
+    local prompt = GitUtils.build_commit_prompt(diff_content, "English", nil, template)
+    return prompt:find("%%{language}") ~= nil
+  ]])
+  h.eq(true, result)
+end
+
+T["build_commit_prompt"]["defaults language to English"] = function()
+  local result = child.lua([[
+    local GitUtils = require("codecompanion._extensions.gitcommit.git_utils")
+    local template = "Lang: %{language}"
+    local prompt = GitUtils.build_commit_prompt("diff", nil, nil, template)
+    return prompt == "Lang: English"
+  ]])
+  h.eq(true, result)
+end
+
 return T

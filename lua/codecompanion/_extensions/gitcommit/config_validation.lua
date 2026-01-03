@@ -25,6 +25,7 @@ local fmt = string.format
 M.schema = {
   adapter = { "string", "nil" },
   model = { "string", "nil" },
+  prompt_template = { "string", "nil" },
   languages = { type = "array", items = "string" },
   exclude_files = { type = "array", items = "string" },
   buffer = {
