@@ -326,8 +326,9 @@ end
 ---@param diff string The git diff content
 ---@param lang string The target language for the commit message
 ---@param commit_history? string[] Recent commit messages for context
+---@param prompt_template? string Custom prompt template with placeholders
 ---@return string prompt The formatted prompt
-function M.build_commit_prompt(diff, lang, commit_history)
+function M.build_commit_prompt(diff, lang, commit_history, prompt_template)
   local history_context = ""
   if commit_history and #commit_history > 0 then
     history_context = "BEGIN HISTORY (style reference only):\n"
@@ -338,41 +339,22 @@ function M.build_commit_prompt(diff, lang, commit_history)
       .. "END HISTORY\nStyle reference only. Do not copy content or topics; base the message ONLY on the diff.\n"
   end
 
-  return string.format(
-    [[You are a commit message generator. Produce exactly ONE Conventional Commit message for the provided git diff.
+  local template = prompt_template
+  if template == nil or template == "" then
+    local Config = require("codecompanion._extensions.gitcommit.config")
+    template = Config.default_opts.prompt_template
+  end
 
-FORMAT:
-type(scope): concise, imperative description of WHAT changed
+  local prompt = template
+  prompt = prompt:gsub("%%{language}", lang or "English")
+  prompt = prompt:gsub("%%{diff}", function()
+    return diff
+  end)
+  prompt = prompt:gsub("%%{history_context}", function()
+    return history_context
+  end)
 
-Optional body (only if needed for non-obvious changes)
-
-Allowed types: feat, fix, docs, style, refactor, perf, test, chore
-Language: %s (type/scope stay in English)
-
-CRITICAL RULES:
-1. Output ONLY the commit message; no markdown, no quotes, no extra text
-2. Subject is imperative, present tense, no trailing period
-3. Be specific about WHAT changed; avoid WHY or impact
-4. Avoid vague verbs: "update", "improve", "clarify", "adjust", "enhance", "fix issues"
-   Prefer concrete verbs: "add", "remove", "rename", "move", "replace", "extract", "inline"
-5. Scope is optional; include only if clearly implied by the diff
-6. Subject <= 50 chars; body lines <= 72 chars
-7. Add body only when the subject alone is not enough
-8. If the diff introduces a breaking change, mark with "!" and add "BREAKING CHANGE:" in body
-9. Do not invent issue references, ticket IDs, or files not in the diff
-10. If the diff includes multiple unrelated changes, pick the single most important one
-11. When body is present, reference concrete entities from the diff (module, file, function, setting)
-
-DIFF (source of truth):
-```diff
-%s
-```
-END DIFF
-%s]],
-    lang or "English",
-    diff,
-    history_context
-  )
+  return prompt
 end
 
 ---Parse git conflict markers from file content
