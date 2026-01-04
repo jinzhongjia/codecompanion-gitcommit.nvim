@@ -346,7 +346,9 @@ function M.build_commit_prompt(diff, lang, commit_history, prompt_template)
   end
 
   local prompt = template
-  prompt = prompt:gsub("%%{language}", lang or "English")
+  prompt = prompt:gsub("%%{language}", function()
+    return lang or "English"
+  end)
   prompt = prompt:gsub("%%{diff}", function()
     return diff
   end)
